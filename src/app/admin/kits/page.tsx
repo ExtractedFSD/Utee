@@ -20,7 +20,8 @@ export default async function KitsPage() {
       .from("orders")
       .select("id, order_number, email, placed_at")
       .eq("contains_test_kit", true)
-      .neq("fulfillment_status", "fulfilled")
+      // NULL-safe: new orders have fulfillment_status = null, not "unfulfilled"
+      .or("fulfillment_status.is.null,fulfillment_status.neq.fulfilled")
       .order("placed_at", { ascending: true })
       .limit(50),
   ]);
