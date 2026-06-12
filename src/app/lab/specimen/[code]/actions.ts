@@ -57,6 +57,15 @@ export async function uploadResults(code: string, formData: FormData) {
     return { error: "Mark the specimen as received before uploading results" };
   }
 
+  // Anti-mix-up guard: the tech must re-type the code printed on the physical
+  // pot. A stale browser tab for a different specimen fails loudly here.
+  const confirmCode = String(formData.get("confirmCode") ?? "").trim().toUpperCase();
+  if (confirmCode !== code.toUpperCase()) {
+    return {
+      error: `The code you entered (${confirmCode || "blank"}) doesn't match this specimen (${code}). Check you're holding the right pot and on the right page.`,
+    };
+  }
+
   const parsed = resultsSchema.safeParse({
     outcome: String(formData.get("outcome") ?? ""),
     organism: String(formData.get("organism") ?? ""),

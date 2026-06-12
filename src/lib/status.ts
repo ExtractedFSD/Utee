@@ -71,6 +71,17 @@ export const KIT_STATUS_COLORS: Record<KitStatus, string> = {
   closed: "bg-slate-100 text-slate-500",
 };
 
+/**
+ * One-stage rollback map for super-admin recovery (e.g. a lab pot mix-up).
+ * Only statuses listed here can be reverted; each reverts to its value.
+ */
+export const KIT_REVERT_MAP: Partial<Record<KitStatus, KitStatus>> = {
+  report_ready: "clinic_received",
+  clinic_received: "lab_complete",
+  lab_complete: "received_by_lab",
+  received_by_lab: "activated",
+};
+
 export function homeForRole(role: Role): string {
   switch (role) {
     case "lab":

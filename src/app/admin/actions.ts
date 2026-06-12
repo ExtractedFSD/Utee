@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logKitEvent, generateKitCode } from "@/lib/events";
 import { applyTrackingEvent } from "@/lib/tracking";
 import { sendEmail, emails } from "@/lib/email";
+import { KIT_REVERT_MAP, type KitStatus } from "@/lib/status";
 
 /** Pre-print a batch of kit QR labels (status 'created', unassigned stock). */
 export async function createKitBatch(count: number) {
@@ -93,6 +94,80 @@ export async function dispatchKit(input: {
   await sendEmail({ to: order.email, ...emails.kitShipped(kitCode, outbound) });
 
   revalidatePath("/admin/kits");
+  return { ok: true };
+}
+
+/**
+ * Recovery tool for process mistakes (e.g. a lab pot mix-up): rolls a kit
+ * back exactly one stage, voiding whatever data that stage produced. Super
+ * admin only. Deliberately bypasses logKitEvent's status notifications so the
+ * customer doesn't get re-sent stage emails when the kit moves forward again.
+ */
+export async function revertKitStage(kitId: string, reason: string) {
+  const user = await requireRole(["admin"]);
+  if (user.role !== "super_admin") {
+    return { error: "Only a super admin can roll back a kit" };
+  }
+  if (!reason.trim()) return { error: "A reason is required for the audit log" };
+
+  const admin = createAdminClient();
+  const { data: kit } = await admin
+    .from("kits")
+    .select("id, code, status")
+    .eq("id", kitId)
+    .single();
+  if (!kit) return { error: "Kit not found" };
+
+  const from = kit.status as KitStatus;
+  const target = KIT_REVERT_MAP[from];
+  if (!target) return { error: `Status "${from}" can't be rolled back` };
+
+  // Void the data the reverted stage produced.
+  if (from === "report_ready") {
+    // Patient may already have downloaded the report — unlink it and reopen.
+    await admin
+      .from("clinic_reports")
+      .update({ status: "received", report_path: null, completed_at: null })
+      .eq("kit_id", kitId);
+  } else if (from === "clinic_received") {
+    await admin.from("clinic_reports").delete().eq("kit_id", kitId);
+  } else if (from === "lab_complete") {
+    const { data: result } = await admin
+      .from("lab_results")
+      .select("report_path")
+      .eq("kit_id", kitId)
+      .maybeSingle();
+    if (result?.report_path) {
+      await admin.storage.from("lab-reports").remove([result.report_path]);
+    }
+    await admin.from("lab_results").delete().eq("kit_id", kitId);
+  }
+
+  const clearTimestamp: Partial<Record<KitStatus, string>> = {
+    report_ready: "report_ready_at",
+    lab_complete: "lab_complete_at",
+    received_by_lab: "received_by_lab_at",
+  };
+  const update: Record<string, unknown> = { status: target };
+  const tsColumn = clearTimestamp[from];
+  if (tsColumn) update[tsColumn] = null;
+  const { error: updateError } = await admin.from("kits").update(update).eq("id", kitId);
+  if (updateError) return { error: updateError.message };
+
+  await logKitEvent(admin, {
+    kitId,
+    type: "system",
+    label: `Rolled back: ${from} → ${target}`,
+    detail: `Reason: ${reason.trim()}. Data from the reverted stage was voided. Note: the customer may have received emails for the reverted stage.`,
+    actorRole: user.role,
+    actorId: user.id,
+    visibleToCustomer: false,
+  });
+
+  revalidatePath(`/admin/kits/${kitId}`);
+  revalidatePath("/admin");
+  revalidatePath("/lab");
+  revalidatePath("/clinic");
   return { ok: true };
 }
 

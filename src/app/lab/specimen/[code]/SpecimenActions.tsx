@@ -92,6 +92,21 @@ export function SpecimenActions({
           <input type="file" name="report" accept="application/pdf" className="text-sm" />
         </Field>
 
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <Field
+            label="Confirm specimen code"
+            hint="Re-type the code printed on the pot you are holding. This must match the specimen on this page."
+          >
+            <input
+              name="confirmCode"
+              required
+              placeholder="UT-XXXXXX"
+              autoComplete="off"
+              className={`${inputClass} font-mono uppercase`}
+            />
+          </Field>
+        </div>
+
         {error && <p className="text-sm text-rose-600">{error}</p>}
 
         <Button type="submit" disabled={pending}>

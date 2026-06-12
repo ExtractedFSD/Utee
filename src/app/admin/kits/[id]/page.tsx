@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardTitle, PageHeader, StatusBadge, Pill } from "@/components/ui";
 import { Timeline, type TimelineEvent } from "@/components/Timeline";
-import { formatDateTime, type KitStatus } from "@/lib/status";
+import { formatDateTime, KIT_REVERT_MAP, type KitStatus } from "@/lib/status";
 import { KitAdminControls } from "./KitAdminControls";
 
 /** Full kit deep-dive for customer service: every event, hidden or not. */
@@ -14,7 +14,7 @@ export default async function AdminKitPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireRole(["admin"]);
+  const user = await requireRole(["admin"]);
   const admin = createAdminClient();
 
   const { data: kit } = await admin
@@ -102,6 +102,7 @@ export default async function AdminKitPage({
             kitId={kit.id}
             status={status}
             mockTracking={process.env.TRACKING_PROVIDER === "mock"}
+            canRevert={user.role === "super_admin" && status in KIT_REVERT_MAP}
           />
         </div>
       </div>
