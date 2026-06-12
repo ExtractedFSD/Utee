@@ -96,7 +96,7 @@ function LoginForm() {
           <form onSubmit={verifyCode} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Enter the 6-digit code
+                Enter your sign-in code
               </label>
               <input
                 inputMode="numeric"
@@ -104,7 +104,7 @@ function LoginForm() {
                 autoFocus
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="123456"
+                placeholder="Code from your email"
                 className={`${inputClass} text-center tracking-[0.5em] text-lg`}
               />
               <p className="text-xs text-slate-400 mt-1.5">
