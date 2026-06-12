@@ -55,6 +55,9 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function handle_new_user();
 
+-- Only the auth trigger should ever invoke this; block direct RPC calls.
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
 -- ------------------------------------------------------------------ orders
 create table orders (
   id uuid primary key default gen_random_uuid(),
