@@ -15,11 +15,26 @@ export async function createKitBatch(count: number) {
     return { error: "Choose between 1 and 200 kits" };
   }
   const admin = createAdminClient();
-  const rows = Array.from({ length: count }, () => ({ code: generateKitCode() }));
-  const { error } = await admin.from("kits").insert(rows);
-  if (error) return { error: error.message };
-  revalidatePath("/admin/kits");
-  return { ok: true, codes: rows.map((r) => r.code) };
+
+  // Codes are random, so a batch can collide with itself or with stock already
+  // printed. Codes are unique in the database, which would otherwise fail the
+  // whole insert — so de-duplicate within the batch and retry on a clash.
+  let lastError = "";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const codes = new Set<string>();
+    while (codes.size < count) codes.add(generateKitCode());
+    const rows = [...codes].map((code) => ({ code }));
+
+    const { error } = await admin.from("kits").insert(rows);
+    if (!error) {
+      revalidatePath("/admin/kits");
+      return { ok: true, codes: rows.map((r) => r.code) };
+    }
+    // 23505 = unique_violation: a code already exists, so draw a fresh batch.
+    if (error.code !== "23505") return { error: error.message };
+    lastError = error.message;
+  }
+  return { error: `Could not generate unique kit codes — please try again (${lastError})` };
 }
 
 /**

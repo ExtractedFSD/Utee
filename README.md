@@ -64,7 +64,9 @@ service role behind explicit role checks (`src/lib/auth.ts`).
    `TEST_KIT_SKUS` to your test-kit SKU(s).
 6. **Recharge** — create an API token (read subscriptions/charges, write
    subscriptions) → `RECHARGE_API_TOKEN`. Register webhooks
-   `subscription/created|updated|cancelled` → `/api/webhooks/recharge`.
+   `subscription/created|updated|cancelled` → `/api/webhooks/recharge`, and put
+   the webhook client secret in `RECHARGE_WEBHOOK_SECRET` — the endpoint
+   rejects any post that isn't signed with it.
 7. **Resend** — verify your sending domain, set `RESEND_API_KEY` and
    `EMAIL_FROM`. `LAB_NOTIFICATION_EMAIL` / `CLINIC_NOTIFICATION_EMAIL` receive
    the operational notifications.

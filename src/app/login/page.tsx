@@ -5,10 +5,20 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, inputClass } from "@/components/ui";
 
+/**
+ * `next` is attacker-controllable (anyone can hand out a /login?next=… link),
+ * so only same-origin paths are honoured — never an absolute or
+ * protocol-relative URL that would bounce a signed-in patient off-site.
+ */
+function safeNext(value: string | null): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
+  return value;
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/";
+  const next = safeNext(searchParams.get("next"));
 
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");

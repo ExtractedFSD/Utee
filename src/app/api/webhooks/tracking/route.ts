@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,6 +12,15 @@ const payloadSchema = z.object({
   location: z.string().optional(),
 });
 
+/** Constant-time comparison that never throws on a malformed header. */
+function secretMatches(expected: string, provided: string | null): boolean {
+  if (!provided) return false;
+  const a = Buffer.from(expected, "utf8");
+  const b = Buffer.from(provided, "utf8");
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
 /**
  * Carrier-agnostic tracking ingest. Configure Royal Mail push notifications
  * (or AfterShip/another aggregator, mapped to this shape) to POST here with
@@ -18,11 +28,17 @@ const payloadSchema = z.object({
  */
 export async function POST(req: NextRequest) {
   const secret = process.env.TRACKING_WEBHOOK_SECRET;
-  if (!secret || req.headers.get("x-tracking-secret") !== secret) {
+  if (!secret || !secretMatches(secret, req.headers.get("x-tracking-secret"))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const parsed = payloadSchema.safeParse(await req.json());
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "invalid json" }, { status: 400 });
+  }
+  const parsed = payloadSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
