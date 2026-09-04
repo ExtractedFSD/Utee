@@ -25,16 +25,31 @@ export type TrackingEvent = {
  * Records a carrier event against the matching shipment and advances the kit
  * status when the milestone warrants it (outbound delivered / return moving).
  */
-export async function applyTrackingEvent(admin: SupabaseClient, event: TrackingEvent) {
-  const { data: shipment } = await admin
+export async function applyTrackingEvent(
+  admin: SupabaseClient,
+  event: TrackingEvent
+): Promise<{ matched: boolean; error?: string }> {
+  // Tracking numbers are unique per shipment (enforced by the database), but
+  // never use .single() here: a lookup error must be reported, not turned
+  // into a silent "no match" that the carrier would never retry.
+  const { data: shipments, error: lookupError } = await admin
     .from("shipments")
     .select("id, kit_id, direction, status, events, kits:kit_id(status)")
     .eq("tracking_number", event.trackingNumber)
-    .single();
-  if (!shipment) return { matched: false };
+    .limit(2);
+  if (lookupError) {
+    console.error("[tracking] shipment lookup failed", lookupError);
+    return { matched: false, error: "shipment lookup failed" };
+  }
+  if (!shipments?.length) return { matched: false };
+  if (shipments.length > 1) {
+    console.error(`[tracking] tracking number ${event.trackingNumber} matches multiple shipments`);
+    return { matched: false, error: "ambiguous tracking number" };
+  }
+  const shipment = shipments[0];
 
   const events = [...(shipment.events as unknown[]), event];
-  await admin
+  const { error: updateError } = await admin
     .from("shipments")
     .update({
       status: event.status,
@@ -43,6 +58,10 @@ export async function applyTrackingEvent(admin: SupabaseClient, event: TrackingE
       updated_at: new Date().toISOString(),
     })
     .eq("id", shipment.id);
+  if (updateError) {
+    console.error("[tracking] shipment update failed", updateError);
+    return { matched: true, error: "shipment update failed" };
+  }
 
   const kit = shipment.kits as unknown as { status: string } | null;
   const isOutbound = shipment.direction === "outbound";

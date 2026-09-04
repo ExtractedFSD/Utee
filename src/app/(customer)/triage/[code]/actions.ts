@@ -50,26 +50,39 @@ export async function submitTriage(code: string, formData: FormData) {
 
   const { consent, ...symptoms } = parsed.data;
 
-  const { error: insertError } = await admin.from("triage_submissions").insert({
-    kit_id: kit.id,
-    customer_id: user.id,
-    symptoms,
-    consent_given: true,
-    consent_text: CONSENT_TEXT,
-  });
+  // Upsert, not insert: kit_id is unique, and the status gate above only lets
+  // a customer back in here if the previous attempt saved their answers but
+  // failed before the kit was activated. A retry must then succeed rather
+  // than hit the unique constraint forever.
+  const { error: insertError } = await admin.from("triage_submissions").upsert(
+    {
+      kit_id: kit.id,
+      customer_id: user.id,
+      symptoms,
+      consent_given: true,
+      consent_text: CONSENT_TEXT,
+      submitted_at: new Date().toISOString(),
+    },
+    { onConflict: "kit_id" }
+  );
   if (insertError) {
     return { error: "Could not save your answers — please try again." };
   }
 
-  await logKitEvent(admin, {
-    kitId: kit.id,
-    type: "triage",
-    label: "Symptoms submitted",
-    detail: "Symptom form completed and consent recorded.",
-    actorRole: "customer",
-    actorId: user.id,
-    newStatus: "activated",
-  });
+  try {
+    await logKitEvent(admin, {
+      kitId: kit.id,
+      type: "triage",
+      label: "Symptoms submitted",
+      detail: "Symptom form completed and consent recorded.",
+      actorRole: "customer",
+      actorId: user.id,
+      newStatus: "activated",
+    });
+  } catch (err) {
+    console.error("[triage] activation failed after saving answers", err);
+    return { error: "Your answers were saved but we couldn't activate the kit — please try again." };
+  }
 
   redirect(`/portal/tests/${kit.id}?submitted=1`);
 }

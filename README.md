@@ -48,9 +48,10 @@ service role behind explicit role checks (`src/lib/auth.ts`).
 
 ## Setup
 
-1. **Supabase** — create a project, then run `supabase/migrations/0001_init.sql`
-   in the SQL editor (creates schema, RLS, storage buckets, the
-   auth→profile trigger). In Auth settings, enable the **Email** provider and
+1. **Supabase** — create a project, then run each file in
+   `supabase/migrations/` in order in the SQL editor (`0001_init.sql` creates
+   schema, RLS, storage buckets, the auth→profile trigger; later files are
+   incremental). In Auth settings, enable the **Email** provider and
    turn OFF "Confirm email" double opt-in for OTP logins to work smoothly.
 2. **Env** — copy `.env.example` to `.env.local` and fill everything in.
 3. **Install & run** — `npm install && npm run dev`.
