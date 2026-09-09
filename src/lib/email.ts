@@ -76,6 +76,16 @@ export const emails = {
     ),
   }),
 
+  kitClaimed: (kitCode: string) => ({
+    subject: `Your Utee test kit ${kitCode} is registered`,
+    html: wrap(
+      "Your kit is linked to your account",
+      p(`Test kit <strong>${kitCode}</strong> is now registered to this email address. Log in any time with just your email — we'll send you a one-time code, no password needed.`) +
+        p(`<strong>Next step:</strong> complete the short symptom form <em>before</em> taking your sample, then post the sample back in the pre-paid return box. You can follow your sample's journey to the lab and download your final report in your portal.`) +
+        button(`${APP_URL}/portal`, "Open my portal")
+    ),
+  }),
+
   kitShipped: (kitCode: string, trackingNumber: string) => ({
     subject: "Your Utee test kit is on its way",
     html: wrap(

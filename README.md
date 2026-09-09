@@ -32,6 +32,27 @@ tracking.
 Every transition appends to an append-only `kit_events` audit log and fans out
 email notifications to the right party.
 
+### Kits sold outside the Utee store (retail / other marketplaces)
+
+Kits that never go through Shopify are printed and packed as normal but are
+**not** dispatched against an order, so they stay in the `created` state.
+The customer registers the kit themselves:
+
+1. They scan the QR and land on `/login` with the kit remembered.
+2. If their email already has a portal account they just sign in. If not, the
+   login form creates a customer account for them — this is the only
+   self-service signup, and it only works while holding the QR of an unclaimed
+   kit (`src/app/login/actions.ts`).
+3. On return to `/k/{code}` the kit is claimed for their account
+   (`src/lib/kits.ts`): it jumps straight to `delivered`, a "Kit linked to your
+   account" event is logged, and they're sent to the symptom form. From there
+   the lab → clinic → report journey is identical to a store kit.
+
+A store kit can never be claimed by a stranger: it is assigned to its buyer at
+dispatch, and scanning someone else's kit only ever shows "not yours".
+Retail kits have no tracking numbers; the lab marks receipt from the specimen
+page as usual, so the customer timeline picks up from "received by lab".
+
 ## Areas & roles
 
 | Area | Path | Who | Sees |
