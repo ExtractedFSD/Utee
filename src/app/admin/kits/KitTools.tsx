@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Card, CardTitle, Button, Field, inputClass } from "@/components/ui";
 import { formatDate } from "@/lib/status";
-import { createKitBatch, dispatchKit } from "../actions";
+import { createKitBatch, dispatchKit, prepareRetailKit } from "../actions";
 
 type PendingOrder = { id: string; order_number: string; email: string; placed_at: string };
 
@@ -19,6 +19,10 @@ export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
   const [dispatchMessage, setDispatchMessage] = useState<{ ok: boolean; text: string } | null>(
     null
   );
+
+  const [retailKitCode, setRetailKitCode] = useState("");
+  const [retailReturnTracking, setRetailReturnTracking] = useState("");
+  const [retailMessage, setRetailMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -130,6 +134,62 @@ export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
           {dispatchMessage && (
             <p className={`text-sm ${dispatchMessage.ok ? "text-emerald-700" : "text-rose-600"}`}>
               {dispatchMessage.text}
+            </p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>3 · Prepare a retail kit</CardTitle>
+        <p className="text-sm text-slate-500 mb-4">
+          For kits sold through retailers or other marketplaces: scan/enter the kit code and the
+          tracking number on the pre-paid return label you pack with it. The buyer registers the
+          kit by scanning its QR, and their sample&apos;s return to the lab is then tracked as usual.
+        </p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Kit code">
+              <input
+                value={retailKitCode}
+                onChange={(e) => setRetailKitCode(e.target.value)}
+                placeholder="UT-XXXXXX"
+                className={`${inputClass} font-mono`}
+              />
+            </Field>
+            <Field label="Return tracking no.">
+              <input
+                value={retailReturnTracking}
+                onChange={(e) => setRetailReturnTracking(e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+          <Button
+            disabled={pending}
+            onClick={() => {
+              setRetailMessage(null);
+              startTransition(async () => {
+                const result = await prepareRetailKit({
+                  kitCode: retailKitCode,
+                  returnTracking: retailReturnTracking,
+                });
+                if (result.error) setRetailMessage({ ok: false, text: result.error });
+                else {
+                  setRetailMessage({
+                    ok: true,
+                    text: `Kit ${retailKitCode.trim().toUpperCase()} prepared for retail.`,
+                  });
+                  setRetailKitCode("");
+                  setRetailReturnTracking("");
+                }
+              });
+            }}
+          >
+            {pending ? "Saving…" : "Attach return label"}
+          </Button>
+          {retailMessage && (
+            <p className={`text-sm ${retailMessage.ok ? "text-emerald-700" : "text-rose-600"}`}>
+              {retailMessage.text}
             </p>
           )}
         </div>

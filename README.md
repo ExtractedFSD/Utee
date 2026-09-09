@@ -34,9 +34,11 @@ email notifications to the right party.
 
 ### Kits sold outside the Utee store (retail / other marketplaces)
 
-Kits that never go through Shopify are printed and packed as normal but are
-**not** dispatched against an order, so they stay in the `created` state.
-The customer registers the kit themselves:
+Kits that never go through Shopify are printed as normal. At packing time the
+admin uses "Prepare a retail kit" (`/admin/kits`) to record the tracking number
+of the pre-paid return label packed with it, instead of dispatching it against
+an order. The kit stays in the `created` state, marked *retail* in the stock
+list, and the customer registers it themselves:
 
 1. They scan the QR and land on `/login` with the kit remembered.
 2. If their email already has a portal account they just sign in. If not, the
@@ -50,8 +52,9 @@ The customer registers the kit themselves:
 
 A store kit can never be claimed by a stranger: it is assigned to its buyer at
 dispatch, and scanning someone else's kit only ever shows "not yours".
-Retail kits have no tracking numbers; the lab marks receipt from the specimen
-page as usual, so the customer timeline picks up from "received by lab".
+Retail kits have no outbound shipment, but their return label is tracked like
+a store kit's, so the customer sees "Sample on its way to the lab" and the lab
+is notified when Royal Mail accepts the parcel.
 
 ## Areas & roles
 

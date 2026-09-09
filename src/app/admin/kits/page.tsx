@@ -12,7 +12,7 @@ export default async function KitsPage() {
   const [{ data: stock }, { data: pendingOrders }] = await Promise.all([
     admin
       .from("kits")
-      .select("id, code, status, created_at")
+      .select("id, code, status, created_at, shipments(direction)")
       .eq("status", "created")
       .order("created_at", { ascending: false })
       .limit(50),
@@ -30,7 +30,7 @@ export default async function KitsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Kit fulfilment"
-        subtitle="Create QR labels, then link a kit to an order when you pack it."
+        subtitle="Create QR labels, then link a kit to an order when you pack it — or attach a return label for retail stock."
         action={<LinkButton href="/admin/kits/print" variant="secondary">Print labels</LinkButton>}
       />
 
@@ -40,15 +40,23 @@ export default async function KitsPage() {
         <CardTitle>Unassigned kit stock ({stock?.length ?? 0})</CardTitle>
         {stock?.length ? (
           <div className="flex flex-wrap gap-2">
-            {stock.map((kit) => (
-              <Link
-                key={kit.id}
-                href={`/admin/kits/${kit.id}`}
-                className="rounded-full bg-slate-100 px-3 py-1 text-sm font-mono text-slate-700 hover:bg-slate-200"
-              >
-                {kit.code}
-              </Link>
-            ))}
+            {stock.map((kit) => {
+              const retail = ((kit.shipments as unknown as { direction: string }[] | null) ?? [])
+                .some((s) => s.direction === "return");
+              return (
+                <Link
+                  key={kit.id}
+                  href={`/admin/kits/${kit.id}`}
+                  className={`rounded-full px-3 py-1 text-sm font-mono hover:bg-slate-200 ${
+                    retail ? "bg-amber-50 text-amber-800 border border-amber-200" : "bg-slate-100 text-slate-700"
+                  }`}
+                  title={retail ? "Prepared for retail — awaiting registration by the buyer" : undefined}
+                >
+                  {kit.code}
+                  {retail && <span className="ml-1.5 font-sans text-xs">retail</span>}
+                </Link>
+              );
+            })}
           </div>
         ) : (
           <EmptyState title="No unassigned kits" body="Create a batch above to print QR labels." />
