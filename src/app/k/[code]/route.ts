@@ -49,14 +49,18 @@ export async function GET(
         const email = user.email ?? "";
         const claimed = await claimKit(admin, kit, { id: user.id, email });
         if (claimed) return NextResponse.redirect(url(`/triage/${kit.code}`));
-        // Someone else claimed it between our read and the update: re-read and
-        // fall through to the ordinary ownership check.
+        // Someone (possibly this same person, double-scanning) claimed it
+        // between our read and the update: re-read and fall through to the
+        // ordinary ownership check with the current owner and status.
         const { data: latest } = await admin
           .from("kits")
-          .select("customer_id")
+          .select("customer_id, status")
           .eq("id", kit.id)
           .single();
-        kit.customer_id = latest?.customer_id ?? kit.customer_id;
+        if (latest) {
+          kit.customer_id = latest.customer_id;
+          kit.status = latest.status;
+        }
       }
       if (kit.customer_id !== user.id) {
         // Kit not linked to this customer — don't leak whose it is.

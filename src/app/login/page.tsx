@@ -96,10 +96,11 @@ function LoginForm() {
         {step === "email" ? (
           <form onSubmit={sendCode} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1">
                 Email address
               </label>
               <input
+                id="login-email"
                 type="email"
                 required
                 autoFocus
@@ -122,10 +123,11 @@ function LoginForm() {
         ) : (
           <form onSubmit={verifyCode} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="login-code" className="block text-sm font-medium text-slate-700 mb-1">
                 Enter your sign-in code
               </label>
               <input
+                id="login-code"
                 inputMode="numeric"
                 required
                 autoFocus

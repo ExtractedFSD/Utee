@@ -118,6 +118,74 @@ With only Supabase configured and `TRACKING_PROVIDER=mock`:
 8. As the customer: watch the timeline update at every step and download the
    report. As super admin: see the funnel move on `/admin/dashboard`.
 
+## Testing end to end
+
+### Making the QR codes scannable
+
+The QR on every label encodes `NEXT_PUBLIC_APP_URL/k/{code}`, so a phone can
+only follow it if that URL is reachable from the phone:
+
+- **Deployed** (Vercel or similar): set `NEXT_PUBLIC_APP_URL` to the public
+  URL, and in Supabase → Authentication → URL Configuration set the Site URL
+  to the same value and add `https://your-domain/**` to the redirect allow
+  list. Print labels from `/admin/kits/print` after that so they carry the
+  right URL.
+- **Local dev on a phone**: run `npm run dev` and expose port 3000 with a
+  tunnel (`npx localtunnel --port 3000`, `ngrok http 3000`, or
+  `cloudflared tunnel --url http://localhost:3000`). Put the tunnel URL in
+  `NEXT_PUBLIC_APP_URL`, restart the dev server, and reprint the labels. With
+  `TRACKING_PROVIDER=mock` the admin kit page gains "simulate carrier scan"
+  buttons, so the whole journey can be walked from a phone and a laptop
+  without Shopify or Royal Mail.
+
+### Automated journeys (Playwright)
+
+`npm run test:e2e` drives the real UI in Chromium against a running portal
+and the Supabase project in `.env.local`:
+
+- `e2e/store-journey.spec.ts` — signed Shopify webhook → account + order →
+  admin prints and dispatches → outbound delivery scan → customer scans the
+  QR, signs in through the login page, submits symptoms → return scan (with a
+  BST offset timestamp, as Royal Mail sends) → lab receives and uploads
+  results → clinic publishes the report → customer downloads the PDF. Along
+  the way it checks the lab never sees identity or symptoms, the customer can
+  never read `lab_results`, other customers and roles are kept out, and a
+  super-admin rollback deletes the published PDF.
+- `e2e/retail-journey.spec.ts` — admin attaches a return label to an
+  unassigned kit, a buyer with no account scans it, gets an account from the
+  login page, claims the kit, submits symptoms, and the return scan + lab
+  receipt follow as for a store kit.
+- `e2e/pressure.spec.ts` — bad webhook signatures, unhandled Shopify topics,
+  retried webhooks, malformed and offset timestamps, unknown parcels, reused
+  and identical tracking numbers, three people racing to claim one kit, and
+  replayed carrier events.
+
+Setup once: `npx playwright install chromium`. Then, with `.env.local`
+filled in (Supabase keys plus `SHOPIFY_WEBHOOK_SECRET` and
+`TRACKING_WEBHOOK_SECRET` — the tests sign requests with the same values the
+app verifies against):
+
+```
+npm run dev            # or point E2E_BASE_URL at a deployed portal
+npm run test:e2e       # add --headed to watch it
+```
+
+Everything the suite creates uses `@e2e.invalid` email addresses and is
+deleted when the run finishes; set `E2E_KEEP=1` to keep it for inspection.
+No emails are sent: one-time codes are minted server-side and the login
+page's send-code request is stubbed. Because the suite writes to the
+Supabase project in `.env.local`, point it at a staging project rather than
+production.
+
+### Load (`npm run test:load`)
+
+`node scripts/load-test.mjs --url http://localhost:3000 --concurrency 20 --seconds 15`
+hammers the login page, the QR landing and the tracking webhook (valid and
+invalid secret) and prints req/s and p50/p95/p99 latency per target. It
+writes nothing: the parcel it reports doesn't exist. Run it against a
+production build (`npm run build && npm start`) for meaningful numbers — the
+dev server compiles on demand and is many times slower.
+
 ## Not in v1 (deliberate)
 
 - Urologist booking — upsell card is a "coming soon" placeholder.
