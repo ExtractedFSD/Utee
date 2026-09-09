@@ -8,7 +8,9 @@ const payloadSchema = z.object({
   trackingNumber: z.string().min(4),
   status: z.enum(["in_transit", "out_for_delivery", "delivered", "exception"]),
   description: z.string().min(1),
-  occurredAt: z.string().datetime().optional(),
+  // Royal Mail / AfterShip send offset-form ISO-8601 (e.g. +01:00 during BST),
+  // not only the Z suffix.
+  occurredAt: z.string().datetime({ offset: true }).optional(),
   location: z.string().optional(),
 });
 
@@ -48,5 +50,10 @@ export async function POST(req: NextRequest) {
     ...parsed.data,
     occurredAt: parsed.data.occurredAt ?? new Date().toISOString(),
   });
+  // A database failure must not be acknowledged: 5xx makes the carrier retry
+  // instead of silently dropping the scan.
+  if (result.error) {
+    return NextResponse.json(result, { status: 500 });
+  }
   return NextResponse.json(result);
 }

@@ -7,6 +7,7 @@ import { logKitEvent, generateKitCode } from "@/lib/events";
 import { applyTrackingEvent } from "@/lib/tracking";
 import { sendEmail, emails } from "@/lib/email";
 import { KIT_REVERT_MAP, type KitStatus } from "@/lib/status";
+import { normalizeKitCode } from "@/lib/kits";
 
 /** Pre-print a batch of kit QR labels (status 'created', unassigned stock). */
 export async function createKitBatch(count: number) {
@@ -38,6 +39,69 @@ export async function createKitBatch(count: number) {
 }
 
 /**
+ * Retail packing step: a kit that will be sold through a retailer or another
+ * marketplace has no order and no buyer yet, but it does have a pre-paid
+ * return label. Record that label's tracking number now so the sample's
+ * journey back to the lab is tracked exactly like a store kit once the
+ * buyer scans the QR and claims the kit. The kit stays unassigned
+ * ('created') and claimable.
+ */
+export async function prepareRetailKit(input: { kitCode: string; returnTracking: string }) {
+  const user = await requireRole(["admin"]);
+  const admin = createAdminClient();
+
+  const kitCode = normalizeKitCode(input.kitCode);
+  if (!kitCode) return { error: "Enter a kit code in the form UT-XXXXXX" };
+  const returnTrk = input.returnTracking.trim();
+  if (!returnTrk) return { error: "The return tracking number is required" };
+
+  const { data: kit } = await admin
+    .from("kits")
+    .select("id, status, customer_id")
+    .eq("code", kitCode)
+    .maybeSingle();
+  if (!kit) return { error: `Kit ${kitCode} not found — create a batch first` };
+  if (kit.status !== "created" || kit.customer_id) {
+    return { error: `Kit ${kitCode} is already assigned` };
+  }
+
+  const { data: clash } = await admin
+    .from("shipments")
+    .select("kits:kit_id(code)")
+    .eq("tracking_number", returnTrk)
+    .maybeSingle();
+  if (clash) {
+    const clashKit = (clash.kits as unknown as { code: string } | null)?.code ?? "another kit";
+    return { error: `Tracking number ${returnTrk} is already used on ${clashKit}` };
+  }
+
+  const { error: shipmentError } = await admin
+    .from("shipments")
+    .insert({ kit_id: kit.id, direction: "return", tracking_number: returnTrk });
+  if (shipmentError) {
+    return {
+      error:
+        shipmentError.code === "23505"
+          ? `Kit ${kitCode} already has a return label, or that tracking number is in use`
+          : shipmentError.message,
+    };
+  }
+
+  await logKitEvent(admin, {
+    kitId: kit.id,
+    type: "fulfilment",
+    label: "Prepared for retail",
+    detail: `Return label ${returnTrk} attached; awaiting registration by the buyer.`,
+    actorRole: "admin",
+    actorId: user.id,
+    visibleToCustomer: false,
+  });
+
+  revalidatePath("/admin/kits");
+  return { ok: true };
+}
+
+/**
  * Fulfilment step: link a pre-printed kit to an order, record both tracking
  * numbers, mark it dispatched and email the patient their instructions.
  */
@@ -59,6 +123,16 @@ export async function dispatchKit(input: {
   if (!kit) return { error: `Kit ${kitCode} not found — create a batch first` };
   if (kit.status !== "created") return { error: `Kit ${kitCode} is already assigned` };
 
+  // A kit prepared for retail already carries a return label; it is packed
+  // for a retailer, not for a store order.
+  const { count: existingShipments } = await admin
+    .from("shipments")
+    .select("id", { count: "exact", head: true })
+    .eq("kit_id", kit.id);
+  if (existingShipments) {
+    return { error: `Kit ${kitCode} is prepared for retail — pick a different kit for this order` };
+  }
+
   const { data: order } = await admin
     .from("orders")
     .select("id, order_number, customer_id, email, contains_test_kit")
@@ -70,22 +144,55 @@ export async function dispatchKit(input: {
   const outbound = input.outboundTracking.trim();
   const returnTrk = input.returnTracking.trim();
   if (!outbound || !returnTrk) return { error: "Both tracking numbers are required" };
+  // Carrier events are matched by tracking number alone, so a number shared
+  // between shipments could never be routed to the right one.
+  if (outbound === returnTrk) {
+    return { error: "Outbound and return tracking numbers must be different" };
+  }
+  const { data: clashes } = await admin
+    .from("shipments")
+    .select("tracking_number, kits:kit_id(code)")
+    .in("tracking_number", [outbound, returnTrk]);
+  if (clashes?.length) {
+    const clash = clashes[0];
+    const clashKit = (clash.kits as unknown as { code: string } | null)?.code ?? "another kit";
+    return { error: `Tracking number ${clash.tracking_number} is already used on ${clashKit}` };
+  }
 
-  const { error: updateError } = await admin
+  // Claim the kit atomically: only a row still in 'created' is updated, so a
+  // double-submit (or two admins picking the same kit) can't both succeed.
+  const { data: claimed, error: updateError } = await admin
     .from("kits")
     .update({
+      status: "assigned",
       order_id: order.id,
       customer_id: order.customer_id,
       assigned_at: new Date().toISOString(),
     })
-    .eq("id", kit.id);
+    .eq("id", kit.id)
+    .eq("status", "created")
+    .select("id");
   if (updateError) return { error: updateError.message };
+  if (!claimed?.length) return { error: `Kit ${kitCode} is already assigned` };
 
   const { error: shipmentError } = await admin.from("shipments").insert([
     { kit_id: kit.id, direction: "outbound", tracking_number: outbound },
     { kit_id: kit.id, direction: "return", tracking_number: returnTrk },
   ]);
-  if (shipmentError) return { error: shipmentError.message };
+  if (shipmentError) {
+    // Release the kit so it isn't stranded half-assigned with no shipments.
+    await admin
+      .from("kits")
+      .update({ status: "created", order_id: null, customer_id: null, assigned_at: null })
+      .eq("id", kit.id)
+      .eq("status", "assigned");
+    return {
+      error:
+        shipmentError.code === "23505"
+          ? "One of those tracking numbers is already used on another kit"
+          : shipmentError.message,
+    };
+  }
 
   await logKitEvent(admin, {
     kitId: kit.id,
@@ -94,7 +201,6 @@ export async function dispatchKit(input: {
     actorRole: "admin",
     actorId: user.id,
     visibleToCustomer: false,
-    newStatus: "assigned",
   });
   await logKitEvent(admin, {
     kitId: kit.id,
@@ -140,6 +246,16 @@ export async function revertKitStage(kitId: string, reason: string) {
   // Void the data the reverted stage produced.
   if (from === "report_ready") {
     // Patient may already have downloaded the report — unlink it and reopen.
+    // Delete the PDF too: it's patient-identifiable and nothing references it
+    // once report_path is cleared.
+    const { data: report } = await admin
+      .from("clinic_reports")
+      .select("report_path")
+      .eq("kit_id", kitId)
+      .maybeSingle();
+    if (report?.report_path) {
+      await admin.storage.from("clinic-reports").remove([report.report_path]);
+    }
     await admin
       .from("clinic_reports")
       .update({ status: "received", report_path: null, completed_at: null })
@@ -227,7 +343,7 @@ export async function simulateTracking(
     .single();
   if (!shipment) return { error: "No shipment found" };
 
-  await applyTrackingEvent(admin, {
+  const result = await applyTrackingEvent(admin, {
     trackingNumber: shipment.tracking_number,
     status: milestone,
     description:
@@ -241,6 +357,7 @@ export async function simulateTracking(
     occurredAt: new Date().toISOString(),
     location: "Royal Mail network (simulated)",
   });
+  if (result.error) return { error: result.error };
   revalidatePath(`/admin/kits/${kitId}`);
   return { ok: true };
 }

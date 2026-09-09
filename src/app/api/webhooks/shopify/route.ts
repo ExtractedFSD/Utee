@@ -9,6 +9,8 @@ import { sendEmail, emails } from "@/lib/email";
  *                      sends the portal welcome email
  *   - orders/updated → keeps financial/fulfilment status in sync
  */
+const HANDLED_TOPICS = new Set(["orders/create", "orders/updated"]);
+
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const hmac = req.headers.get("x-shopify-hmac-sha256");
@@ -16,7 +18,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid hmac" }, { status: 401 });
   }
 
+  // Only order topics carry an order payload. Anything else registered
+  // against this URL (refunds, the mandatory GDPR redact topics, ...) must be
+  // acknowledged and ignored, not upserted as a junk order.
   const topic = req.headers.get("x-shopify-topic") ?? "";
+  if (!HANDLED_TOPICS.has(topic)) {
+    return NextResponse.json({ ok: true, skipped: `unhandled topic ${topic || "(none)"}` });
+  }
+
   const order = JSON.parse(rawBody);
   const admin = createAdminClient();
 
@@ -31,7 +40,6 @@ export async function POST(req: NextRequest) {
     .eq("email", email.toLowerCase())
     .maybeSingle();
 
-  const isNewCustomer = !existing;
   if (existing) {
     customerId = existing.id;
   } else {
@@ -105,9 +113,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Welcome the customer into the portal (new accounts and repeat buyers
-    //    both get the order confirmation; only mention account creation once).
-    if (isNewCustomer) {
+    // 3. Welcome the customer into the portal on their first order. Decided
+    //    from the orders table rather than "did we just create the account":
+    //    if the order upsert failed after the account was created, Shopify's
+    //    retry finds an existing profile but must still send the welcome.
+    const { count: otherOrders } = await admin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_id", customerId)
+      .neq("id", savedOrder.id);
+    if (otherOrders === 0) {
       await sendEmail({
         to: email,
         ...emails.portalWelcome(String(order.name ?? order.id)),

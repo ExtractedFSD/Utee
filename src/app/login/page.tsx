@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, inputClass } from "@/components/ui";
+import { prepareSignIn } from "./actions";
 
 /**
  * `next` is attacker-controllable (anyone can hand out a /login?next=… link),
@@ -19,6 +20,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get("next"));
+  const fromKit = next.startsWith("/k/");
 
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -32,19 +34,33 @@ function LoginForm() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    // shouldCreateUser: false — accounts are created automatically when an
-    // order is placed; this stops strangers signing up directly.
+    const normalized = email.trim().toLowerCase();
+
+    // Accounts are created automatically when an order is placed. The only
+    // way to get one here is to arrive from the QR of a kit that was bought
+    // outside the Utee store and hasn't been registered yet.
+    const prepared = await prepareSignIn(normalized, next);
+    if (!prepared.ok) {
+      setBusy(false);
+      setError(
+        prepared.reason === "invalid-email"
+          ? "Please enter a valid email address."
+          : fromKit
+            ? "We couldn't find an account for that email. If you ordered from the Utee store, use the email address on your order. If this kit is already registered, use the email it was registered with."
+            : "We couldn't find an account for that email. Use the email address from your Utee order, or scan the QR code inside your kit to get started."
+      );
+      return;
+    }
+
+    // shouldCreateUser: false — the account now exists in every valid case;
+    // this stops strangers signing up directly.
     const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
+      email: normalized,
       options: { shouldCreateUser: false },
     });
     setBusy(false);
     if (error) {
-      setError(
-        error.message.toLowerCase().includes("signups")
-          ? "We couldn't find an account for that email. Use the email address from your Utee order."
-          : error.message
-      );
+      setError(error.message);
       return;
     }
     setStep("code");
@@ -80,10 +96,11 @@ function LoginForm() {
         {step === "email" ? (
           <form onSubmit={sendCode} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1">
                 Email address
               </label>
               <input
+                id="login-email"
                 type="email"
                 required
                 autoFocus
@@ -93,8 +110,9 @@ function LoginForm() {
                 className={inputClass}
               />
               <p className="text-xs text-slate-400 mt-1.5">
-                Use the email from your Utee order — we&apos;ll send you a one-time
-                sign-in code. No password needed.
+                {fromKit
+                  ? "Ordered from the Utee store? Use the email on your order. Bought your kit elsewhere? Enter your email and we'll set up your account. Either way we'll send you a one-time sign-in code — no password needed."
+                  : "Use the email from your Utee order — we'll send you a one-time sign-in code. No password needed."}
               </p>
             </div>
             {error && <p className="text-sm text-rose-600">{error}</p>}
@@ -105,10 +123,11 @@ function LoginForm() {
         ) : (
           <form onSubmit={verifyCode} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="login-code" className="block text-sm font-medium text-slate-700 mb-1">
                 Enter your sign-in code
               </label>
               <input
+                id="login-code"
                 inputMode="numeric"
                 required
                 autoFocus
