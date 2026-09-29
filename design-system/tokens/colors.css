@@ -1,0 +1,39 @@
+:root{
+/* Base */
+--midnight:#1d003a;
+--white:#ffffff;
+/* Core */
+--pink:#fe98cb;
+--pink-50:#ffcce5;
+--pink-25:#ffe5f2;
+--maroon:#91193b;
+--maroon-50:#c88c9d;
+--maroon-25:#e3c5ce;
+/* Gradient accent (pink → maroon blend) */
+--gradient-brand:linear-gradient(135deg,#f490c0 0%,#962043 100%); /* @kind color */
+--gradient-brand-soft:linear-gradient(180deg,#fe98cb 0%,#c0507a 100%); /* @kind color */
+/* Accent / product-range colours */
+--mint:#c3ffd0;
+--mint-50:#e1ffe8;
+--peach:#ef9a98;
+--peach-50:#f7cdcb;
+--sky:#b3e7fb;
+--sky-50:#d9f3fd;
+--sun:#f9dcbf;
+--sun-50:#fcede0;
+--lavender:#ba91d8;
+--lavender-50:#ddc8ec;
+/* Semantic aliases */
+--text-heading:var(--midnight);
+--text-body:var(--midnight);
+--text-inverse:var(--white);
+--surface-page:#ffffff;
+--surface-pink:#ea82b1;
+--surface-maroon:#a63354;
+--surface-card:var(--white);
+--surface-callout:var(--gradient-brand);
+--border-soft:rgba(255,255,255,.55);
+--border-outline:rgba(29,0,58,.15);
+--cta-bg:var(--white);
+--cta-text:var(--midnight);
+}
