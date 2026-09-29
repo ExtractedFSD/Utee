@@ -172,3 +172,14 @@ export function ageBandFor(dateOfBirth: string | null | undefined, today = isoTo
   if (age < 65) return "55_64";
   return "65_plus";
 }
+
+/** The day after a course should have finished: when to ask "did it work?". */
+export function askDateFor(startedOn: string | null | undefined, days: number | null | undefined): string | null {
+  if (!startedOn || !days) return null;
+  return new Date(toDate(startedOn).getTime() + days * DAY).toISOString().slice(0, 10);
+}
+
+export function formatDayShort(iso: string | null | undefined): string {
+  if (!iso) return "-";
+  return toDate(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+}

@@ -12,11 +12,16 @@ import { KIT_STATUS_COLORS, KIT_STATUS_LABELS, type KitStatus } from "@/lib/stat
 export function Card({
   children,
   className = "",
+  ...rest
 }: {
   children: React.ReactNode;
   className?: string;
-}) {
-  return <div className={`bg-white rounded-card shadow-card p-6 ${className}`}>{children}</div>;
+} & Omit<React.HTMLAttributes<HTMLDivElement>, "className" | "children">) {
+  return (
+    <div {...rest} className={`bg-white rounded-card shadow-card p-6 ${className}`}>
+      {children}
+    </div>
+  );
 }
 
 export function CardTitle({ children }: { children: React.ReactNode }) {
@@ -84,7 +89,6 @@ export function Pill({ children, tone = "slate" }: { children: React.ReactNode; 
     amber: "bg-sun text-amber-800",
     red: "bg-peach-50 text-maroon",
     brand: "bg-pink-50 text-maroon",
-    sky: "bg-sky text-sky-800",
     lavender: "bg-lavender-50 text-violet-800",
   };
   return <span className={`${tagClass} ${tones[tone] ?? tones.slate}`}>{children}</span>;
@@ -97,7 +101,7 @@ export function Pill({ children, tone = "slate" }: { children: React.ReactNode; 
  * source, flagged there as an assumption.
  */
 const buttonBase =
-  "inline-flex items-center justify-center whitespace-nowrap rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+  "inline-flex min-h-[44px] items-center justify-center whitespace-nowrap rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
 const buttonVariants = {
   primary: "bg-maroon text-white hover:bg-brand-700 shadow-card",

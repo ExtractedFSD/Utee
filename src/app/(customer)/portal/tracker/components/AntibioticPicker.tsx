@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import {
@@ -11,35 +11,43 @@ import { Chip } from "./Chips";
 /**
  * Searchable picker over antibiotics.json. Stores the item id (plus free text
  * for "other"), never the search term. Group headings order the list only.
+ * Shows the common group first; "Show all" reveals the rest.
  */
 export function AntibioticPicker({
   value,
   otherName,
   previous = [],
+  exclude = [],
   onChange,
-  compact = false,
+  autoFocus = false,
 }: {
   value: string | null;
   otherName?: string;
   previous?: string[];
+  exclude?: string[];
   onChange: (id: string | null, otherName?: string) => void;
-  compact?: boolean;
+  autoFocus?: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const hits = useMemo(() => searchAntibiotics(query), [query]);
   const listId = "antibiotic-results";
+  useEffect(() => {
+    if (autoFocus && !value) inputRef.current?.focus();
+  }, [autoFocus, value]);
 
   const pick = (id: string) => {
     onChange(id, id === "other" ? otherName : undefined);
     setQuery("");
   };
+  const yoursBefore = previous.filter((id) => !exclude.includes(id) && id !== "other" && id !== "dont_know");
+  const groups = ANTIBIOTIC_GROUPS.filter((g) => showAll || g.id === "common");
 
   if (value) {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <Chip selected onClick={() => onChange(null)}>
-          {antibioticName(value, otherName)}
-        </Chip>
+        <Chip selected onClick={() => onChange(null)}>{antibioticName(value, otherName)}</Chip>
         {value === "other" && (
           <input
             value={otherName ?? ""}
@@ -49,9 +57,7 @@ export function AntibioticPicker({
             className={`${inputClass} max-w-xs`}
           />
         )}
-        <button type="button" onClick={() => onChange(null)} className="text-sm text-slate-600 underline">
-          Change
-        </button>
+        <button type="button" onClick={() => onChange(null)} className="text-sm font-semibold text-maroon">Change</button>
       </div>
     );
   }
@@ -59,6 +65,7 @@ export function AntibioticPicker({
   return (
     <div className="space-y-3">
       <input
+        ref={inputRef}
         type="search"
         role="combobox"
         aria-expanded={hits.length > 0}
@@ -75,50 +82,41 @@ export function AntibioticPicker({
         <ul id={listId} role="listbox" className="space-y-1">
           {hits.map((h) => (
             <li key={h.item.id}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={false}
-                onClick={() => pick(h.item.id)}
-                className="w-full text-left rounded-2xl px-4 py-3 text-sm font-semibold text-midnight hover:bg-pink-25"
-              >
+              <button type="button" role="option" aria-selected={false} onClick={() => pick(h.item.id)} className="w-full min-h-[44px] text-left rounded-2xl px-4 py-3 text-sm font-semibold text-midnight hover:bg-pink-25">
                 {h.label}
               </button>
             </li>
           ))}
           {!hits.length && <li className="text-sm text-slate-600 px-1">{copy.antibiotics.noMatch}</li>}
           <li className="flex flex-wrap gap-2 pt-2">
-            {PINNED_ANTIBIOTICS.map((p) => (
-              <Chip key={p.id} onClick={() => pick(p.id)}>{p.name}</Chip>
-            ))}
+            {PINNED_ANTIBIOTICS.map((p) => <Chip key={p.id} onClick={() => pick(p.id)}>{p.name}</Chip>)}
           </li>
         </ul>
       ) : (
         <div className="space-y-4">
-          {previous.length > 0 && (
+          {yoursBefore.length > 0 && (
             <div>
-              <p className="text-eyebrow uppercase text-maroon mb-2">{copy.antibiotics.previous}</p>
+              <p className="text-eyebrow uppercase text-maroon mb-2">{copy.episode.yoursBefore}</p>
               <div className="flex flex-wrap gap-2">
-                {previous.map((id) => (
-                  <Chip key={id} onClick={() => pick(id)}>{antibioticName(id)}</Chip>
-                ))}
+                {yoursBefore.map((id) => <Chip key={id} onClick={() => pick(id)}>{antibioticName(id)}</Chip>)}
               </div>
             </div>
           )}
-          {ANTIBIOTIC_GROUPS.filter((g) => !compact || g.id === "common").map((g) => (
+          {groups.map((g) => (
             <div key={g.id}>
               <p className="text-eyebrow uppercase text-slate-500 mb-2">{g.label}</p>
               <div className="flex flex-wrap gap-2">
-                {antibioticsInGroup(g.id).map((a) => (
+                {antibioticsInGroup(g.id).filter((a) => !yoursBefore.includes(a.id) && !exclude.includes(a.id)).map((a) => (
                   <Chip key={a.id} onClick={() => pick(a.id)}>{a.name}</Chip>
                 ))}
               </div>
             </div>
           ))}
+          {!showAll && (
+            <button type="button" onClick={() => setShowAll(true)} className="text-sm font-semibold text-maroon">{copy.episode.showAll}</button>
+          )}
           <div className="flex flex-wrap gap-2">
-            {PINNED_ANTIBIOTICS.map((p) => (
-              <Chip key={p.id} onClick={() => pick(p.id)}>{p.name}</Chip>
-            ))}
+            {PINNED_ANTIBIOTICS.map((p) => <Chip key={p.id} onClick={() => pick(p.id)}>{p.name}</Chip>)}
           </div>
           <p className="text-xs text-slate-500">{copy.antibiotics.groupNote}</p>
         </div>

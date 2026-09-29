@@ -25,7 +25,7 @@ export function Chip({
       aria-pressed={selected}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-full border text-sm font-semibold transition-colors disabled:opacity-60 ${
+      className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border text-sm font-semibold transition-colors disabled:opacity-60 ${
         size === "lg" ? "px-5 py-3" : "px-4 py-2.5"
       } ${
         selected

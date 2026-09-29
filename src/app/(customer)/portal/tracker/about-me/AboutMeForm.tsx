@@ -65,7 +65,7 @@ export function AboutMeForm({ profile, next }: { profile: TrackerProfile | null;
         <input type="hidden" name="preventive_treatment_id" value={takesPreventive ? preventive ?? "" : ""} />
         <input type="hidden" name="preventive_treatment_other" value={preventiveOther} />
         {takesPreventive && (
-          <AntibioticPicker value={preventive} otherName={preventiveOther} compact onChange={(id, other) => { setPreventive(id); if (other !== undefined) setPreventiveOther(other); }} />
+          <AntibioticPicker value={preventive} otherName={preventiveOther} onChange={(id, other) => { setPreventive(id); if (other !== undefined) setPreventiveOther(other); }} />
         )}
       </div>
       {error && <p className="text-sm text-rose-600">{error}</p>}

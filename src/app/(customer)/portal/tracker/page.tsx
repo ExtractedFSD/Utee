@@ -15,7 +15,9 @@ export default async function TrackerHome() {
   const s = summarise(data.episodes, data.treatments);
   const p = patterns(data.episodes, data.symptoms, data.triggers, data.treatments);
   const open = s.openEpisode;
-  const openSymptoms = open ? data.symptoms.filter((x) => x.episode_id === open.id).map((x) => x.symptom) : [];
+  const openRows = open ? data.symptoms.filter((x) => x.episode_id === open.id) : [];
+  const latestDay = openRows.reduce((m, x) => (x.logged_on > m ? x.logged_on : m), "");
+  const openSymptoms = openRows.filter((x) => x.logged_on === latestDay).map((x) => x.symptom);
   const flag = open ? redFlagFor(openSymptoms, profile.pregnant_or_trying) : { show: false as const };
   const latestKit = kits[0] ?? null;
   const communityUrl = process.env.NEXT_PUBLIC_COMMUNITY_URL;
