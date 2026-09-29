@@ -1,0 +1,208 @@
+{
+  "version": "1.0",
+  "updated": "2026-09-29",
+  "notes": "Searchable picklist for the Utee UTI tracker. Users can search by generic name, UK brand name or common alias/misspelling. Store the 'id' against the log entry, never the free-text search term. Display as 'name' with matched brand in brackets where relevant, e.g. 'Macrobid (nitrofurantoin)'. Groups control display order only and must not be shown to users as advice or labelled as 'recommended'. Clinical review of this list (e.g. by the UTI Institute) required before launch.",
+  "groups": [
+    { "id": "common", "label": "Most often used for UTIs", "order": 1 },
+    { "id": "other_tablets", "label": "Other antibiotics", "order": 2 },
+    { "id": "hospital", "label": "Given in hospital (drip or injection)", "order": 3 },
+    { "id": "preventive_non_antibiotic", "label": "Preventive treatments (not antibiotics)", "order": 4 }
+  ],
+  "items": [
+    {
+      "id": "nitrofurantoin",
+      "name": "Nitrofurantoin",
+      "brands": ["Macrobid", "Macrodantin", "Furadantin"],
+      "aliases": ["nitro", "nitrofurantion", "nitrofuratoin", "nitrofurontoin", "macrobid mr"],
+      "group": "common",
+      "route": "oral"
+    },
+    {
+      "id": "trimethoprim",
+      "name": "Trimethoprim",
+      "brands": [],
+      "aliases": ["trimeth", "trimethaprim", "trimethroprim", "trimethorpim", "trimethoprin"],
+      "group": "common",
+      "route": "oral"
+    },
+    {
+      "id": "pivmecillinam",
+      "name": "Pivmecillinam",
+      "brands": ["Selexid"],
+      "aliases": ["pivmec", "pivmecilinam", "pivmecillin", "mecillinam"],
+      "group": "common",
+      "route": "oral"
+    },
+    {
+      "id": "fosfomycin",
+      "name": "Fosfomycin",
+      "brands": ["Monuril"],
+      "aliases": ["fosfo", "fosfomicin", "phosphomycin", "sachet antibiotic"],
+      "group": "common",
+      "route": "oral"
+    },
+    {
+      "id": "cefalexin",
+      "name": "Cefalexin",
+      "brands": ["Keflex", "Ceporex"],
+      "aliases": ["cephalexin", "cefalexine", "cephalexine", "keflex"],
+      "group": "common",
+      "route": "oral"
+    },
+    {
+      "id": "amoxicillin",
+      "name": "Amoxicillin",
+      "brands": ["Amoxil"],
+      "aliases": ["amoxycillin", "amoxicilin", "amoxil", "amox"],
+      "group": "other_tablets",
+      "route": "oral"
+    },
+    {
+      "id": "co_amoxiclav",
+      "name": "Co-amoxiclav",
+      "brands": ["Augmentin"],
+      "aliases": ["coamoxiclav", "co amoxiclav", "amoxicillin clavulanate", "amoxiclav", "augmentin"],
+      "group": "other_tablets",
+      "route": "oral"
+    },
+    {
+      "id": "ciprofloxacin",
+      "name": "Ciprofloxacin",
+      "brands": ["Ciproxin"],
+      "aliases": ["cipro", "ciprofloxacine", "ciproflaxacin", "ciprofloxin"],
+      "group": "other_tablets",
+      "route": "oral"
+    },
+    {
+      "id": "ofloxacin",
+      "name": "Ofloxacin",
+      "brands": ["Tarivid"],
+      "aliases": ["oflox", "ofloxacine"],
+      "group": "other_tablets",
+      "route": "oral"
+    },
+    {
+      "id": "levofloxacin",
+      "name": "Levofloxacin",
+      "brands": ["Tavanic"],
+      "aliases": ["levo", "levofloxacine", "levofloxin"],
+      "group": "other_tablets",
+      "route": "oral"
+    },
+    {
+      "id": "co_trimoxazole",
+      "name": "Co-trimoxazole",
+      "brands": ["Septrin"],
+      "aliases": ["cotrimoxazole", "co trimoxazole", "septra", "bactrim", "trimethoprim sulfamethoxazole", "sulfamethoxazole"],
+      "group": "other_tablets",
+      "route": "oral"
+    },
+    {
+      "id": "cefixime",
+      "name": "Cefixime",
+      "brands": ["Suprax"],
+      "aliases": ["cefixim", "cefexime"],
+      "group": "other_tablets",
+      "route": "oral"
+    },
+    {
+      "id": "cefuroxime",
+      "name": "Cefuroxime",
+      "brands": ["Zinnat"],
+      "aliases": ["cefuroxim", "cefuroxine"],
+      "group": "other_tablets",
+      "route": "oral"
+    },
+    {
+      "id": "cefradine",
+      "name": "Cefradine",
+      "brands": [],
+      "aliases": ["cephradine"],
+      "group": "other_tablets",
+      "route": "oral"
+    },
+    {
+      "id": "doxycycline",
+      "name": "Doxycycline",
+      "brands": ["Vibramycin"],
+      "aliases": ["doxy", "doxycyline", "doxicycline"],
+      "group": "other_tablets",
+      "route": "oral"
+    },
+    {
+      "id": "gentamicin",
+      "name": "Gentamicin",
+      "brands": [],
+      "aliases": ["genta", "gentamycin"],
+      "group": "hospital",
+      "route": "iv_im"
+    },
+    {
+      "id": "ceftriaxone",
+      "name": "Ceftriaxone",
+      "brands": ["Rocephin"],
+      "aliases": ["ceftriaxon", "rocephin"],
+      "group": "hospital",
+      "route": "iv_im"
+    },
+    {
+      "id": "temocillin",
+      "name": "Temocillin",
+      "brands": ["Negaban"],
+      "aliases": ["temocilin"],
+      "group": "hospital",
+      "route": "iv"
+    },
+    {
+      "id": "piperacillin_tazobactam",
+      "name": "Piperacillin with tazobactam",
+      "brands": ["Tazocin"],
+      "aliases": ["tazocin", "pip taz", "piptaz", "tazobactam"],
+      "group": "hospital",
+      "route": "iv"
+    },
+    {
+      "id": "ertapenem",
+      "name": "Ertapenem",
+      "brands": ["Invanz"],
+      "aliases": ["ertapenum"],
+      "group": "hospital",
+      "route": "iv"
+    },
+    {
+      "id": "meropenem",
+      "name": "Meropenem",
+      "brands": ["Meronem"],
+      "aliases": ["meropenum", "meronem"],
+      "group": "hospital",
+      "route": "iv"
+    },
+    {
+      "id": "methenamine_hippurate",
+      "name": "Methenamine hippurate",
+      "brands": ["Hiprex"],
+      "aliases": ["hiprex", "methenamine", "hexamine hippurate", "methanamine"],
+      "group": "preventive_non_antibiotic",
+      "route": "oral"
+    },
+    {
+      "id": "other",
+      "name": "Other (type the name)",
+      "brands": [],
+      "aliases": [],
+      "group": null,
+      "route": null,
+      "free_text": true,
+      "pinned": "bottom"
+    },
+    {
+      "id": "dont_know",
+      "name": "I don't know / can't remember",
+      "brands": [],
+      "aliases": ["not sure", "unknown", "cant remember"],
+      "group": null,
+      "route": null,
+      "pinned": "bottom"
+    }
+  ]
+}

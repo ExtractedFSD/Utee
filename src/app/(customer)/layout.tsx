@@ -10,6 +10,7 @@ export default async function CustomerLayout({ children }: { children: React.Rea
       userEmail={user.email}
       nav={[
         { href: "/portal", label: "Home" },
+        { href: "/portal/tracker", label: "Tracker" },
         { href: "/portal/orders", label: "Orders" },
         { href: "/portal/subscriptions", label: "Subscriptions" },
       ]}

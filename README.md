@@ -186,6 +186,55 @@ writes nothing: the parcel it reports doesn't exist. Run it against a
 production build (`npm run build && npm start`) for meaningful numbers — the
 dev server compiles on demand and is many times slower.
 
+## UTI tracker
+
+A private diary of UTIs inside the patient portal (`/portal/tracker`), open to
+anyone with an account, not only test buyers. It records what the user logs
+and reflects it back as plain counts. It never diagnoses, scores risk,
+recommends treatment or mentions products; all wording that could be read
+that way lives in `src/lib/tracker/copy.ts` for compliance review.
+
+**Data.** Nine `tracker_*` tables (`supabase/migrations/0003_tracker.sql`),
+every row keyed by `user_id` with owner-only row-level security. The app
+reads and writes them with the user's own session only (`src/lib/tracker/data.ts`).
+Consent (tracker, and optional research) is stored with the wording and its
+version. The antibiotic picklist is `src/lib/tracker/antibiotics.json`,
+editable without code changes; entries are stored by `id`, never as typed
+text, and there is an empty `dmd_code` for later NHS mapping.
+
+**What leaves the portal.** Nothing. Tracker pages make requests only to the
+portal itself and to the Supabase project (London region, encrypted at
+rest, under DPA). There is no analytics, pixel or Klaviyo integration in the
+portal. `e2e/tracker.spec.ts` records every network request during a full
+tracker session and fails if any other host appears.
+
+**Service-role access to tracker tables** is limited to two places, both
+aggregate or metadata only: the super-admin dashboard counts consents and
+episodes, and the reminder job reads who opted in, whether they have an
+open episode and when they were last reminded. No staff screen shows an
+individual's entries.
+
+**Audit.** `tracker_audit_log` records consent changes, exports, summary
+downloads, deletes and reminders sent. Page views are not logged.
+
+**Export and delete.** Settings offers JSON and CSV exports and a hard delete
+of everything (episodes cascade to symptoms, triggers, treatments, tests;
+plus check-ins, consents and profile). The audit row for the delete survives.
+
+**Reminders.** Opt-in, sent by the portal through Resend from a daily Vercel
+Cron job (`vercel.json`, `/api/cron/tracker-reminders`, protected by
+`CRON_SECRET`). Subject lines and bodies never mention symptoms or UTIs.
+
+**GP summary.** `/portal/tracker/summary` renders a one-page PDF server-side
+(`src/lib/tracker/pdf.tsx`). Utee tests linked to an episode show their
+status and "clinical report available in the portal"; the lab outcome is
+never shown, matching the rest of the portal.
+
+**Tests.** `npm run test:unit` covers red flags, antibiotic search, stats and
+copy rules. `npm run test:e2e` walks the whole tracker on a phone-sized
+viewport, checks export, delete, the PDF, cross-user isolation and the
+third-party network rule.
+
 ## Not in v1 (deliberate)
 
 - Urologist booking — upsell card is a "coming soon" placeholder.

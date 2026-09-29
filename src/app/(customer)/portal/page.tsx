@@ -6,9 +6,9 @@ import { formatDate, formatMoney, type KitStatus } from "@/lib/status";
 export default async function PortalHome({
   searchParams,
 }: {
-  searchParams: Promise<{ kit?: string }>;
+  searchParams: Promise<{ kit?: string; tracker?: string }>;
 }) {
-  const { kit: kitFlag } = await searchParams;
+  const { kit: kitFlag, tracker: trackerFlag } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: kits }, { data: orders }, { data: subscriptions }] = await Promise.all([
@@ -47,6 +47,17 @@ export default async function PortalHome({
       {kitFlag === "not-found" && (
         <Notice>We couldn&apos;t find that kit code. Please check the QR code or contact us.</Notice>
       )}
+      {trackerFlag === "deleted" && <Notice tone="mint">Your tracker data has been deleted.</Notice>}
+
+      <Callout className="flex flex-wrap items-center justify-between gap-4">
+        <div className="max-w-xl">
+          <h3 className="font-display text-2xl font-light">UTI tracker</h3>
+          <p className="text-sm text-white/85 mt-1 leading-relaxed">
+            Keep a private record of your UTIs to show a GP or clinic, and spot your own patterns over time.
+          </p>
+        </div>
+        <LinkButton href="/portal/tracker" variant="white">Open tracker</LinkButton>
+      </Callout>
 
       <Card>
         <CardTitle>Your test kits</CardTitle>

@@ -24,9 +24,12 @@ export default defineConfig({
   // first-time page compiles; give them room.
   timeout: 600_000,
   expect: { timeout: 15_000 },
+  // A missing element should fail fast, not wait out the whole test budget.
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
   use: {
     baseURL,
+    actionTimeout: 20_000,
+    navigationTimeout: 60_000,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     // Honour an outbound proxy (some CI / sandbox environments route all

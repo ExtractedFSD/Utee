@@ -78,7 +78,7 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
   const buyerCtx = await browser.newContext();
   const buyerPage = await buyerCtx.newPage();
 
-  await test.step("Unknown email without a kit is refused", async () => {
+  await test.step("Signing in with an unknown email is refused; no account is created", async () => {
     await buyerPage.goto("/login");
     await buyerPage.getByLabel("Email address").fill(emailFor("nobody"));
     await buyerPage.getByRole("button", { name: "Email me a code" }).click();
@@ -87,15 +87,16 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
     expect(data ?? []).toHaveLength(0);
   });
 
-  await test.step("Buyer scans, gets an account, and the kit is claimed", async () => {
+  await test.step("Buyer scans, creates an account, and the kit is claimed", async () => {
     await buyerPage.goto(`/k/${code}`);
     await expect(buyerPage).toHaveURL(/\/login\?next=/);
     await expect(buyerPage.getByText(/Bought your kit elsewhere/)).toBeVisible();
-    await loginViaUi(buyerPage, buyerEmail, `/k/${code}`);
+    await loginViaUi(buyerPage, buyerEmail, `/k/${code}`, { name: "Retail Buyer" });
     await expect(buyerPage).toHaveURL(`/triage/${code}`);
 
-    const { data: profile } = await admin().from("profiles").select("id, role").eq("email", buyerEmail).single();
+    const { data: profile } = await admin().from("profiles").select("id, role, full_name").eq("email", buyerEmail).single();
     expect(profile?.role).toBe("customer");
+    expect(profile?.full_name).toBe("Retail Buyer");
     const kit = await kitByCode(code);
     expect(kit?.customer_id).toBe(profile!.id);
     expect(kit?.status).toBe("delivered");
