@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { Button, Card, LinkButton, StatusBadge, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { COURSE_DAYS, COURSE_TYPES, SOURCES, SYMPTOMS, TEST_KINDS, TEST_RESULTS, TRIGGERS, WORKED, labelFor } from "@/lib/tracker/options";
@@ -24,7 +24,8 @@ type Item = { key: string; other: string | null };
 type Treatment = { id: string; antibiotic_id: string; other_name: string | null; started_on: string | null; days: number | null; course_type: string | null; source: string | null; worked: string | null };
 type TestItem = { id: string; kind: string; tested_on: string | null; result: string | null; notes: string | null; kit_id: string | null; kitCode: string | null; kitStatus: string | null; kitReportReady: boolean };
 type Kit = { id: string; code: string; status: string; reportReady: boolean };
-type Run = (fn: () => Promise<unknown>) => void;
+/** Runs a server action in a transition. `optimistic` applies the expected result immediately. */
+type Run = (fn: () => Promise<unknown>, optimistic?: () => void) => void;
 type Row = "triggers" | "treatment" | "tests" | "notes";
 
 const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
@@ -34,10 +35,10 @@ const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
  * "About this UTI" as a collapsed summary that opens row by row.
  */
 export function EpisodeEditor({
-  episode, today, pregnantOrTrying, todaySymptoms, yesterdayHasSymptoms, triggers, treatments, tests, feelingToday,
+  episode, today, pregnantOrTrying, todaySymptoms, yesterdaySymptoms, triggers, treatments, tests, feelingToday,
   symptomOrder, triggerOrder, previousAntibiotics, lastSource, kits,
 }: {
-  episode: EpisodeRow; today: string; pregnantOrTrying: string; todaySymptoms: Item[]; yesterdayHasSymptoms: boolean;
+  episode: EpisodeRow; today: string; pregnantOrTrying: string; todaySymptoms: Item[]; yesterdaySymptoms: string[];
   triggers: Item[]; treatments: Treatment[]; tests: TestItem[]; feelingToday: number | null;
   symptomOrder: string[]; triggerOrder: string[]; previousAntibiotics: string[]; lastSource: string | null; kits: Kit[];
 }) {
@@ -54,9 +55,18 @@ export function EpisodeEditor({
   const [symptomOther, setSymptomOther] = useState(todaySymptoms.find((s) => s.key === "other")?.other ?? "");
   const [triggerOther, setTriggerOther] = useState(triggers.find((t) => t.key === "other")?.other ?? "");
 
-  const run: Run = (fn) => {
+  // Optimistic copies of the things people tap many times a day. They update on
+  // the tap and settle to the server's values once the action has finished.
+  type Toggle = { key: string; on: boolean };
+  const applyToggle = (state: string[], { key, on }: Toggle) => (on ? [...new Set([...state, key])] : state.filter((k) => k !== key));
+  const [symptomKeys, toggleSymptomNow] = useOptimistic(todaySymptoms.map((s) => s.key), applyToggle);
+  const [triggerKeys, toggleTriggerNow] = useOptimistic(triggers.map((t) => t.key), applyToggle);
+  const [feeling, setFeelingNow] = useOptimistic(feelingToday, (_: number | null, next: number) => next);
+
+  const run: Run = (fn, optimistic) => {
     setError(null);
     startTransition(async () => {
+      optimistic?.();
       const r = await fn();
       const err = (r as { error?: string } | null | undefined)?.error;
       if (err) setError(err);
@@ -71,8 +81,9 @@ export function EpisodeEditor({
 
   const open = !episode.ended_on;
   const day = episodeLength(episode, today);
-  const symptomSet = new Set(todaySymptoms.map((s) => s.key));
-  const triggerSet = new Set(triggers.map((t) => t.key));
+  const symptomSet = new Set(symptomKeys);
+  const triggerSet = new Set(triggerKeys);
+  const yesterdayHasSymptoms = yesterdaySymptoms.length > 0;
   const flag = redFlagFor(symptomSet, pregnantOrTrying);
   const orderOptions = (list: { key: string; label: string }[], order: string[]) => order.map((k) => list.find((o) => o.key === k)!).filter(Boolean);
   const dueToAsk = treatments.filter((t) => !t.worked && (askDateFor(t.started_on, t.days) ?? "9999") <= today);
@@ -166,18 +177,18 @@ export function EpisodeEditor({
             </span>
           </div>
           <p className="text-sm font-semibold text-slate-700 mb-2">{copy.episode.feelingQuestion}</p>
-          <FeelingFaces value={feelingToday} disabled={pending} onChange={(f) => run(() => setFeeling(episode.id, f))} />
+          <FeelingFaces value={feeling} onChange={(f) => run(() => setFeeling(episode.id, f), () => setFeelingNow(f))} />
           <p className="text-sm font-semibold text-slate-700 mt-5 mb-2">{copy.episode.noticingQuestion}</p>
           <div className="flex flex-wrap gap-2">
             {yesterdayHasSymptoms && (
-              <Chip size="lg" disabled={pending} onClick={() => run(() => copyYesterdaySymptoms(episode.id))}>{copy.episode.sameAsYesterday}</Chip>
+              <Chip size="lg" onClick={() => run(() => copyYesterdaySymptoms(episode.id), () => yesterdaySymptoms.forEach((key) => toggleSymptomNow({ key, on: true })))}>{copy.episode.sameAsYesterday}</Chip>
             )}
           </div>
           <div className={yesterdayHasSymptoms ? "mt-2" : ""}>
             <ChipGroup
               options={orderOptions(SYMPTOMS, symptomOrder)}
               selected={symptomSet}
-              onToggle={(key, on) => run(() => toggleSymptom(episode.id, key, on, symptomOther, today))}
+              onToggle={(key, on) => run(() => toggleSymptom(episode.id, key, on, symptomOther, today), () => toggleSymptomNow({ key, on }))}
               otherText={symptomOther}
               onOtherText={setSymptomOther}
             />
@@ -234,7 +245,7 @@ export function EpisodeEditor({
           <ChipGroup
             options={orderOptions(TRIGGERS, triggerOrder)}
             selected={triggerSet}
-            onToggle={(key, on) => run(() => toggleTrigger(episode.id, key, on, triggerOther))}
+            onToggle={(key, on) => run(() => toggleTrigger(episode.id, key, on, triggerOther), () => toggleTriggerNow({ key, on }))}
             otherText={triggerOther}
             onOtherText={setTriggerOther}
           />
