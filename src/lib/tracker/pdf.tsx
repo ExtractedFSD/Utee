@@ -4,6 +4,7 @@ import { copy } from "./copy";
 import { COURSE_TYPES, SOURCES, SYMPTOMS, TEST_KINDS, TEST_RESULTS, TRIGGERS, WORKED, labelFor } from "./options";
 import { antibioticName } from "./search";
 import { episodeLength, formatDay } from "./stats";
+import { HELPING, preventionName } from "./prevention";
 import type { TrackerData } from "./data";
 
 const s = StyleSheet.create({
@@ -37,6 +38,24 @@ function SummaryDoc({ data, opts }: { data: TrackerData; opts: PdfOptions }) {
         <Text style={s.meta}>
           {[opts.fullName, opts.dateOfBirth && `Date of birth ${formatDay(opts.dateOfBirth)}`, copy.pdf.range(formatDay(opts.from), formatDay(opts.to))].filter(Boolean).join("  ·  ")}
         </Text>
+        {(() => {
+          const describe = (p: TrackerData["preventions"][number]) => [
+            preventionName(p),
+            p.started_on && `since ${formatDay(p.started_on)}`,
+            p.stopped_on && `until ${formatDay(p.stopped_on)}`,
+            p.helping && `patient says helping: ${labelFor(HELPING, p.helping).toLowerCase()}`,
+          ].filter(Boolean).join(", ");
+          const current = data.preventions.filter((p) => !p.stopped_on);
+          const past = data.preventions.filter((p) => p.stopped_on);
+          if (!current.length && !past.length) return null;
+          return (
+            <View style={s.episode} wrap={false}>
+              <Text style={s.title}>{copy.pdf.prevention}</Text>
+              {current.length > 0 && <Row k="Current" v={current.map(describe).join("; ")} />}
+              {past.length > 0 && <Row k="Previous" v={past.map(describe).join("; ")} />}
+            </View>
+          );
+        })()}
         {episodes.length === 0 && <Text>{copy.pdf.noEpisodes}</Text>}
         {episodes.map((e) => {
           const symptoms = [...new Set(data.symptoms.filter((x) => x.episode_id === e.id).map((x) => x.symptom === "other" ? x.other_text || "Other" : labelFor(SYMPTOMS, x.symptom)))];

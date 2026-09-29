@@ -37,10 +37,42 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     expect(consents?.[0].consent_text.length).toBeGreaterThan(50);
   });
 
-  await test.step("About me, asked once", async () => {
+  await test.step("About me, asked once, including what they take to prevent UTIs (multi-select)", async () => {
+    const picker = page.getByTestId("prevention-picker");
+    await picker.getByRole("button", { name: "D-mannose" }).click();
+    await picker.getByRole("button", { name: "Vaginal oestrogen (cream, pessary or ring)" }).click();
+    await picker.getByRole("button", { name: "Drinking more water" }).click();
     await page.getByRole("button", { name: "Save and continue" }).click();
     await expect(page).toHaveURL(/\/portal\/tracker$/);
     await expect(page.getByText("Log your first UTI")).toBeVisible();
+    const card = page.getByTestId("prevention-card");
+    await expect(card).toContainText("D-mannose");
+    await expect(card).toContainText("Vaginal oestrogen");
+    await expect(card).toContainText("More water");
+  });
+
+  await test.step("What I'm taking: rate, stop, and the history is kept", async () => {
+    await page.getByTestId("prevention-card").getByRole("link", { name: "Manage" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/prevention$/);
+    const current = page.getByTestId("prevention-current");
+    await current.getByRole("button", { name: /^D-mannose/ }).click();
+    const sheet = page.getByTestId("sheet-prevention");
+    await sheet.getByRole("radio", { name: "Yes" }).or(sheet.getByRole("button", { name: "Yes", exact: true })).first().click();
+    await sheet.getByRole("button", { name: "Done" }).click();
+    await expect(current.getByRole("button", { name: /^D-mannose/ })).toContainText("Is it helping? Yes");
+    await current.getByRole("button", { name: /^Drinking more water/ }).click();
+    await sheet.getByRole("button", { name: "I've stopped this" }).click();
+    await expect(page.getByTestId("prevention-past")).toContainText("Drinking more water");
+    await expect(current).not.toContainText("Drinking more water");
+    await current.getByRole("button", { name: "Add something" }).click();
+    const add = page.getByTestId("sheet-add-prevention");
+    await expect(add.getByRole("button", { name: "D-mannose" })).toHaveCount(0);
+    await add.getByRole("button", { name: "P Happi spray" }).click();
+    await add.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(current).toContainText("P Happi spray");
+    await page.goto("/portal/tracker");
+    await expect(page.getByTestId("prevention-card")).toContainText("D-mannose · helps");
+    await expect(page.getByTestId("prevention-card")).not.toContainText("More water");
   });
 
   let episodeUrl = "";
@@ -163,6 +195,8 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     const body = await json.json();
     expect(body.episodes).toHaveLength(1);
     expect(body.treatments[0].antibiotic_id).toBe("nitrofurantoin");
+    expect(body.preventions.map((p: { option_key: string }) => p.option_key).sort()).toEqual(["d_mannose", "p_happi", "vaginal_oestrogen", "water"]);
+    expect(body.preventions.find((p: { option_key: string }) => p.option_key === "water").stopped_on).toBeTruthy();
     expect(body.treatments[0].worked).toBe("yes");
     expect(body.account.date_of_birth).toBe("1990-05-14");
     expect(body.profile.age_band).toBe("35_44");
@@ -251,7 +285,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await page.getByLabel("Type DELETE to confirm").fill("DELETE");
     await page.getByRole("button", { name: "Delete everything" }).click();
     await expect(page).toHaveURL(/\/portal\?tracker=deleted/);
-    for (const table of ["tracker_episodes", "tracker_symptoms", "tracker_treatments", "tracker_tests", "tracker_checkins", "tracker_consents", "tracker_profiles"]) {
+    for (const table of ["tracker_episodes", "tracker_symptoms", "tracker_treatments", "tracker_tests", "tracker_checkins", "tracker_preventions", "tracker_consents", "tracker_profiles"]) {
       const { count } = await admin().from(table).select("*", { count: "exact", head: true }).eq("user_id", me!.id);
       expect(count, table).toBe(0);
     }

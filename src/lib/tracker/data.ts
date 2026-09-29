@@ -89,6 +89,18 @@ export type TestRow = {
   kit_id: string | null;
 };
 
+export type PreventionRow = {
+  id: string;
+  option_key: string;
+  other_name: string | null;
+  antibiotic_id: string | null;
+  started_on: string | null;
+  stopped_on: string | null;
+  helping: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
 export type TrackerData = {
   episodes: EpisodeRow[];
   symptoms: (SymptomRow & { id: string })[];
@@ -96,16 +108,25 @@ export type TrackerData = {
   treatments: (TreatmentRow & { id: string; created_at: string })[];
   tests: TestRow[];
   checkins: { episode_id: string | null; on_date: string; feeling: number }[];
+  preventions: PreventionRow[];
 };
 
+const PREVENTION_COLUMNS = "id, option_key, other_name, antibiotic_id, started_on, stopped_on, helping, notes, created_at";
+
+export async function loadPreventions(supabase: SupabaseClient, userId: string): Promise<PreventionRow[]> {
+  const { data } = await supabase.from("tracker_preventions").select(PREVENTION_COLUMNS).eq("user_id", userId).order("created_at", { ascending: true });
+  return (data ?? []) as PreventionRow[];
+}
+
 export async function loadAll(supabase: SupabaseClient, userId: string): Promise<TrackerData> {
-  const [e, s, tr, t, te, c] = await Promise.all([
+  const [e, s, tr, t, te, c, pr] = await Promise.all([
     supabase.from("tracker_episodes").select("id, started_on, ended_on, notes").eq("user_id", userId).order("started_on", { ascending: false }),
     supabase.from("tracker_symptoms").select("id, episode_id, symptom, other_text, logged_on").eq("user_id", userId),
     supabase.from("tracker_triggers").select("id, episode_id, trigger, other_text, logged_on").eq("user_id", userId),
     supabase.from("tracker_treatments").select("id, episode_id, antibiotic_id, other_name, started_on, days, course_type, source, worked, created_at").eq("user_id", userId).order("created_at", { ascending: true }),
     supabase.from("tracker_tests").select("id, episode_id, kind, tested_on, result, notes, kit_id").eq("user_id", userId),
     supabase.from("tracker_checkins").select("episode_id, on_date, feeling").eq("user_id", userId),
+    supabase.from("tracker_preventions").select(PREVENTION_COLUMNS).eq("user_id", userId).order("created_at", { ascending: true }),
   ]);
   return {
     episodes: e.data ?? [],
@@ -114,6 +135,7 @@ export async function loadAll(supabase: SupabaseClient, userId: string): Promise
     treatments: t.data ?? [],
     tests: te.data ?? [],
     checkins: c.data ?? [],
+    preventions: (pr.data ?? []) as PreventionRow[],
   };
 }
 

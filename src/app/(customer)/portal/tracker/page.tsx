@@ -8,6 +8,7 @@ import type { KitStatus } from "@/lib/status";
 import { RedFlagBanner } from "./components/RedFlagBanner";
 import { MonthStrip } from "./components/MonthStrip";
 import { QuickCheckin } from "./QuickCheckin";
+import { PreventionPills } from "./components/PreventionPills";
 
 export default async function TrackerHome() {
   const { supabase, user, profile } = await requireTracker();
@@ -23,6 +24,7 @@ export default async function TrackerHome() {
   const communityUrl = process.env.NEXT_PUBLIC_COMMUNITY_URL;
   const storeUrl = process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL ?? "#";
   const brandNew = data.episodes.length === 0;
+  const taking = data.preventions.filter((x) => !x.stopped_on);
   const today = new Date().toISOString().slice(0, 10);
   const feelingToday = data.checkins.find((c) => c.on_date === today)?.feeling ?? null;
   // "Edit today" once something has been logged for today on the open UTI; "Log today" on a new day.
@@ -68,6 +70,21 @@ export default async function TrackerHome() {
           </div>
         </Card>
       )}
+
+      <Card data-testid="prevention-card">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <CardTitle>{copy.dashboard.prevention}</CardTitle>
+          {taking.length > 0 && <Link href="/portal/tracker/prevention" className="text-sm font-semibold text-maroon min-h-[44px] inline-flex items-center">{copy.dashboard.preventionManage}</Link>}
+        </div>
+        {taking.length > 0 ? (
+          <PreventionPills rows={taking} />
+        ) : (
+          <div>
+            <p className="text-sm text-slate-600 mb-4 max-w-xl">{copy.dashboard.preventionEmpty}</p>
+            <LinkButton href="/portal/tracker/prevention" variant="secondary">{copy.dashboard.preventionAdd}</LinkButton>
+          </div>
+        )}
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">

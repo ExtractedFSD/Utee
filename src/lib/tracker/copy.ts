@@ -29,8 +29,8 @@ export const copy = {
     intro:
       "A few questions asked once, so you don't have to answer them every time. You can change them later in settings.",
     pregnantHint: "If yes, we'll show safety information whenever you log a new UTI.",
-    preventiveTitle: "Do you take a daily treatment to prevent UTIs?",
-    preventiveHint: "Choose it from the list if so. Nothing here is a recommendation.",
+    preventiveTitle: "Are you taking or doing anything to help prevent UTIs?",
+    preventiveHint: "Choose everything that applies. You can change this any time. Nothing here is a recommendation.",
     button: "Save and continue",
   },
 
@@ -70,6 +70,34 @@ export const copy = {
     orderTestNote: "Available any time. Not a recommendation based on what you've logged.",
     community: "Utee community",
     communityBody: "Talk with other people who understand. Opens in a new tab.",
+    prevention: "What I'm taking",
+    preventionEmpty: "Nothing logged yet. Add anything you take or do to help prevent UTIs, so your record shows what you've tried and what you feel helps.",
+    preventionManage: "Manage",
+    preventionAdd: "Add what I'm taking",
+    preventionHelps: "helps",
+  },
+
+  prevention: {
+    title: "What I'm taking",
+    intro: "Everything you take or do to help prevent UTIs, and whether you feel it helps. Only you can say. This is your record, not advice.",
+    current: "Taking now",
+    past: "Tried before",
+    nothingYet: "Nothing here yet.",
+    add: "Add something",
+    addButton: "Add",
+    since: (date: string) => `Since ${date}`,
+    between: (from: string | null, to: string) => (from ? `${from} to ${to}` : `Until ${to}`),
+    startDate: "When did you start?",
+    helping: "Is it helping?",
+    helpingHint: "Only you can say. Kept for your own record.",
+    notes: "Notes",
+    stop: "I've stopped this",
+    restart: "Start again",
+    remove: "Remove",
+    whichAntibiotic: "Which antibiotic?",
+    otherLabel: "Other, name it",
+    groupNote: "Groups are for finding things quickly. Nothing here is a recommendation.",
+    edit: "Edit",
   },
 
   patterns: {
@@ -196,6 +224,7 @@ export const copy = {
   },
 
   pdf: {
+    prevention: "Prevention, as reported by the patient",
     title: "My UTI history",
     footer: "Recorded by the patient using the Utee tracker. Not a clinical record.",
     generated: (date: string) => `Generated ${date}`,

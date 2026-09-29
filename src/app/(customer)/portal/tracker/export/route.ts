@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
     ["treatments", toCsv(data.treatments, ["episode_id", "antibiotic_id", "other_name", "started_on", "days", "course_type", "source", "worked"])],
     ["tests", toCsv(data.tests, ["episode_id", "kind", "tested_on", "result", "notes", "kit_id"])],
     ["checkins", toCsv(data.checkins, ["episode_id", "on_date", "feeling"])],
+    ["preventions", toCsv(data.preventions, ["option_key", "other_name", "antibiotic_id", "started_on", "stopped_on", "helping", "notes"])],
   ];
   const csv = sections.map(([name, body]) => `# ${name}\n${body}`).join("\n\n") + "\n";
   return new NextResponse(csv, {

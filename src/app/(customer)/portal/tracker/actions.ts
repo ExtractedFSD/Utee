@@ -12,6 +12,7 @@ import {
   TEST_KINDS, TEST_RESULTS, TRIGGERS, WORKED,
 } from "@/lib/tracker/options";
 import { antibioticById } from "@/lib/tracker/search";
+import { ANTIBIOTIC_PREVENTIONS, HELPING, PREVENTION_KEYS, diffPreventions } from "@/lib/tracker/prevention";
 import { ageBandFor, isoToday } from "@/lib/tracker/stats";
 
 const keys = (list: { key: string }[]) => list.map((o) => o.key) as [string, ...string[]];
@@ -78,9 +79,56 @@ const aboutMeSchema = z.object({
   menopause_stage: z.enum(keys(MENOPAUSE_STAGES)),
   contraception: z.enum(keys(CONTRACEPTION)),
   pregnant_or_trying: z.enum(keys(PREGNANT)),
-  preventive_treatment_id: z.string().optional(),
-  preventive_treatment_other: z.string().max(120).optional(),
+  prevention_keys: z.array(z.string()).max(60),
+  prevention_other: z.string().max(120).optional(),
+  prevention_antibiotic_id: z.string().max(80).optional(),
+  prevention_antibiotic_other: z.string().max(120).optional(),
 });
+
+/** Which antibiotic to store against an antibiotic-type prevention, if any. */
+function preventionAntibiotic(id?: string, other?: string): { antibiotic_id: string | null; other_name: string | null } {
+  if (!id) return { antibiotic_id: null, other_name: null };
+  if (id === "other") return { antibiotic_id: "other", other_name: other?.trim() || null };
+  return antibioticById(id) ? { antibiotic_id: id, other_name: null } : { antibiotic_id: null, other_name: null };
+}
+
+/**
+ * Make the active prevention rows match a freshly picked list: new picks are
+ * inserted, unpicked ones are stopped today so the history is kept.
+ */
+async function syncPreventions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  keys: string[],
+  otherName: string | undefined,
+  antibioticId: string | undefined,
+  antibioticOther: string | undefined
+) {
+  const { data: active } = await supabase.from("tracker_preventions").select("id, option_key").eq("user_id", userId).is("stopped_on", null);
+  const { add, stop } = diffPreventions((active ?? []).map((a) => a.option_key), keys);
+  const today = isoToday();
+  if (add.length) {
+    const rows = add.map((key) => {
+      const ab = ANTIBIOTIC_PREVENTIONS.includes(key) ? preventionAntibiotic(antibioticId, antibioticOther) : { antibiotic_id: null, other_name: null };
+      return {
+        user_id: userId,
+        option_key: key,
+        other_name: key === "other" ? otherName?.trim() || null : ab.other_name,
+        antibiotic_id: ab.antibiotic_id,
+      };
+    });
+    const { error } = await supabase.from("tracker_preventions").insert(rows);
+    if (error) return { error: "Could not save what you're taking. Please try again." };
+  }
+  if (stop.length) {
+    const ids = (active ?? []).filter((a) => stop.includes(a.option_key)).map((a) => a.id);
+    await supabase.from("tracker_preventions").update({ stopped_on: today, updated_at: new Date().toISOString() }).in("id", ids);
+  }
+  if (keys.includes("other") && otherName !== undefined) {
+    await supabase.from("tracker_preventions").update({ other_name: otherName.trim() || null }).eq("user_id", userId).eq("option_key", "other").is("stopped_on", null);
+  }
+  return { ok: true };
+}
 
 export async function saveAboutMe(formData: FormData) {
   const { user, supabase } = await session();
@@ -88,14 +136,13 @@ export async function saveAboutMe(formData: FormData) {
     menopause_stage: String(formData.get("menopause_stage") ?? "prefer_not"),
     contraception: String(formData.get("contraception") ?? "prefer_not"),
     pregnant_or_trying: String(formData.get("pregnant_or_trying") ?? "no"),
-    preventive_treatment_id: String(formData.get("preventive_treatment_id") ?? ""),
-    preventive_treatment_other: String(formData.get("preventive_treatment_other") ?? ""),
+    prevention_keys: String(formData.get("prevention_keys") ?? "").split(",").map((k) => k.trim()).filter((k) => PREVENTION_KEYS.includes(k)),
+    prevention_other: String(formData.get("prevention_other") ?? ""),
+    prevention_antibiotic_id: String(formData.get("prevention_antibiotic_id") ?? ""),
+    prevention_antibiotic_other: String(formData.get("prevention_antibiotic_other") ?? ""),
   });
   if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Please check the form" };
   const d = parsed.data;
-  const preventive = d.preventive_treatment_id && (antibioticById(d.preventive_treatment_id) || d.preventive_treatment_id === "other")
-    ? d.preventive_treatment_id
-    : null;
   const { error } = await supabase.from("tracker_profiles").upsert({
     user_id: user.id,
     date_of_birth: user.dateOfBirth,
@@ -103,12 +150,13 @@ export async function saveAboutMe(formData: FormData) {
     menopause_stage: d.menopause_stage,
     contraception: d.contraception,
     pregnant_or_trying: d.pregnant_or_trying,
-    preventive_treatment_id: preventive,
-    preventive_treatment_other: preventive === "other" ? d.preventive_treatment_other || null : null,
     updated_at: new Date().toISOString(),
   });
   if (error) return { error: "Could not save. Please try again." };
+  const synced = await syncPreventions(supabase, user.id, d.prevention_keys, d.prevention_other, d.prevention_antibiotic_id, d.prevention_antibiotic_other);
+  if ("error" in synced) return synced;
   revalidate();
+  revalidatePath("/portal/tracker/prevention");
   revalidatePath("/portal/tracker/settings");
   const next = String(formData.get("next") ?? "/portal/tracker");
   redirect(next.startsWith("/") ? next : "/portal/tracker");
@@ -394,6 +442,84 @@ export async function setFeeling(episodeId: string | null, feeling: number, onDa
   return { ok: true };
 }
 
+// --------------------------------------------------------------- prevention
+
+function revalidatePrevention() {
+  revalidatePath("/portal/tracker");
+  revalidatePath("/portal/tracker/prevention");
+  revalidatePath("/portal/tracker/about-me");
+}
+
+/** Add one or more things to "what I'm taking". Already-active keys are skipped. */
+export async function addPreventions(input: { keys: string[]; otherName?: string; antibioticId?: string; antibioticOther?: string; startedOn?: string | null }) {
+  const { user, supabase } = await session();
+  const keys = input.keys.filter((k) => PREVENTION_KEYS.includes(k));
+  if (!keys.length) return { error: "Choose at least one." };
+  const started = input.startedOn && isoDate.safeParse(input.startedOn).success && input.startedOn <= isoToday() ? input.startedOn : null;
+  const { data: active } = await supabase.from("tracker_preventions").select("option_key").eq("user_id", user.id).is("stopped_on", null);
+  const have = new Set((active ?? []).map((a) => a.option_key));
+  const rows = keys.filter((k) => !have.has(k) || k === "other").map((key) => {
+    const ab = ANTIBIOTIC_PREVENTIONS.includes(key) ? preventionAntibiotic(input.antibioticId, input.antibioticOther) : { antibiotic_id: null, other_name: null };
+    return { user_id: user.id, option_key: key, other_name: key === "other" ? input.otherName?.trim() || null : ab.other_name, antibiotic_id: ab.antibiotic_id, started_on: started };
+  });
+  if (rows.length) {
+    const { error } = await supabase.from("tracker_preventions").insert(rows);
+    if (error) return { error: "Could not save. Please try again." };
+  }
+  await audit(supabase, user.id, "prevention_added", { keys: rows.map((r) => r.option_key) });
+  revalidatePrevention();
+  return { ok: true };
+}
+
+export async function updatePrevention(id: string, patch: { startedOn?: string | null; stoppedOn?: string | null; helping?: string | null; notes?: string }) {
+  const { user, supabase } = await session();
+  if (!uuid.safeParse(id).success) return { error: "Not found" };
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const today = isoToday();
+  if (patch.startedOn !== undefined) {
+    if (patch.startedOn === null || patch.startedOn === "") update.started_on = null;
+    else if (!isoDate.safeParse(patch.startedOn).success || patch.startedOn > today) return { error: "Choose a start date that isn't in the future." };
+    else update.started_on = patch.startedOn;
+  }
+  if (patch.stoppedOn !== undefined) {
+    if (patch.stoppedOn === null) update.stopped_on = null;
+    else if (!isoDate.safeParse(patch.stoppedOn).success || patch.stoppedOn > today) return { error: "Choose a date that isn't in the future." };
+    else update.stopped_on = patch.stoppedOn;
+  }
+  if (patch.helping !== undefined) {
+    if (patch.helping !== null && !HELPING.some((h) => h.key === patch.helping)) return { error: "Choose an answer" };
+    update.helping = patch.helping;
+  }
+  if (patch.notes !== undefined) update.notes = patch.notes.slice(0, 2000) || null;
+  const { error } = await supabase.from("tracker_preventions").update(update).eq("id", id).eq("user_id", user.id);
+  if (error) return { error: error.message.includes("check") ? "The stop date can't be before the start date." : "Could not save." };
+  if (patch.stoppedOn) await audit(supabase, user.id, "prevention_stopped", { id });
+  revalidatePrevention();
+  return { ok: true };
+}
+
+/** "Start again": a fresh row from today, so the earlier try stays in the history. */
+export async function restartPrevention(id: string) {
+  const { user, supabase } = await session();
+  if (!uuid.safeParse(id).success) return { error: "Not found" };
+  const { data: prev } = await supabase.from("tracker_preventions").select("option_key, other_name, antibiotic_id").eq("id", id).eq("user_id", user.id).maybeSingle();
+  if (!prev) return { error: "Not found" };
+  const { error } = await supabase.from("tracker_preventions").insert({ user_id: user.id, option_key: prev.option_key, other_name: prev.other_name, antibiotic_id: prev.antibiotic_id, started_on: isoToday() });
+  if (error) return { error: "Could not save." };
+  await audit(supabase, user.id, "prevention_added", { keys: [prev.option_key], restarted: true });
+  revalidatePrevention();
+  return { ok: true };
+}
+
+export async function deletePrevention(id: string) {
+  const { user, supabase } = await session();
+  if (!uuid.safeParse(id).success) return { error: "Not found" };
+  const { error } = await supabase.from("tracker_preventions").delete().eq("id", id).eq("user_id", user.id);
+  if (error) return { error: "Could not delete." };
+  revalidatePrevention();
+  return { ok: true };
+}
+
 // ----------------------------------------------------------------- settings
 
 export async function setReminders(daily: boolean, monthly: boolean) {
@@ -410,7 +536,7 @@ export async function deleteAllTrackerData(confirmation: string) {
   if (confirmation.trim() !== "DELETE") return { error: "Type DELETE to confirm." };
   // Audit first: the log row survives (it is the record that a delete happened).
   await audit(supabase, user.id, "tracker_data_deleted");
-  for (const table of ["tracker_episodes", "tracker_checkins", "tracker_consents", "tracker_profiles"]) {
+  for (const table of ["tracker_episodes", "tracker_checkins", "tracker_preventions", "tracker_consents", "tracker_profiles"]) {
     const { error } = await supabase.from(table).delete().eq("user_id", user.id);
     if (error) return { error: "Could not delete everything. Please try again." };
   }

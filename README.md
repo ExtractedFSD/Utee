@@ -194,6 +194,15 @@ and reflects it back as plain counts. It never diagnoses, scores risk,
 recommends treatment or mentions products; all wording that could be read
 that way lives in `src/lib/tracker/copy.ts` for compliance review.
 
+**Prevention.** "What I'm taking" (`/portal/tracker/prevention`, table
+`tracker_preventions`, migration `0005_prevention.sql`) records everything a
+person takes or does to help prevent UTIs: prescribed medicines, hormonal
+options, vaccines, supplements, creams and habits, multi-select from the list in
+`src/lib/tracker/prevention.ts`. Each item keeps a start and stop date and a
+self-rating ("Is it helping?"), so the history and what people feel works are
+kept. It is asked on "About you", shown as coloured pills on the dashboard, and
+included in the GP summary and exports.
+
 **Data.** Nine `tracker_*` tables (`supabase/migrations/0003_tracker.sql`),
 every row keyed by `user_id` with owner-only row-level security. The app
 reads and writes them with the user's own session only (`src/lib/tracker/data.ts`).
