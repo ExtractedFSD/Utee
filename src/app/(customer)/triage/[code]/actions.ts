@@ -66,7 +66,7 @@ export async function submitTriage(code: string, formData: FormData) {
     { onConflict: "kit_id" }
   );
   if (insertError) {
-    return { error: "Could not save your answers — please try again." };
+    return { error: "Could not save your answers. Please try again." };
   }
 
   try {
@@ -81,7 +81,7 @@ export async function submitTriage(code: string, formData: FormData) {
     });
   } catch (err) {
     console.error("[triage] activation failed after saving answers", err);
-    return { error: "Your answers were saved but we couldn't activate the kit — please try again." };
+    return { error: "Your answers were saved but we couldn't activate the kit. Please try again." };
   }
 
   redirect(`/portal/tests/${kit.id}?submitted=1`);

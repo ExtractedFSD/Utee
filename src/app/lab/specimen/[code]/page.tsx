@@ -6,7 +6,7 @@ import { formatDateTime, type KitStatus } from "@/lib/status";
 import { SpecimenActions } from "./SpecimenActions";
 
 /**
- * Lab specimen page — reached by scanning the QR on the urine pot. Shows the
+ * Lab specimen page, reached by scanning the QR on the urine pot. Shows the
  * specimen number and lab state only; no patient identity or symptoms.
  */
 export default async function SpecimenPage({

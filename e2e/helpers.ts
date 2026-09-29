@@ -146,7 +146,7 @@ const SUPABASE_HOST = new URL(requireEnv("NEXT_PUBLIC_SUPABASE_URL")).host;
  * the throwaway address; the server action that gates account creation and
  * the code verification both run for real.
  *
- * The browser's other calls to Supabase (just the code verification — every
+ * The browser's other calls to Supabase (just the code verification, every
  * other data access in the app is server-side) are relayed through Node.
  * That keeps the suite working in CI sandboxes where only the test runner,
  * not the browser, has outbound network access.
@@ -280,7 +280,7 @@ export async function expectKitStatus(code: string, status: string, timeoutMs = 
   throw new Error(`kit ${code} is "${last}", expected "${status}" after ${timeoutMs}ms`);
 }
 
-/** Newest unassigned kit — what "Create batch" of 1 just produced. */
+/** Newest unassigned kit, what "Create batch" of 1 just produced. */
 export async function newestCreatedKitCode(): Promise<string> {
   const { data } = await admin()
     .from("kits")

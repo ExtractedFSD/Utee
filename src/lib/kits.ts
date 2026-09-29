@@ -26,7 +26,7 @@ type ClaimableKit = { id: string; code: string; status: string; customer_id: str
 
 /**
  * A kit can be claimed by whoever scans it when it was never assigned to an
- * order — i.e. it was sold through a retailer or another marketplace rather
+ * order, i.e. it was sold through a retailer or another marketplace rather
  * than the Utee store. Store kits are assigned at dispatch, so they can never
  * be claimed by a stranger.
  */

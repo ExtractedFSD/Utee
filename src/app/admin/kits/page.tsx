@@ -30,7 +30,7 @@ export default async function KitsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Kit fulfilment"
-        subtitle="Create QR labels, then link a kit to an order when you pack it — or attach a return label for retail stock."
+        subtitle="Create QR labels, then link a kit to an order when you pack it, or attach a return label for retail stock."
         action={<LinkButton href="/admin/kits/print" variant="secondary">Print labels</LinkButton>}
       />
 
@@ -50,7 +50,7 @@ export default async function KitsPage() {
                   className={`rounded-full px-3 py-1 text-sm font-mono hover:bg-slate-200 ${
                     retail ? "bg-amber-50 text-amber-800 border border-amber-200" : "bg-slate-100 text-slate-700"
                   }`}
-                  title={retail ? "Prepared for retail — awaiting registration by the buyer" : undefined}
+                  title={retail ? "Prepared for retail. Awaiting registration by the buyer" : undefined}
                 >
                   {kit.code}
                   {retail && <span className="ml-1.5 font-sans text-xs">retail</span>}

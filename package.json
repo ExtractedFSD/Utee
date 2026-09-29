@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:load": "node scripts/load-test.mjs"
+    "test:load": "node scripts/load-test.mjs",
+    "check:copy": "node scripts/check-copy.mjs",
+    "prebuild": "node scripts/check-copy.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

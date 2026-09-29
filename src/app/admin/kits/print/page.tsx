@@ -1,7 +1,7 @@
 import QRCode from "react-qr-code";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PageHeader, Wordmark } from "@/components/ui";
+import { PageHeader, Logo } from "@/components/ui";
 import { PrintButton } from "./PrintButton";
 
 /** Printable sheet of QR labels for all unassigned kits. */
@@ -21,7 +21,7 @@ export default async function PrintLabelsPage() {
       <div className="no-print">
         <PageHeader
           title="Print kit labels"
-          subtitle="One label per unassigned kit — stick one on the box and one on the urine pot."
+          subtitle="One label per unassigned kit. Stick one on the box and one on the urine pot."
           action={<PrintButton />}
         />
       </div>
@@ -36,7 +36,7 @@ export default async function PrintLabelsPage() {
             <p className="text-[10px] text-slate-500 text-center leading-snug">
               Scan before taking your sample
             </p>
-            <Wordmark className="text-base text-maroon" />
+            <Logo className="h-4 w-auto text-maroon" />
           </div>
         ))}
       </div>

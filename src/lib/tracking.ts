@@ -6,7 +6,7 @@ import { logKitEvent } from "@/lib/events";
  *
  * Production: Royal Mail Tracked both ways. Point Royal Mail's Tracking API
  * push notifications (or an aggregator like AfterShip) at
- * POST /api/webhooks/tracking with the shared secret header — see
+ * POST /api/webhooks/tracking with the shared secret header, see
  * applyTrackingEvent below for the expected payload.
  *
  * Local dev: TRACKING_PROVIDER=mock lets admins advance shipments manually

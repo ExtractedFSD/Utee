@@ -5,7 +5,7 @@ import { Card, CardTitle, PageHeader, StatusBadge, EmptyState } from "@/componen
 import { formatDateTime, type KitStatus } from "@/lib/status";
 
 /**
- * Lab work queue. Deliberately shows specimen codes only — never patient
+ * Lab work queue. Deliberately shows specimen codes only, never patient
  * names, emails or symptoms.
  */
 export default async function LabHome() {

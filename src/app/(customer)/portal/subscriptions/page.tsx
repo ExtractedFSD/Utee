@@ -17,7 +17,7 @@ export default async function SubscriptionsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Your subscriptions"
-        subtitle="Skip a delivery, change the date, or cancel — no need to contact us."
+        subtitle="Skip a delivery, change the date, or cancel. No need to contact us."
       />
       {subscriptions?.length ? (
         <div className="space-y-4">

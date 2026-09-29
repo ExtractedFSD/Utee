@@ -19,7 +19,7 @@ export async function createKitBatch(count: number) {
 
   // Codes are random, so a batch can collide with itself or with stock already
   // printed. Codes are unique in the database, which would otherwise fail the
-  // whole insert — so de-duplicate within the batch and retry on a clash.
+  // whole insert, so de-duplicate within the batch and retry on a clash.
   let lastError = "";
   for (let attempt = 0; attempt < 5; attempt++) {
     const codes = new Set<string>();
@@ -35,7 +35,7 @@ export async function createKitBatch(count: number) {
     if (error.code !== "23505") return { error: error.message };
     lastError = error.message;
   }
-  return { error: `Could not generate unique kit codes — please try again (${lastError})` };
+  return { error: `Could not generate unique kit codes. Please try again (${lastError})` };
 }
 
 /**
@@ -60,7 +60,7 @@ export async function prepareRetailKit(input: { kitCode: string; returnTracking:
     .select("id, status, customer_id")
     .eq("code", kitCode)
     .maybeSingle();
-  if (!kit) return { error: `Kit ${kitCode} not found — create a batch first` };
+  if (!kit) return { error: `Kit ${kitCode} not found. Create a batch first` };
   if (kit.status !== "created" || kit.customer_id) {
     return { error: `Kit ${kitCode} is already assigned` };
   }
@@ -120,7 +120,7 @@ export async function dispatchKit(input: {
     .select("id, status")
     .eq("code", kitCode)
     .maybeSingle();
-  if (!kit) return { error: `Kit ${kitCode} not found — create a batch first` };
+  if (!kit) return { error: `Kit ${kitCode} not found. Create a batch first` };
   if (kit.status !== "created") return { error: `Kit ${kitCode} is already assigned` };
 
   // A kit prepared for retail already carries a return label; it is packed
@@ -130,7 +130,7 @@ export async function dispatchKit(input: {
     .select("id", { count: "exact", head: true })
     .eq("kit_id", kit.id);
   if (existingShipments) {
-    return { error: `Kit ${kitCode} is prepared for retail — pick a different kit for this order` };
+    return { error: `Kit ${kitCode} is prepared for retail. Pick a different kit for this order` };
   }
 
   const { data: order } = await admin
@@ -245,7 +245,7 @@ export async function revertKitStage(kitId: string, reason: string) {
 
   // Void the data the reverted stage produced.
   if (from === "report_ready") {
-    // Patient may already have downloaded the report — unlink it and reopen.
+    // Patient may already have downloaded the report, unlink it and reopen.
     // Delete the PDF too: it's patient-identifiable and nothing references it
     // once report_path is cleared.
     const { data: report } = await admin

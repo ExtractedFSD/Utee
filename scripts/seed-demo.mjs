@@ -6,7 +6,7 @@
  *
  *   node scripts/seed-demo.mjs <your-admin-email> <patient-email>
  *
- * Use real inboxes you control — login codes are emailed. Requires
+ * Use real inboxes you control, login codes are emailed. Requires
  * NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the environment:
  *   set -a; source .env.local; set +a; node scripts/seed-demo.mjs ...
  */
@@ -37,7 +37,7 @@ async function ensureUser(email, role, fullName) {
     console.log(`Created ${role}: ${normalized}`);
     return created.user.id;
   }
-  // Already exists — make sure the profile has the requested role.
+  // Already exists, make sure the profile has the requested role.
   const { data: profile } = await supabase
     .from("profiles")
     .select("id")
@@ -45,7 +45,7 @@ async function ensureUser(email, role, fullName) {
     .maybeSingle();
   if (!profile) throw new Error(`Could not create or find user ${normalized}: ${error.message}`);
   await supabase.from("profiles").update({ role, full_name: fullName }).eq("id", profile.id);
-  console.log(`User ${normalized} already existed — role set to ${role}`);
+  console.log(`User ${normalized} already existed, role set to ${role}`);
   return profile.id;
 }
 

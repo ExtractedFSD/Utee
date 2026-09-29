@@ -29,7 +29,7 @@ export function loadEnv(file = ".env.local") {
 export function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
-    throw new Error(`${name} is not set — copy .env.example to .env.local and fill it in`);
+    throw new Error(`${name} is not set, copy .env.example to .env.local and fill it in`);
   }
   return value;
 }

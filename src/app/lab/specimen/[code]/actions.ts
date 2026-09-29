@@ -102,7 +102,7 @@ export async function uploadResults(code: string, formData: FormData) {
     return { error: `Could not save results: ${insertError.message}` };
   }
 
-  // Visible to the customer as "analysis complete" — never the result itself.
+  // Visible to the customer as "analysis complete", never the result itself.
   await logKitEvent(admin, {
     kitId: kit.id,
     type: "lab",

@@ -51,7 +51,7 @@ export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
                 setBatchMessage(
                   result.error
                     ? result.error
-                    : `Created ${result.codes?.length} kits — use "Print labels" to print them.`
+                    : `Created ${result.codes?.length} kits. Use "Print labels" to print them.`
                 );
               });
             }}
@@ -86,7 +86,7 @@ export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
               <option value="">Select order…</option>
               {pendingOrders.map((order) => (
                 <option key={order.id} value={order.order_number}>
-                  {order.order_number} — {order.email} ({formatDate(order.placed_at)})
+                  {order.order_number} · {order.email} ({formatDate(order.placed_at)})
                 </option>
               ))}
             </select>

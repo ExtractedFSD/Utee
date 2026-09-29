@@ -3,12 +3,12 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, inputClass, Wordmark } from "@/components/ui";
+import { Button, inputClass, Logo } from "@/components/ui";
 import { prepareSignIn } from "./actions";
 
 /**
  * `next` is attacker-controllable (anyone can hand out a /login?next=… link),
- * so only same-origin paths are honoured — never an absolute or
+ * so only same-origin paths are honoured, never an absolute or
  * protocol-relative URL that would bounce a signed-in patient off-site.
  */
 function safeNext(value: string | null): string {
@@ -52,7 +52,7 @@ function LoginForm() {
       return;
     }
 
-    // shouldCreateUser: false — the account now exists in every valid case;
+    // shouldCreateUser: false, the account now exists in every valid case;
     // this stops strangers signing up directly.
     const { error } = await supabase.auth.signInWithOtp({
       email: normalized,
@@ -87,7 +87,7 @@ function LoginForm() {
   return (
     <div className="w-full max-w-sm">
       <div className="text-center mb-8 text-white">
-        <Wordmark className="text-[56px]" tm />
+        <Logo className="h-14 w-auto mx-auto" />
         <p className="text-sm text-white/85 mt-3">
           Your secure portal for orders, tests and subscriptions.
         </p>
@@ -111,8 +111,8 @@ function LoginForm() {
               />
               <p className="text-xs text-slate-500 mt-1.5">
                 {fromKit
-                  ? "Ordered from the Utee store? Use the email on your order. Bought your kit elsewhere? Enter your email and we'll set up your account. Either way we'll send you a one-time sign-in code — no password needed."
-                  : "Use the email from your Utee order — we'll send you a one-time sign-in code. No password needed."}
+                  ? "Ordered from the Utee store? Use the email on your order. Bought your kit elsewhere? Enter your email and we'll set up your account. Either way we'll send you a one-time sign-in code. No password needed."
+                  : "Use the email from your Utee order and we'll send you a one-time sign-in code. No password needed."}
               </p>
             </div>
             {error && <p className="text-sm text-rose-600">{error}</p>}

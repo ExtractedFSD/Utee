@@ -23,7 +23,7 @@ export function CaseActions({
     return (
       <Card className="bg-emerald-50 border-emerald-200">
         <p className="text-sm text-emerald-800">
-          Final report uploaded {formatDateTime(completedAt)} — the patient has been notified
+          Final report uploaded {formatDateTime(completedAt)}. The patient has been notified
           and can download it from their portal.
         </p>
       </Card>
@@ -71,7 +71,7 @@ export function CaseActions({
         <CardTitle>Upload final patient report</CardTitle>
         <Field
           label="Clinical summary (optional)"
-          hint="Internal note — not shown to the patient"
+          hint="Internal note, not shown to the patient"
         >
           <textarea name="summary" rows={3} className={inputClass} />
         </Field>

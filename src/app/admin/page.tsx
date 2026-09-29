@@ -70,7 +70,7 @@ export default async function AdminHome() {
                         {patient && (
                           <span className="text-slate-500 font-normal">
                             {" "}
-                            — {patient.full_name ?? patient.email}
+                            · {patient.full_name ?? patient.email}
                           </span>
                         )}
                       </p>
@@ -101,7 +101,7 @@ export default async function AdminHome() {
                 >
                   <div>
                     <p className="text-sm font-medium text-slate-900">
-                      {customer.full_name ?? "—"}
+                      {customer.full_name ?? "No name"}
                     </p>
                     <p className="text-xs text-slate-400">{customer.email}</p>
                   </div>

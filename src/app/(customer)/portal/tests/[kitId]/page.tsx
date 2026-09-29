@@ -73,8 +73,8 @@ export default async function TestDetailPage({
           <div className="max-w-xl">
             <p className="font-display text-2xl font-light">Before you take your sample</p>
             <p className="text-sm text-white/85 mt-1 leading-relaxed">
-              Scan the QR code on your kit, or tap here, to record your symptoms first —
-              your sample can&apos;t be processed without them.
+              Scan the QR code on your kit, or tap here, to record your symptoms first.
+              Your sample can&apos;t be processed without them.
             </p>
           </div>
           <LinkButton href={`/triage/${kit.code}`} variant="white">Complete symptom form</LinkButton>

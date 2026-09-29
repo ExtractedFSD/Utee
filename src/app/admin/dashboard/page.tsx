@@ -9,7 +9,7 @@ import {
   type KitStatus,
 } from "@/lib/status";
 
-/** Business dashboard — super admin only. */
+/** Business dashboard, super admin only. */
 export default async function DashboardPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Eyebrow, Wordmark } from "@/components/ui";
+import { Eyebrow, Logo } from "@/components/ui";
 
 async function signOut() {
   "use server";
@@ -12,8 +12,8 @@ async function signOut() {
 
 /**
  * App chrome. Two tones from the design system:
- *   brand — pink→maroon gradient header over a pale pink ground (patients)
- *   staff — midnight header over a near-white ground (lab, clinic, admin),
+ *   brand, pink→maroon gradient header over a pale pink ground (patients)
+ *   staff, midnight header over a near-white ground (lab, clinic, admin),
  *           kept deliberately plain for operational screens
  */
 export function Shell({
@@ -41,7 +41,7 @@ export function Shell({
           <div className="flex h-[72px] items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link href="/" className="text-white hover:text-white/90">
-                <Wordmark className="text-[34px]" tm />
+                <Logo className="h-8 w-auto" />
               </Link>
               <Eyebrow pill className="hidden sm:inline-block !py-1.5 !px-3.5 !shadow-none">
                 {areaLabel}
