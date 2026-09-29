@@ -21,7 +21,7 @@ export function FeelingFaces({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="How are you feeling today?">
+    <div className="flex gap-1.5 sm:gap-2" role="radiogroup" aria-label="How are you feeling?">
       {FEELINGS.map((f) => {
         const n = Number(f.key);
         const on = value === n;
@@ -32,18 +32,22 @@ export function FeelingFaces({
             role="radio"
             aria-checked={on}
             aria-label={f.label}
-            title={f.label}
             disabled={disabled}
             onClick={() => onChange(n)}
-            className={`flex h-14 w-14 items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${
-              on ? "bg-maroon border-maroon text-white shadow-card" : "bg-white border-slate-200 text-midnight hover:border-maroon/40"
-            }`}
+            className="flex w-12 sm:w-14 flex-col items-center gap-1 disabled:opacity-60"
           >
-            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="12" cy="12" r="9.5" />
-              <path d="M9 9.5h.01M15 9.5h.01" strokeWidth="2" />
-              <path d={MOUTHS[f.key]} />
-            </svg>
+            <span
+              className={`flex h-12 w-12 items-center justify-center rounded-full border transition-colors ${
+                on ? "bg-maroon border-maroon text-white shadow-card" : "bg-white border-slate-200 text-midnight hover:border-maroon/40"
+              }`}
+            >
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="9.5" />
+                <path d="M9 9.5h.01M15 9.5h.01" strokeWidth="2" />
+                <path d={MOUTHS[f.key]} />
+              </svg>
+            </span>
+            <span className={`text-[10px] sm:text-[11px] ${on ? "font-semibold text-maroon" : "text-slate-600"}`} aria-hidden>{f.label}</span>
           </button>
         );
       })}

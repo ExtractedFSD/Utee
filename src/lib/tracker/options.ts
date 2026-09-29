@@ -110,10 +110,10 @@ export const PREGNANT: Option[] = [
 
 export const FEELINGS: Option[] = [
   { key: "1", label: "Awful" },
-  { key: "2", label: "Rough" },
-  { key: "3", label: "So-so" },
-  { key: "4", label: "Okay" },
-  { key: "5", label: "Good" },
+  { key: "2", label: "Bad" },
+  { key: "3", label: "OK" },
+  { key: "4", label: "Good" },
+  { key: "5", label: "Great" },
 ];
 
 export function labelFor(list: Option[], key: string | null | undefined): string {

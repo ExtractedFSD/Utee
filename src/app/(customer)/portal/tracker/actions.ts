@@ -224,6 +224,28 @@ export async function toggleTrigger(episodeId: string, key: string, on: boolean,
   return toggleItem("tracker_triggers", "trigger", TRIGGERS, episodeId, key, on, otherText, loggedOn);
 }
 
+/** "Same as yesterday": copy yesterday's symptom set onto today. */
+export async function copyYesterdaySymptoms(episodeId: string) {
+  const { user, supabase } = await session();
+  if (!uuid.safeParse(episodeId).success) return { error: "Not found" };
+  const today = isoToday();
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const [{ data: prev }, { data: cur }] = await Promise.all([
+    supabase.from("tracker_symptoms").select("symptom, other_text").eq("episode_id", episodeId).eq("logged_on", yesterday),
+    supabase.from("tracker_symptoms").select("symptom").eq("episode_id", episodeId).eq("logged_on", today),
+  ]);
+  const have = new Set((cur ?? []).map((c) => c.symptom));
+  const rows = (prev ?? [])
+    .filter((p) => !have.has(p.symptom))
+    .map((p) => ({ user_id: user.id, episode_id: episodeId, symptom: p.symptom, other_text: p.other_text, logged_on: today }));
+  if (rows.length) {
+    const { error } = await supabase.from("tracker_symptoms").insert(rows);
+    if (error) return { error: "Could not save." };
+  }
+  revalidate(episodeId);
+  return { ok: true };
+}
+
 // --------------------------------------------------------------- treatments
 
 const treatmentSchema = z.object({
@@ -257,6 +279,31 @@ export async function addTreatment(episodeId: string, input: z.input<typeof trea
     await supabase.from("tracker_profiles").update({ last_treatment_source: d.source }).eq("user_id", user.id);
   }
   revalidate(episodeId);
+  return { ok: true };
+}
+
+export async function updateTreatment(treatmentId: string, input: z.input<typeof treatmentSchema>) {
+  const { user, supabase } = await session();
+  const parsed = treatmentSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Please check the form" };
+  const d = parsed.data;
+  if (d.antibiotic_id !== "other" && !antibioticById(d.antibiotic_id)) return { error: "Choose an antibiotic from the list" };
+  const { data } = await supabase
+    .from("tracker_treatments")
+    .update({
+      antibiotic_id: d.antibiotic_id,
+      other_name: d.antibiotic_id === "other" ? d.other_name?.trim() || null : null,
+      started_on: d.started_on || null,
+      days: d.days,
+      course_type: d.course_type || null,
+      source: d.source || null,
+    })
+    .eq("id", treatmentId)
+    .eq("user_id", user.id)
+    .select("episode_id")
+    .maybeSingle();
+  if (!data) return { error: "Could not save." };
+  revalidate(data.episode_id);
   return { ok: true };
 }
 

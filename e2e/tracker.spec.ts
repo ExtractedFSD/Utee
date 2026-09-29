@@ -55,46 +55,76 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await expect(page.getByTestId("red-flag")).toHaveCount(0);
   });
 
-  await test.step("A red-flag symptom shows the safety banner; removing it hides it", async () => {
+  await test.step("Layout: primary action visible on load, Day shown once, nothing expanded", async () => {
+    const better = page.getByRole("button", { name: "I feel better" });
+    await expect(better).toBeVisible();
+    const box = await better.boundingBox();
+    expect(box && box.y + box.height <= PHONE.height, "I feel better is inside the first screen").toBe(true);
+    expect(await page.getByText(/Day \d+/).count()).toBe(1);
+    expect(await page.getByRole("dialog").count()).toBe(0);
+    await expect(page.getByTestId("today-card")).toBeVisible();
+    // Feeling faces carry text labels for screen readers.
+    await expect(page.getByRole("radio", { name: "Great" })).toBeVisible();
+  });
+
+  await test.step("A red-flag symptom shows the safety banner inside the Today card; removing it hides it", async () => {
     await page.getByRole("button", { name: "Blood in urine" }).click();
-    await expect(page.getByTestId("red-flag")).toBeVisible();
+    await expect(page.getByTestId("today-card").getByTestId("red-flag")).toBeVisible();
     await expect(page.getByTestId("red-flag")).toContainText("111");
+    await expect(page.getByText("Saved")).toBeVisible();
     await page.getByRole("button", { name: "Blood in urine" }).click();
     await expect(page.getByTestId("red-flag")).toHaveCount(0);
   });
 
-  await test.step("Add a trigger, a treatment from the picker, and a test", async () => {
-    await page.getByRole("button", { name: /Add more: Anything that might/ }).click();
-    await page.getByRole("button", { name: "Sex", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Sex", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await test.step("About this UTI: add a trigger, a treatment from the picker, and a test", async () => {
+    const about = page.getByTestId("about-card");
+    await about.getByRole("button", { name: /Possible triggers/ }).click();
+    const triggers = page.getByTestId("sheet-triggers");
+    await triggers.getByRole("button", { name: "Sex", exact: true }).click();
+    await expect(triggers.getByRole("button", { name: "Sex", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await triggers.getByRole("button", { name: "Done" }).click();
+    await expect(about.getByRole("button", { name: /Possible triggers/ })).toContainText("Sex");
 
-    await page.getByRole("button", { name: /Add more: Treatment/ }).click();
-    await page.getByLabel("Search by name or brand").fill("macrob");
-    await page.getByRole("option", { name: "Macrobid (nitrofurantoin)" }).click();
-    await page.getByRole("button", { name: "3 days" }).click();
-    await page.getByRole("button", { name: "Treatment course" }).click();
-    await page.getByRole("button", { name: "GP", exact: true }).click();
-    await page.getByRole("button", { name: "Add treatment" }).click();
-    await expect(page.getByText("Nitrofurantoin", { exact: true }).first()).toBeVisible();
+    await about.getByRole("button", { name: /^Treatment/ }).click();
+    const treat = page.getByTestId("sheet-treatment");
+    await treat.getByRole("button", { name: "Add an antibiotic" }).click();
+    await expect(treat.getByLabel("Search by name or brand")).toBeFocused();
+    await treat.getByLabel("Search by name or brand").fill("macrob");
+    await treat.getByRole("option", { name: "Macrobid (nitrofurantoin)" }).click();
+    await treat.getByRole("button", { name: "3 days" }).click();
+    await treat.getByRole("button", { name: "Treatment course" }).click();
+    await treat.getByRole("button", { name: "GP", exact: true }).click();
+    await treat.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(treat.getByText(/We'll ask how it went on/)).toBeVisible();
+    // The antibiotic's name appears exactly once while the sheet is open.
+    expect(await page.getByText("Nitrofurantoin", { exact: true }).count()).toBe(1);
+    await treat.getByRole("button", { name: "Done" }).click();
+    await expect(about.getByRole("button", { name: /^Treatment/ })).toContainText("Nitrofurantoin · 3 days");
+    expect(await page.getByText(/Nitrofurantoin/).count()).toBe(1);
 
-    await page.getByRole("button", { name: /Add more: Tests/ }).click();
-    await page.getByRole("button", { name: "Dipstick at home" }).click();
-    await page.getByRole("button", { name: "Positive" }).click();
-    await page.getByRole("button", { name: "Add test" }).click();
-    await expect(page.getByText(/Dipstick at home/)).toBeVisible();
+    await about.getByRole("button", { name: /^Tests/ }).click();
+    const tests = page.getByTestId("sheet-tests");
+    await tests.getByRole("button", { name: "Add a test" }).click();
+    await tests.getByRole("button", { name: "Dipstick at home" }).click();
+    await tests.getByRole("button", { name: "Positive" }).click();
+    await tests.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(tests.getByText(/Dipstick at home/)).toBeVisible();
+    await tests.getByRole("button", { name: "Done" }).click();
+    await expect(about.getByRole("button", { name: /^Tests/ })).toContainText("Dipstick at home · Positive");
   });
 
   await test.step("Feeling scale is one tap", async () => {
-    await page.getByRole("radio", { name: "Okay" }).click();
-    await expect(page.getByRole("radio", { name: "Okay" })).toHaveAttribute("aria-checked", "true");
+    await page.getByRole("radio", { name: "Good" }).click();
+    await expect(page.getByRole("radio", { name: "Good" })).toHaveAttribute("aria-checked", "true");
   });
 
-  await test.step("Close the episode and rate the antibiotic", async () => {
-    await page.getByRole("button", { name: "I feel better now" }).click();
+  await test.step("I feel better: close the episode and rate the antibiotic", async () => {
+    await page.getByRole("button", { name: "I feel better" }).click();
     const panel = page.getByTestId("close-panel");
     await panel.getByRole("button", { name: "Yes", exact: true }).click();
     await panel.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page.getByText(/^Ended /).first()).toBeVisible();
+    await expect(page.getByText(/^Ended /)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reopen" })).toBeVisible();
   });
 
   await test.step("Dashboard and history reflect it as facts", async () => {
@@ -152,6 +182,24 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await octx.close();
   });
 
+  await test.step("Delete is only reachable via the menu, with confirmation", async () => {
+    await page.goto("/portal/tracker/log");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
+    expect(await page.getByRole("button", { name: "Delete this UTI" }).count()).toBe(0);
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Delete this UTI" }).click();
+    await expect(page.getByTestId("confirm-delete")).toBeVisible();
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByTestId("confirm-delete")).toHaveCount(0);
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Delete this UTI" }).click();
+    await page.getByRole("button", { name: "Yes, delete it" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/history/);
+    const json = await page.request.get("/portal/tracker/export?format=json");
+    expect((await json.json()).episodes).toHaveLength(1);
+  });
+
   await test.step("Delete removes everything and leaves an audit row", async () => {
     const { data: me } = await admin().from("profiles").select("id").eq("email", email).single();
     await page.goto("/portal/tracker/settings");
@@ -190,12 +238,14 @@ test("tracker: a Utee test links without re-entry", async ({ browser }) => {
   await page.getByRole("button", { name: "Save", exact: true }).click();
   // Pregnancy answer alone shows the banner with its own wording.
   await expect(page.getByTestId("red-flag")).toContainText("midwife");
-  await page.getByRole("button", { name: /Add more: Tests/ }).click();
-  await page.getByRole("button", { name: "Utee test" }).click();
-  await page.getByRole("button", { name: `Kit ${kit.code}` }).click();
-  await page.getByRole("button", { name: "Add test" }).click();
-  await expect(page.getByText("Linked to your Utee test in the portal.")).toBeVisible();
-  await expect(page.getByText("Lab analysis complete")).toBeVisible();
+  await page.getByTestId("about-card").getByRole("button", { name: /^Tests/ }).click();
+  const tests = page.getByTestId("sheet-tests");
+  await tests.getByRole("button", { name: "Add a test" }).click();
+  await tests.getByRole("button", { name: "Utee test" }).click();
+  await tests.getByRole("button", { name: `Kit ${kit.code}` }).click();
+  await tests.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(tests.getByText("Linked to your Utee test in the portal.")).toBeVisible();
+  await expect(tests.getByText("Lab analysis complete")).toBeVisible();
   const pdf = await page.request.get("/portal/tracker/summary");
   expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
   await ctx.close();

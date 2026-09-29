@@ -60,8 +60,8 @@ export const KIT_STATUS_ADMIN_LABELS: Record<KitStatus, string> = {
 export const KIT_STATUS_COLORS: Record<KitStatus, string> = {
   created: "bg-slate-100 text-slate-700",
   assigned: "bg-slate-100 text-slate-700",
-  shipped: "bg-sky text-sky-800",
-  delivered: "bg-sky text-sky-800",
+  shipped: "bg-pink-50 text-maroon",
+  delivered: "bg-pink-50 text-maroon",
   activated: "bg-lavender-50 text-violet-800",
   in_transit_to_lab: "bg-sun text-amber-800",
   received_by_lab: "bg-sun text-amber-800",
