@@ -26,7 +26,7 @@ type TestItem = { id: string; kind: string; tested_on: string | null; result: st
 type Kit = { id: string; code: string; status: string; reportReady: boolean };
 /** Runs a server action in a transition. `optimistic` applies the expected result immediately. */
 type Run = (fn: () => Promise<unknown>, optimistic?: () => void) => void;
-type Row = "triggers" | "treatment" | "tests" | "notes";
+type Row = "symptoms" | "triggers" | "treatment" | "tests" | "notes";
 
 const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
 
@@ -35,10 +35,10 @@ const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
  * "About this UTI" as a collapsed summary that opens row by row.
  */
 export function EpisodeEditor({
-  episode, today, pregnantOrTrying, todaySymptoms, yesterdaySymptoms, triggers, treatments, tests, feelingToday,
+  episode, today, pregnantOrTrying, todaySymptoms, allSymptoms, yesterdaySymptoms, triggers, treatments, tests, feelingToday,
   symptomOrder, triggerOrder, previousAntibiotics, lastSource, kits,
 }: {
-  episode: EpisodeRow; today: string; pregnantOrTrying: string; todaySymptoms: Item[]; yesterdaySymptoms: string[];
+  episode: EpisodeRow; today: string; pregnantOrTrying: string; todaySymptoms: Item[]; allSymptoms: string[]; yesterdaySymptoms: string[];
   triggers: Item[]; treatments: Treatment[]; tests: TestItem[]; feelingToday: number | null;
   symptomOrder: string[]; triggerOrder: string[]; previousAntibiotics: string[]; lastSource: string | null; kits: Kit[];
 }) {
@@ -61,6 +61,8 @@ export function EpisodeEditor({
   const applyToggle = (state: string[], { key, on }: Toggle) => (on ? [...new Set([...state, key])] : state.filter((k) => k !== key));
   const [symptomKeys, toggleSymptomNow] = useOptimistic(todaySymptoms.map((s) => s.key), applyToggle);
   const [triggerKeys, toggleTriggerNow] = useOptimistic(triggers.map((t) => t.key), applyToggle);
+  // For a closed UTI the symptoms are one summary across the whole episode.
+  const [allSymptomKeys, toggleAllSymptomNow] = useOptimistic(allSymptoms, applyToggle);
   const [feeling, setFeelingNow] = useOptimistic(feelingToday, (_: number | null, next: number) => next);
 
   const run: Run = (fn, optimistic) => {
@@ -214,6 +216,14 @@ export function EpisodeEditor({
       <Card data-testid="about-card">
         <h2 className="font-display text-2xl font-light text-midnight mb-2">{copy.episode.aboutTitle}</h2>
         <ul className="divide-y divide-slate-100">
+          {!open && (
+            <SummaryRow
+              label={copy.episode.rows.symptoms}
+              lines={allSymptomKeys.map((k) => (k === "other" ? symptomOther || "Other" : labelFor(SYMPTOMS, k)))}
+              isOpen={openRow === "symptoms"}
+              onOpen={() => setOpenRow("symptoms")}
+            />
+          )}
           <SummaryRow
             label={copy.episode.rows.triggers}
             lines={[...triggerSet].map((k) => (k === "other" ? triggerOther || "Other" : labelFor(TRIGGERS, k)))}
@@ -240,6 +250,16 @@ export function EpisodeEditor({
             onOpen={() => setOpenRow("notes")}
           />
         </ul>
+
+        <Sheet open={openRow === "symptoms"} title={copy.log.symptomsPast} onClose={() => setOpenRow(null)} testId="sheet-symptoms">
+          <ChipGroup
+            options={orderOptions(SYMPTOMS, symptomOrder)}
+            selected={new Set(allSymptomKeys)}
+            onToggle={(key, on) => run(() => toggleSymptom(episode.id, key, on, symptomOther, episode.started_on), () => toggleAllSymptomNow({ key, on }))}
+            otherText={symptomOther}
+            onOtherText={setSymptomOther}
+          />
+        </Sheet>
 
         <Sheet open={openRow === "triggers"} title={copy.log.triggers} onClose={() => setOpenRow(null)} testId="sheet-triggers">
           <ChipGroup

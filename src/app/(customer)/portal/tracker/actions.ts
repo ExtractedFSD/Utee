@@ -116,14 +116,22 @@ export async function saveAboutMe(formData: FormData) {
 
 // ----------------------------------------------------------------- episodes
 
-export async function createEpisode(input: { startedOn: string; symptoms: string[]; otherText?: string }) {
+export async function createEpisode(input: { startedOn: string; endedOn?: string | null; symptoms: string[]; otherText?: string }) {
   const { user, supabase } = await session();
   const started = isoDate.safeParse(input.startedOn);
   if (!started.success || started.data > isoToday()) return { error: "Choose a start date that isn't in the future." };
+  // A past UTI is logged as one summary: it arrives already closed.
+  let endedOn: string | null = null;
+  if (input.endedOn) {
+    const ended = isoDate.safeParse(input.endedOn);
+    if (!ended.success || ended.data > isoToday()) return { error: "Choose an end date that isn't in the future." };
+    if (ended.data < started.data) return { error: "The end date can't be before the start date." };
+    endedOn = ended.data;
+  }
   const chosen = input.symptoms.filter((s) => SYMPTOMS.some((o) => o.key === s));
   const { data: episode, error } = await supabase
     .from("tracker_episodes")
-    .insert({ user_id: user.id, started_on: started.data })
+    .insert({ user_id: user.id, started_on: started.data, ended_on: endedOn })
     .select("id")
     .single();
   if (error || !episode) return { error: "Could not save. Please try again." };

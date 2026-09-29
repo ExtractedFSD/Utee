@@ -118,6 +118,22 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await expect(page.getByRole("radio", { name: "Good" })).toHaveAttribute("aria-checked", "true");
   });
 
+  await test.step("Dashboard while open: Edit today once logged, Day card and 12 months card are links", async () => {
+    await page.goto("/portal/tracker");
+    const openCard = page.getByTestId("open-episode-card");
+    await expect(openCard.getByRole("link", { name: "Edit today" })).toBeVisible();
+    await expect(openCard.getByRole("link", { name: "Log today" })).toHaveCount(0);
+    await openCard.getByRole("link", { name: "Open this UTI" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
+    await page.goto("/portal/tracker");
+    await page.getByTestId("last-year-card").getByRole("link", { name: "See full history" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/history$/);
+    await page.goBack();
+    await openCard.getByRole("link", { name: "Edit today" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
+    await expect(page.getByTestId("today-card")).toBeVisible();
+  });
+
   await test.step("I feel better: close the episode and rate the antibiotic", async () => {
     await page.getByRole("button", { name: "I feel better" }).click();
     const panel = page.getByTestId("close-panel");
@@ -180,6 +196,35 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     const { data: leakedTreat } = await client.from("tracker_treatments").select("id");
     expect(leakedTreat ?? []).toHaveLength(0);
     await octx.close();
+  });
+
+  await test.step("A past UTI is logged as one summary, not a daily check-in", async () => {
+    const tenDaysAgo = new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10);
+    const fiveDaysAgo = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
+    await page.goto("/portal/tracker/log");
+    await expect(page.getByTestId("still-going")).toHaveCount(0);
+    await page.getByTestId("start-date").getByRole("button", { name: "Earlier" }).click();
+    await page.getByTestId("start-date").getByLabel("When did it start?").fill(tenDaysAgo);
+    await expect(page.getByText("What are you noticing?")).toBeVisible();
+    await page.getByTestId("still-going").getByRole("button", { name: "It's over" }).click();
+    await expect(page.getByText("What did you notice?")).toBeVisible();
+    await page.getByTestId("end-date").getByRole("button", { name: "Earlier" }).click();
+    await page.getByTestId("end-date").getByLabel("When did it end?").fill(fiveDaysAgo);
+    await page.getByRole("button", { name: "Burning or stinging when peeing" }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
+    await expect(page.getByText(/^Ended /)).toBeVisible();
+    await expect(page.getByTestId("today-card")).toHaveCount(0);
+    const about = page.getByTestId("about-card");
+    await expect(about.getByRole("button", { name: /^What you noticed/ })).toContainText("Burning or stinging when peeing");
+    await about.getByRole("button", { name: /^What you noticed/ }).click();
+    await page.getByTestId("sheet-symptoms").getByRole("button", { name: "Needing to pee more often" }).click();
+    await page.getByTestId("sheet-symptoms").getByRole("button", { name: "Done" }).click();
+    await expect(about.getByRole("button", { name: /^What you noticed/ })).toContainText("Needing to pee more often");
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Delete this UTI" }).click();
+    await page.getByRole("button", { name: "Yes, delete it" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/history/);
   });
 
   await test.step("Delete is only reachable via the menu, with confirmation", async () => {
