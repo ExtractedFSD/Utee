@@ -11,9 +11,11 @@
     "test:e2e:headed": "playwright test --headed",
     "test:load": "node scripts/load-test.mjs",
     "check:copy": "node scripts/check-copy.mjs",
-    "prebuild": "node scripts/check-copy.mjs"
+    "prebuild": "node scripts/check-copy.mjs",
+    "test:unit": "vitest run"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.3.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.47.10",
     "next": "^15.1.6",
@@ -30,6 +32,7 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
   }
 }

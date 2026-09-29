@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   if (user.role !== "super_admin") redirect("/admin");
 
   const admin = createAdminClient();
-  const [{ count: customerCount }, { data: orders }, { data: kits }, { count: activeSubs }] =
+  const [{ count: customerCount }, { data: orders }, { data: kits }, { count: activeSubs }, { count: trackerUsers }, { count: researchConsents }, { count: trackerEpisodes }] =
     await Promise.all([
       admin.from("profiles").select("id", { count: "exact", head: true }).eq("role", "customer"),
       admin.from("orders").select("total_price, currency"),
@@ -25,6 +25,11 @@ export default async function DashboardPage() {
         .from("subscriptions")
         .select("id", { count: "exact", head: true })
         .eq("status", "active"),
+      // Tracker: aggregate counts only. No individual tracker data is ever
+      // read by staff code (see README, "UTI tracker").
+      admin.from("tracker_consents").select("id", { count: "exact", head: true }).eq("kind", "tracker").is("withdrawn_at", null),
+      admin.from("tracker_consents").select("id", { count: "exact", head: true }).eq("kind", "research").is("withdrawn_at", null),
+      admin.from("tracker_episodes").select("id", { count: "exact", head: true }),
     ]);
 
   const revenue = (orders ?? []).reduce((sum, o) => sum + Number(o.total_price), 0);
@@ -48,6 +53,9 @@ export default async function DashboardPage() {
           { label: "Total revenue", value: formatMoney(revenue, currency) },
           { label: "Test kits sold", value: String(totalKits) },
           { label: "Active subscriptions", value: String(activeSubs ?? 0) },
+          { label: "Tracker users", value: String(trackerUsers ?? 0) },
+          { label: "Research consents", value: String(researchConsents ?? 0) },
+          { label: "UTIs logged (all users)", value: String(trackerEpisodes ?? 0) },
         ].map((stat) => (
           <Card key={stat.label} className="text-center">
             <p className="text-3xl font-semibold text-slate-900">{stat.value}</p>

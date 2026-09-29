@@ -22,7 +22,10 @@ function LoginForm() {
   const next = safeNext(searchParams.get("next"));
   const fromKit = next.startsWith("/k/");
 
+  const [mode, setMode] = useState<"signin" | "signup">(searchParams.get("mode") === "signup" ? "signup" : "signin");
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
   const [error, setError] = useState<string | null>(null);
@@ -36,19 +39,19 @@ function LoginForm() {
     setError(null);
     const normalized = email.trim().toLowerCase();
 
-    // Accounts are created automatically when an order is placed. The only
-    // way to get one here is to arrive from the QR of a kit that was bought
-    // outside the Utee store and hasn't been registered yet.
-    const prepared = await prepareSignIn(normalized, next);
+    const prepared = await prepareSignIn(normalized, mode, fullName, dateOfBirth);
     if (!prepared.ok) {
       setBusy(false);
-      setError(
-        prepared.reason === "invalid-email"
-          ? "Please enter a valid email address."
-          : fromKit
-            ? "We couldn't find an account for that email. If you ordered from the Utee store, use the email address on your order. If this kit is already registered, use the email it was registered with."
-            : "We couldn't find an account for that email. Use the email address from your Utee order, or scan the QR code inside your kit to get started."
-      );
+      const messages: Record<string, string> = {
+        "invalid-email": "Please enter a valid email address.",
+        "name-required": "Please tell us your name.",
+        "dob-required": "Please enter your date of birth.",
+        exists: "There's already an account for that email. Sign in instead.",
+        "no-account": fromKit
+          ? "We couldn't find an account for that email. If you bought your kit in a shop, create an account first."
+          : "We couldn't find an account for that email. Use the email from your Utee order, or create an account.",
+      };
+      setError(messages[prepared.reason]);
       return;
     }
 
@@ -89,12 +92,64 @@ function LoginForm() {
       <div className="text-center mb-8 text-white">
         <Logo className="h-14 w-auto mx-auto" />
         <p className="text-sm text-white/85 mt-3">
-          Your secure portal for orders, tests and subscriptions.
+          Track your UTIs, tests, orders and subscriptions.
         </p>
       </div>
       <div className="bg-white rounded-card shadow-card p-6">
         {step === "email" ? (
           <form onSubmit={sendCode} className="space-y-4">
+            <div className="flex rounded-full bg-pink-25 p-1 text-eyebrow uppercase">
+              {(["signin", "signup"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => {
+                    setMode(m);
+                    setError(null);
+                  }}
+                  className={`flex-1 rounded-full py-2 transition-colors ${
+                    mode === m ? "bg-white text-midnight shadow-card" : "text-slate-600"
+                  }`}
+                  aria-pressed={mode === m}
+                >
+                  {m === "signin" ? "Sign in" : "Create account"}
+                </button>
+              ))}
+            </div>
+            {mode === "signup" && (
+              <div>
+                <label htmlFor="login-name" className="block text-sm font-medium text-slate-700 mb-1">
+                  Your name
+                </label>
+                <input
+                  id="login-name"
+                  type="text"
+                  required
+                  autoComplete="name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="First and last name"
+                  className={inputClass}
+                />
+              </div>
+            )}
+            {mode === "signup" && (
+              <div>
+                <label htmlFor="login-dob" className="block text-sm font-medium text-slate-700 mb-1">
+                  Date of birth
+                </label>
+                <input
+                  id="login-dob"
+                  type="date"
+                  required
+                  autoComplete="bday"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            )}
             <div>
               <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1">
                 Email address
@@ -110,14 +165,18 @@ function LoginForm() {
                 className={inputClass}
               />
               <p className="text-xs text-slate-500 mt-1.5">
-                {fromKit
-                  ? "Ordered from the Utee store? Use the email on your order. Bought your kit elsewhere? Enter your email and we'll set up your account. Either way we'll send you a one-time sign-in code. No password needed."
-                  : "Use the email from your Utee order and we'll send you a one-time sign-in code. No password needed."}
+                {mode === "signup"
+                  ? fromKit
+                    ? "Bought your kit in a shop? Create an account and we'll link the kit to it. We'll email you a one-time code. No password needed."
+                    : "We'll email you a one-time code to confirm your address. No password needed."
+                  : fromKit
+                    ? "Ordered from the Utee store? Use the email on your order. Bought your kit elsewhere? Create an account first. We'll email you a one-time code. No password needed."
+                    : "Use the email from your Utee order and we'll send you a one-time sign-in code. No password needed."}
               </p>
             </div>
             {error && <p className="text-sm text-rose-600">{error}</p>}
             <Button type="submit" disabled={busy} className="w-full">
-              {busy ? "Sending…" : "Email me a code"}
+              {busy ? "Sending..." : mode === "signup" ? "Create account" : "Email me a code"}
             </Button>
           </form>
         ) : (

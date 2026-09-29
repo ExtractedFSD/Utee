@@ -6,6 +6,7 @@ export type SessionUser = {
   id: string;
   email: string;
   fullName: string | null;
+  dateOfBirth: string | null;
   role: Role;
 };
 
@@ -18,7 +19,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, email, full_name, role")
+    .select("id, email, full_name, role, date_of_birth")
     .eq("id", user.id)
     .single();
   if (!profile) return null;
@@ -27,6 +28,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     id: profile.id,
     email: profile.email,
     fullName: profile.full_name,
+    dateOfBirth: (profile.date_of_birth as string | null) ?? null,
     role: profile.role as Role,
   };
 }
