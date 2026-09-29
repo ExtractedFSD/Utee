@@ -65,7 +65,7 @@ export async function trackerContext(): Promise<TrackerContext> {
 export async function requireTracker(): Promise<TrackerContext & { profile: TrackerProfile }> {
   const ctx = await trackerContext();
   if (!ctx.consents.tracker) redirect("/portal/tracker/consent");
-  if (!ctx.profile) redirect("/portal/tracker/about-me");
+  if (!ctx.profile) redirect("/portal/tracker/setup");
   return ctx as TrackerContext & { profile: TrackerProfile };
 }
 

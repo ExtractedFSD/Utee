@@ -5,7 +5,7 @@
  * claims, no treatment advice.
  */
 
-export const CONSENT_VERSION = "2026-09-29.1";
+export const CONSENT_VERSION = "2026-09-29.2";
 
 export const copy = {
   consent: {
@@ -13,7 +13,7 @@ export const copy = {
     intro:
       "The tracker keeps a private record of your UTIs so you can see your own history and share it with a GP or clinic if you choose. It records what you tell it and nothing more.",
     trackerText:
-      "I consent to Utee storing the symptoms, triggers, treatments, tests and notes I log in the tracker. This is health information. It is stored in the UK, only I can see it, and I can export or delete it at any time from the tracker settings.",
+      "I consent to Utee storing the symptoms, triggers, treatments, tests and notes I log in the tracker. This is health information. It is stored in the UK, only I can see it, and I can export or delete it at any time from the tracker settings. If I use the guided setup, what I type there is sent to Utee's AI provider only to fill in the form, and I can turn that off and tap the options instead.",
     trackerLabel: "I agree to Utee storing my tracker entries",
     researchTitle: "Optional: help research",
     researchText:
@@ -75,6 +75,64 @@ export const copy = {
     preventionManage: "Manage",
     preventionAdd: "Add what I'm taking",
     preventionHelps: "helps",
+    quickAdd: "Add UTIs quickly",
+  },
+
+  guided: {
+    title: "Guided setup",
+    titleQuick: "Add UTIs quickly",
+    intro: "Hi. I'll set up your tracker with a few short questions. Answer in your own words or tap the options. I only fill in your record. I don't give medical advice.",
+    introQuick: "Tell me about your UTIs in your own words and I'll fill in the record for you to check.",
+    aiNote: "What you type is sent to Utee's AI provider only to fill in the form. Switch it off to tap the options instead.",
+    aiOn: "AI reading on",
+    aiOff: "AI reading off",
+    askAbout: "First, a bit about you. Are you before, around or after the menopause? Do you use contraception? Are you pregnant or trying?",
+    askPrevention: "Do you take or do anything to help prevent UTIs? For example something you take each day, vaginal oestrogen, a vaccine, a cream or spray, or a habit like drinking more water.",
+    askUtis: "Now your UTIs, one or several. For each, roughly when it started and ended, what you noticed, what you took and whether it helped. Or say \"none yet\".",
+    askUtisQuick: "Tell me about a UTI, or several at once. Roughly when it started and ended, what you noticed, what you took and whether it helped.",
+    gotIt: "Here's what I picked up. Check it and change anything that's wrong.",
+    gotSeveral: (n: number) => `I picked up ${n} UTIs. Check each one and change anything that's wrong.`,
+    gotNothing: "I couldn't pick anything out of that. Tap the options below, or try again with a little more detail.",
+    thinking: "Reading that...",
+    savedAbout: "Saved. Thank you.",
+    savedPrevention: (n: number) => (n === 0 ? "Noted. Nothing added for now." : `Saved ${n} thing${n === 1 ? "" : "s"} to what you're taking.`),
+    savedUti: (date: string) => `Saved the UTI from ${date}.`,
+    anotherQ: "Another UTI to add?",
+    another: "Add another",
+    allDone: "That's all",
+    skip: "Skip for now",
+    noneYet: "None yet",
+    done: "All set. Your tracker is ready.",
+    doneQuick: "Done. Everything you added is in your history.",
+    goDashboard: "Go to my tracker",
+    goHistory: "See my history",
+    next: "Next",
+    saveUti: "Save this UTI",
+    discardUti: "Don't save this one",
+    send: "Send",
+    placeholder: "Type here...",
+    tapInstead: "Add one by tapping instead",
+    preferForm: "Prefer a form?",
+    startNeeded: "Choose when it started.",
+    fields: {
+      started: "When did it start?",
+      ended: "Has it ended?",
+      stillGoing: "Still going",
+      over: "It's over",
+      endedOn: "When did it end?",
+      symptoms: "What did you notice?",
+      triggers: "Anything that might have set it off?",
+      treatments: "Antibiotics",
+      tests: "Tests",
+      notes: "Notes",
+      days: "days",
+      worked: "Did it help?",
+      addTreatment: "Add an antibiotic",
+      addTest: "Add a test",
+      remove: "Remove",
+      kind: "What kind of test?",
+      result: "Result",
+    },
   },
 
   prevention: {

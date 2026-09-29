@@ -194,6 +194,16 @@ and reflects it back as plain counts. It never diagnoses, scores risk,
 recommends treatment or mentions products; all wording that could be read
 that way lives in `src/lib/tracker/copy.ts` for compliance review.
 
+**Guided setup.** After consent, `/portal/tracker/setup` runs a scripted
+conversation (about you, what you take, then UTIs) where people type in their
+own words or tap the options. Every assistant line comes from the copy file;
+nothing is generated. A typed answer is read into form fields by
+`src/lib/tracker/guided/extract.ts`: with `ANTHROPIC_API_KEY` set it uses the
+Anthropic API with a fixed schema (`guided/schema.ts`), otherwise the
+rule-based reader in `guided/local.ts`. The person always reviews the filled
+chips before Next or Save. `?mode=utis` ("Add UTIs quickly") skips straight to
+UTIs, and several UTIs in one message become one review card each.
+
 **Prevention.** "What I'm taking" (`/portal/tracker/prevention`, table
 `tracker_preventions`, migration `0005_prevention.sql`) records everything a
 person takes or does to help prevent UTIs: prescribed medicines, hormonal
