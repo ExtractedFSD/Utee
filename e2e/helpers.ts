@@ -151,7 +151,7 @@ const SUPABASE_HOST = new URL(requireEnv("NEXT_PUBLIC_SUPABASE_URL")).host;
  * That keeps the suite working in CI sandboxes where only the test runner,
  * not the browser, has outbound network access.
  */
-export async function loginViaUi(page: Page, email: string, next: string, signup?: { name: string }) {
+export async function loginViaUi(page: Page, email: string, next: string, signup?: { name: string; dateOfBirth?: string }) {
   const relay = async (route: import("@playwright/test").Route) => {
     const req = route.request();
     if (/\/auth\/v1\/otp/.test(req.url())) {
@@ -178,6 +178,7 @@ export async function loginViaUi(page: Page, email: string, next: string, signup
   if (signup) {
     await page.getByRole("button", { name: "Create account" }).first().click();
     await page.getByLabel("Your name").fill(signup.name);
+    await page.getByLabel("Date of birth").fill(signup.dateOfBirth ?? "1990-05-14");
   }
   await page.getByLabel("Email address").fill(email);
   await page.getByRole("button", { name: signup ? "Create account" : "Email me a code" }).last().click();

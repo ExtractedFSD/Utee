@@ -28,7 +28,6 @@ export const copy = {
     title: "About you",
     intro:
       "A few questions asked once, so you don't have to answer them every time. You can change them later in settings.",
-    dobHint: "Used on your GP summary so the person reading it knows who it is about.",
     pregnantHint: "If yes, we'll show safety information whenever you log a new UTI.",
     preventiveTitle: "Do you take a daily treatment to prevent UTIs?",
     preventiveHint: "Choose it from the list if so. Nothing here is a recommendation.",

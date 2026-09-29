@@ -157,3 +157,18 @@ export function formatDay(iso: string | null | undefined): string {
   if (!iso) return "-";
   return toDate(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 }
+
+/** Age band used for aggregate reporting, derived from the account's date of birth. */
+export function ageBandFor(dateOfBirth: string | null | undefined, today = isoToday()): string {
+  if (!dateOfBirth) return "prefer_not";
+  const [y, m, d] = dateOfBirth.split("-").map(Number);
+  const [ty, tm, td] = today.split("-").map(Number);
+  let age = ty - y;
+  if (tm < m || (tm === m && td < d)) age -= 1;
+  if (age < 25) return "18_24";
+  if (age < 35) return "25_34";
+  if (age < 45) return "35_44";
+  if (age < 55) return "45_54";
+  if (age < 65) return "55_64";
+  return "65_plus";
+}

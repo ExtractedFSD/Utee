@@ -25,6 +25,7 @@ function LoginForm() {
   const [mode, setMode] = useState<"signin" | "signup">(searchParams.get("mode") === "signup" ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
   const [error, setError] = useState<string | null>(null);
@@ -38,12 +39,13 @@ function LoginForm() {
     setError(null);
     const normalized = email.trim().toLowerCase();
 
-    const prepared = await prepareSignIn(normalized, mode, fullName);
+    const prepared = await prepareSignIn(normalized, mode, fullName, dateOfBirth);
     if (!prepared.ok) {
       setBusy(false);
       const messages: Record<string, string> = {
         "invalid-email": "Please enter a valid email address.",
         "name-required": "Please tell us your name.",
+        "dob-required": "Please enter your date of birth.",
         exists: "There's already an account for that email. Sign in instead.",
         "no-account": fromKit
           ? "We couldn't find an account for that email. If you bought your kit in a shop, create an account first."
@@ -127,6 +129,23 @@ function LoginForm() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="First and last name"
+                  className={inputClass}
+                />
+              </div>
+            )}
+            {mode === "signup" && (
+              <div>
+                <label htmlFor="login-dob" className="block text-sm font-medium text-slate-700 mb-1">
+                  Date of birth
+                </label>
+                <input
+                  id="login-dob"
+                  type="date"
+                  required
+                  autoComplete="bday"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
                   className={inputClass}
                 />
               </div>

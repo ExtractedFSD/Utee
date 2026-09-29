@@ -16,13 +16,14 @@ function toCsv(rows: Record<string, unknown>[], columns: string[]): string {
 /** Everything the tracker holds for this user. ?format=json (default) or csv */
 export async function GET(req: NextRequest) {
   const { supabase, user, profile } = await requireTracker();
+  const account = { full_name: user.fullName, date_of_birth: user.dateOfBirth, email: user.email };
   const format = req.nextUrl.searchParams.get("format") === "csv" ? "csv" : "json";
   const [data, consents] = await Promise.all([loadAll(supabase, user.id), trackerConsents(supabase, user.id)]);
   await audit(supabase, user.id, "data_exported", { format });
   const today = isoToday();
 
   if (format === "json") {
-    const body = { exported_at: new Date().toISOString(), profile, consents, ...data };
+    const body = { exported_at: new Date().toISOString(), account, profile, consents, ...data };
     return new NextResponse(JSON.stringify(body, null, 2), {
       headers: {
         "content-type": "application/json",

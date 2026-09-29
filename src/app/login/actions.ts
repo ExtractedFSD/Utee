@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 type PrepareResult =
   | { ok: true; created: boolean }
-  | { ok: false; reason: "no-account" | "invalid-email" | "name-required" | "exists" };
+  | { ok: false; reason: "no-account" | "invalid-email" | "name-required" | "dob-required" | "exists" };
 
 /**
  * Runs before the one-time code is requested.
@@ -19,7 +19,8 @@ type PrepareResult =
 export async function prepareSignIn(
   rawEmail: string,
   mode: "signin" | "signup",
-  fullName?: string
+  fullName?: string,
+  dateOfBirth?: string
 ): Promise<PrepareResult> {
   const parsed = z.string().trim().toLowerCase().email().safeParse(rawEmail);
   if (!parsed.success) return { ok: false, reason: "invalid-email" };
@@ -35,11 +36,15 @@ export async function prepareSignIn(
   if (existing) return { ok: false, reason: "exists" };
   const name = (fullName ?? "").trim().slice(0, 120);
   if (!name) return { ok: false, reason: "name-required" };
+  const dob = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(dateOfBirth ?? "");
+  const today = new Date().toISOString().slice(0, 10);
+  const earliest = `${new Date().getUTCFullYear() - 120}-01-01`;
+  if (!dob.success || dob.data >= today || dob.data < earliest) return { ok: false, reason: "dob-required" };
 
   const { error } = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
-    user_metadata: { role: "customer", full_name: name, signup_source: "portal" },
+    user_metadata: { role: "customer", full_name: name, date_of_birth: dob.data, signup_source: "portal" },
   });
   // Two tabs / a double submit: the account now exists, which is all we need.
   if (error && !/already|exists/i.test(error.message)) {

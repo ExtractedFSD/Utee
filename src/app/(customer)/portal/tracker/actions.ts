@@ -8,11 +8,11 @@ import { requireRole } from "@/lib/auth";
 import { audit, trackerConsents } from "@/lib/tracker/data";
 import { CONSENT_VERSION, copy } from "@/lib/tracker/copy";
 import {
-  AGE_BANDS, CONTRACEPTION, COURSE_TYPES, MENOPAUSE_STAGES, PREGNANT, SOURCES, SYMPTOMS,
+  CONTRACEPTION, COURSE_TYPES, MENOPAUSE_STAGES, PREGNANT, SOURCES, SYMPTOMS,
   TEST_KINDS, TEST_RESULTS, TRIGGERS, WORKED,
 } from "@/lib/tracker/options";
 import { antibioticById } from "@/lib/tracker/search";
-import { isoToday } from "@/lib/tracker/stats";
+import { ageBandFor, isoToday } from "@/lib/tracker/stats";
 
 const keys = (list: { key: string }[]) => list.map((o) => o.key) as [string, ...string[]];
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date");
@@ -75,8 +75,6 @@ export async function setConsent(kind: "tracker" | "research", on: boolean) {
 // ----------------------------------------------------------------- about me
 
 const aboutMeSchema = z.object({
-  date_of_birth: isoDate.refine((d) => d < isoToday(), "Enter your date of birth"),
-  age_band: z.enum(keys(AGE_BANDS)),
   menopause_stage: z.enum(keys(MENOPAUSE_STAGES)),
   contraception: z.enum(keys(CONTRACEPTION)),
   pregnant_or_trying: z.enum(keys(PREGNANT)),
@@ -87,8 +85,6 @@ const aboutMeSchema = z.object({
 export async function saveAboutMe(formData: FormData) {
   const { user, supabase } = await session();
   const parsed = aboutMeSchema.safeParse({
-    date_of_birth: String(formData.get("date_of_birth") ?? ""),
-    age_band: String(formData.get("age_band") ?? ""),
     menopause_stage: String(formData.get("menopause_stage") ?? "prefer_not"),
     contraception: String(formData.get("contraception") ?? "prefer_not"),
     pregnant_or_trying: String(formData.get("pregnant_or_trying") ?? "no"),
@@ -102,8 +98,8 @@ export async function saveAboutMe(formData: FormData) {
     : null;
   const { error } = await supabase.from("tracker_profiles").upsert({
     user_id: user.id,
-    date_of_birth: d.date_of_birth,
-    age_band: d.age_band,
+    date_of_birth: user.dateOfBirth,
+    age_band: ageBandFor(user.dateOfBirth),
     menopause_stage: d.menopause_stage,
     contraception: d.contraception,
     pregnant_or_trying: d.pregnant_or_trying,

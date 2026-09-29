@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button, Field, inputClass } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
-import { AGE_BANDS, CONTRACEPTION, MENOPAUSE_STAGES, PREGNANT } from "@/lib/tracker/options";
+import { CONTRACEPTION, MENOPAUSE_STAGES, PREGNANT } from "@/lib/tracker/options";
 import type { TrackerProfile } from "@/lib/tracker/data";
 import { Chip } from "../components/Chips";
 import { AntibioticPicker } from "../components/AntibioticPicker";
@@ -23,8 +23,6 @@ function ChipRadio({ name, options, value, onChange }: { name: string; options: 
 export function AboutMeForm({ profile, next }: { profile: TrackerProfile | null; next: string }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [dob, setDob] = useState(profile?.date_of_birth ?? "");
-  const [age, setAge] = useState(profile?.age_band ?? "");
   const [meno, setMeno] = useState(profile?.menopause_stage ?? "prefer_not");
   const [contra, setContra] = useState(profile?.contraception ?? "prefer_not");
   const [pregnant, setPregnant] = useState(profile?.pregnant_or_trying ?? "no");
@@ -44,13 +42,6 @@ export function AboutMeForm({ profile, next }: { profile: TrackerProfile | null;
       className="space-y-6"
     >
       <input type="hidden" name="next" value={next} />
-      <Field label="Date of birth" hint={copy.aboutMe.dobHint}>
-        <input type="date" name="date_of_birth" required value={dob} onChange={(e) => setDob(e.target.value)} className={`${inputClass} max-w-xs`} />
-      </Field>
-      <div>
-        <p className="text-sm font-semibold text-slate-700 mb-2">Age</p>
-        <ChipRadio name="age_band" options={AGE_BANDS} value={age} onChange={setAge} />
-      </div>
       <div>
         <p className="text-sm font-semibold text-slate-700 mb-2">Menopause</p>
         <ChipRadio name="menopause_stage" options={MENOPAUSE_STAGES} value={meno} onChange={setMeno} />
@@ -78,7 +69,7 @@ export function AboutMeForm({ profile, next }: { profile: TrackerProfile | null;
         )}
       </div>
       {error && <p className="text-sm text-rose-600">{error}</p>}
-      <Button type="submit" disabled={pending || !age}>{pending ? "Saving..." : copy.aboutMe.button}</Button>
+      <Button type="submit" disabled={pending}>{pending ? "Saving..." : copy.aboutMe.button}</Button>
     </form>
   );
 }

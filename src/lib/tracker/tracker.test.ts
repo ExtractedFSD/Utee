@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { redFlagFor, RED_FLAG_SYMPTOMS } from "./redflags";
 import { searchAntibiotics, antibioticName, PINNED_ANTIBIOTICS, ANTIBIOTICS } from "./search";
-import { summarise, patterns, episodeLength, orderByUsage, daysBetween } from "./stats";
+import { summarise, patterns, episodeLength, orderByUsage, daysBetween, ageBandFor } from "./stats";
 import { copy } from "./copy";
 import { SYMPTOMS, TRIGGERS } from "./options";
 
@@ -117,6 +117,12 @@ describe("stats", () => {
     const ordered = orderByUsage(keys, [{ key: "constipation" }, { key: "constipation" }, { key: "sex" }]);
     expect(ordered.slice(0, 2)).toEqual(["constipation", "sex"]);
     expect(ordered.at(-1)).toBe("other");
+  });
+  it("derives the age band from the date of birth", () => {
+    expect(ageBandFor("1990-05-14", "2026-09-29")).toBe("35_44");
+    expect(ageBandFor("2001-09-30", "2026-09-29")).toBe("18_24");
+    expect(ageBandFor("2001-09-29", "2026-09-29")).toBe("25_34");
+    expect(ageBandFor(null)).toBe("prefer_not");
   });
   it("episode length is inclusive", () => {
     expect(episodeLength({ id: "x", started_on: "2026-01-01", ended_on: "2026-01-01", notes: null })).toBe(1);

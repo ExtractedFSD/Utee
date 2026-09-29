@@ -19,8 +19,9 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
   await test.step("Anyone can create an account", async () => {
     await loginViaUi(page, email, "/portal/tracker", { name: "Tracker Tester" });
     await expect(page).toHaveURL(/\/portal\/tracker\/consent/);
-    const { data: profile } = await admin().from("profiles").select("id, full_name").eq("email", email).single();
+    const { data: profile } = await admin().from("profiles").select("id, full_name, date_of_birth").eq("email", email).single();
     expect(profile?.full_name).toBe("Tracker Tester");
+    expect(profile?.date_of_birth).toBe("1990-05-14");
     registerUser(profile!.id);
   });
 
@@ -37,8 +38,6 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
   });
 
   await test.step("About me, asked once", async () => {
-    await page.getByLabel("Date of birth").fill("1990-05-14");
-    await page.getByRole("button", { name: "35 to 44" }).click();
     await page.getByRole("button", { name: "Save and continue" }).click();
     await expect(page).toHaveURL(/\/portal\/tracker$/);
     await expect(page.getByText("Log your first UTI")).toBeVisible();
@@ -119,7 +118,8 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     expect(body.episodes).toHaveLength(1);
     expect(body.treatments[0].antibiotic_id).toBe("nitrofurantoin");
     expect(body.treatments[0].worked).toBe("yes");
-    expect(body.profile.date_of_birth).toBe("1990-05-14");
+    expect(body.account.date_of_birth).toBe("1990-05-14");
+    expect(body.profile.age_band).toBe("35_44");
 
     const csv = await page.request.get("/portal/tracker/export?format=csv");
     const text = await csv.text();
@@ -182,8 +182,6 @@ test("tracker: a Utee test links without re-entry", async ({ browser }) => {
   await page.goto("/portal/tracker/consent");
   await page.getByLabel(/I agree to Utee storing/).check();
   await page.getByRole("button", { name: "Start tracking" }).click();
-  await page.getByLabel("Date of birth").fill("1985-01-01");
-  await page.getByRole("button", { name: "25 to 34" }).click();
   await page.getByRole("button", { name: "Yes", exact: true }).nth(0).click(); // pregnant or trying: yes
   await page.getByRole("button", { name: "Save and continue" }).click();
   await expect(page.getByText(`Kit ${kit.code}`)).toBeVisible();

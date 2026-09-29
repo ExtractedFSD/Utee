@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 /** One-page GP summary. ?from=YYYY-MM-DD&to=YYYY-MM-DD&notes=1 */
 export async function GET(req: NextRequest) {
-  const { supabase, user, profile } = await requireTracker();
+  const { supabase, user } = await requireTracker();
   const q = req.nextUrl.searchParams;
   const iso = /^\d{4}-\d{2}-\d{2}$/;
   const today = isoToday();
@@ -15,19 +15,15 @@ export async function GET(req: NextRequest) {
   const to = iso.test(q.get("to") ?? "") ? q.get("to")! : today;
   const includeNotes = q.get("notes") === "1";
 
-  const [data, kits, { data: me }] = await Promise.all([
-    loadAll(supabase, user.id),
-    ownKits(supabase),
-    supabase.from("profiles").select("full_name").eq("id", user.id).single(),
-  ]);
+  const [data, kits] = await Promise.all([loadAll(supabase, user.id), ownKits(supabase)]);
   const kitByEpisodeTest: Record<string, { code: string; status: string; reportReady: boolean }> = {};
   for (const t of data.tests) {
     const kit = t.kit_id ? kits.find((k) => k.id === t.kit_id) : null;
     if (kit) kitByEpisodeTest[t.id] = { code: kit.code, status: kit.status, reportReady: kit.reportReady };
   }
   const pdf = await renderSummaryPdf(data, {
-    fullName: me?.full_name ?? user.fullName,
-    dateOfBirth: profile.date_of_birth,
+    fullName: user.fullName,
+    dateOfBirth: user.dateOfBirth,
     from,
     to,
     includeNotes,
