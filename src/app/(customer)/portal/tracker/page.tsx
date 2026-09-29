@@ -43,7 +43,7 @@ export default async function TrackerHome() {
           <p className="text-sm text-white/85 mb-5 leading-relaxed max-w-xl">{copy.dashboard.welcomeBody}</p>
           <div className="flex flex-wrap gap-3">
             <LinkButton href="/portal/tracker/log" variant="white">{copy.dashboard.logFirst}</LinkButton>
-            <LinkButton href="/portal/tracker/log" variant="white">{copy.dashboard.logPast}</LinkButton>
+            <LinkButton href="/portal/tracker/setup?mode=utis" variant="white">{copy.dashboard.quickAdd}</LinkButton>
           </div>
         </Card>
       ) : open ? (
@@ -138,6 +138,7 @@ export default async function TrackerHome() {
             <CardTitle>{copy.dashboard.quickActions}</CardTitle>
             <div className="flex flex-col gap-2">
               <LinkButton href="/portal/tracker/log">{copy.dashboard.logNew}</LinkButton>
+              <LinkButton href="/portal/tracker/setup?mode=utis" variant="secondary">{copy.dashboard.quickAdd}</LinkButton>
               <LinkButton href="/portal/tracker/summary" variant="secondary">{copy.dashboard.downloadSummary}</LinkButton>
               <LinkButton href="/portal/tracker/history" variant="secondary">{copy.dashboard.history}</LinkButton>
               <LinkButton href={storeUrl} variant="secondary" external>{copy.dashboard.orderTest}</LinkButton>

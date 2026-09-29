@@ -13,6 +13,8 @@ import {
 } from "@/lib/tracker/options";
 import { antibioticById } from "@/lib/tracker/search";
 import { ANTIBIOTIC_PREVENTIONS, HELPING, PREVENTION_KEYS, diffPreventions } from "@/lib/tracker/prevention";
+import { extract } from "@/lib/tracker/guided/extract";
+import { utiSaveSchema, type GuidedStep, type UtiSave } from "@/lib/tracker/guided/schema";
 import { ageBandFor, isoToday } from "@/lib/tracker/stats";
 
 const keys = (list: { key: string }[]) => list.map((o) => o.key) as [string, ...string[]];
@@ -48,7 +50,7 @@ export async function giveConsent(formData: FormData) {
   if (error) return { error: "Could not save your consent. Please try again." };
   await audit(supabase, user.id, "consent_given", { kinds: rows.map((r) => r.kind), version: CONSENT_VERSION });
   revalidate();
-  redirect("/portal/tracker/about-me");
+  redirect("/portal/tracker/setup");
 }
 
 export async function setConsent(kind: "tracker" | "research", on: boolean) {
@@ -160,6 +162,80 @@ export async function saveAboutMe(formData: FormData) {
   revalidatePath("/portal/tracker/settings");
   const next = String(formData.get("next") ?? "/portal/tracker");
   redirect(next.startsWith("/") ? next : "/portal/tracker");
+}
+
+/** About you without the form: used by the guided setup. */
+export async function saveAboutMeValues(input: { menopause_stage: string; contraception: string; pregnant_or_trying: string }) {
+  const { user, supabase } = await session();
+  const parsed = z.object({
+    menopause_stage: z.enum(keys(MENOPAUSE_STAGES)),
+    contraception: z.enum(keys(CONTRACEPTION)),
+    pregnant_or_trying: z.enum(keys(PREGNANT)),
+  }).safeParse(input);
+  if (!parsed.success) return { error: "Please check the answers" };
+  const { error } = await supabase.from("tracker_profiles").upsert({
+    user_id: user.id,
+    date_of_birth: user.dateOfBirth,
+    age_band: ageBandFor(user.dateOfBirth),
+    ...parsed.data,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) return { error: "Could not save. Please try again." };
+  revalidate();
+  revalidatePath("/portal/tracker/settings");
+  return { ok: true };
+}
+
+// ------------------------------------------------------------ guided setup
+
+/** Read one typed answer into form fields. Nothing is saved here. */
+export async function extractGuided(step: GuidedStep, text: string) {
+  await session();
+  const clean = text.trim().slice(0, 2000);
+  if (!clean) return { error: "Type something first." };
+  return extract(step, clean, isoToday());
+}
+
+/** Save one reviewed UTI from the guided setup in a single go. */
+export async function saveGuidedUti(input: UtiSave) {
+  const { user, supabase } = await session();
+  const parsed = utiSaveSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the UTI" };
+  const d = parsed.data;
+  const today = isoToday();
+  if (d.started_on > today) return { error: "Choose a start date that isn't in the future." };
+  if (d.ended_on && (d.ended_on > today || d.ended_on < d.started_on)) return { error: "The end date can't be before the start date." };
+  const { data: episode, error } = await supabase
+    .from("tracker_episodes")
+    .insert({ user_id: user.id, started_on: d.started_on, ended_on: d.ended_on, notes: d.notes?.trim() || null })
+    .select("id")
+    .single();
+  if (error || !episode) return { error: "Could not save. Please try again." };
+  const symptoms = d.symptoms.map((symptom) => ({ user_id: user.id, episode_id: episode.id, symptom, other_text: symptom === "other" ? d.other_symptom?.trim() || null : null, logged_on: d.started_on }));
+  if (symptoms.length) await supabase.from("tracker_symptoms").insert(symptoms);
+  const triggers = d.triggers.map((trigger) => ({ user_id: user.id, episode_id: episode.id, trigger, other_text: null, logged_on: d.started_on }));
+  if (triggers.length) await supabase.from("tracker_triggers").insert(triggers);
+  const treatments = d.treatments
+    .filter((t) => t.antibiotic_id)
+    .map((t) => ({
+      user_id: user.id,
+      episode_id: episode.id,
+      antibiotic_id: t.antibiotic_id!,
+      other_name: t.antibiotic_id === "other" ? t.other_name?.trim() || null : null,
+      started_on: d.started_on,
+      days: t.days,
+      course_type: t.course_type,
+      source: t.source,
+      worked: t.worked,
+    }));
+  if (treatments.length) await supabase.from("tracker_treatments").insert(treatments);
+  const tests = d.tests.map((t) => ({ user_id: user.id, episode_id: episode.id, kind: t.kind, tested_on: t.tested_on && isoDate.safeParse(t.tested_on).success ? t.tested_on : d.started_on, result: t.result, notes: null, kit_id: null }));
+  if (tests.length) await supabase.from("tracker_tests").insert(tests);
+  const lastSource = treatments.find((t) => t.source)?.source;
+  if (lastSource) await supabase.from("tracker_profiles").update({ last_treatment_source: lastSource }).eq("user_id", user.id);
+  await audit(supabase, user.id, "guided_uti_saved", { episode_id: episode.id, treatments: treatments.length, tests: tests.length });
+  revalidate(episode.id);
+  return { ok: true, id: episode.id as string };
 }
 
 // ----------------------------------------------------------------- episodes
@@ -469,6 +545,24 @@ export async function addPreventions(input: { keys: string[]; otherName?: string
   await audit(supabase, user.id, "prevention_added", { keys: rows.map((r) => r.option_key) });
   revalidatePrevention();
   return { ok: true };
+}
+
+/** Stop everything currently active with these keys, keeping the history. */
+export async function stopPreventions(keys: string[]) {
+  const { user, supabase } = await session();
+  const wanted = keys.filter((k) => PREVENTION_KEYS.includes(k));
+  if (!wanted.length) return { ok: true, stopped: 0 };
+  const { data } = await supabase
+    .from("tracker_preventions")
+    .update({ stopped_on: isoToday(), updated_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .is("stopped_on", null)
+    .in("option_key", wanted)
+    .select("id");
+  const n = data?.length ?? 0;
+  if (n) await audit(supabase, user.id, "prevention_stopped", { keys: wanted, count: n });
+  revalidatePrevention();
+  return { ok: true, stopped: n };
 }
 
 export async function updatePrevention(id: string, patch: { startedOn?: string | null; stoppedOn?: string | null; helping?: string | null; notes?: string }) {

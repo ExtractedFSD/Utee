@@ -13,7 +13,7 @@ export default async function PreventionPage() {
         eyebrow="Tracker"
         title={copy.prevention.title}
         subtitle={copy.prevention.intro}
-        action={<Link href="/portal/tracker" className="text-sm font-semibold text-maroon">Back to tracker</Link>}
+        action={<div className="flex flex-wrap gap-4"><Link href="/portal/tracker/setup?mode=prevention" className="text-sm font-semibold text-maroon">{copy.prevention.updateByChat}</Link><Link href="/portal/tracker" className="text-sm font-semibold text-maroon">Back to tracker</Link></div>}
       />
       <PreventionManager rows={rows} />
     </div>
