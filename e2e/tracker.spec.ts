@@ -37,10 +37,42 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     expect(consents?.[0].consent_text.length).toBeGreaterThan(50);
   });
 
-  await test.step("About me, asked once", async () => {
+  await test.step("About me, asked once, including what they take to prevent UTIs (multi-select)", async () => {
+    const picker = page.getByTestId("prevention-picker");
+    await picker.getByRole("button", { name: "D-mannose" }).click();
+    await picker.getByRole("button", { name: "Vaginal oestrogen (cream, pessary or ring)" }).click();
+    await picker.getByRole("button", { name: "Drinking more water" }).click();
     await page.getByRole("button", { name: "Save and continue" }).click();
     await expect(page).toHaveURL(/\/portal\/tracker$/);
     await expect(page.getByText("Log your first UTI")).toBeVisible();
+    const card = page.getByTestId("prevention-card");
+    await expect(card).toContainText("D-mannose");
+    await expect(card).toContainText("Vaginal oestrogen");
+    await expect(card).toContainText("More water");
+  });
+
+  await test.step("What I'm taking: rate, stop, and the history is kept", async () => {
+    await page.getByTestId("prevention-card").getByRole("link", { name: "Manage" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/prevention$/);
+    const current = page.getByTestId("prevention-current");
+    await current.getByRole("button", { name: /^D-mannose/ }).click();
+    const sheet = page.getByTestId("sheet-prevention");
+    await sheet.getByRole("radio", { name: "Yes" }).or(sheet.getByRole("button", { name: "Yes", exact: true })).first().click();
+    await sheet.getByRole("button", { name: "Done" }).click();
+    await expect(current.getByRole("button", { name: /^D-mannose/ })).toContainText("Is it helping? Yes");
+    await current.getByRole("button", { name: /^Drinking more water/ }).click();
+    await sheet.getByRole("button", { name: "I've stopped this" }).click();
+    await expect(page.getByTestId("prevention-past")).toContainText("Drinking more water");
+    await expect(current).not.toContainText("Drinking more water");
+    await current.getByRole("button", { name: "Add something" }).click();
+    const add = page.getByTestId("sheet-add-prevention");
+    await expect(add.getByRole("button", { name: "D-mannose" })).toHaveCount(0);
+    await add.getByRole("button", { name: "P Happi spray" }).click();
+    await add.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(current).toContainText("P Happi spray");
+    await page.goto("/portal/tracker");
+    await expect(page.getByTestId("prevention-card")).toContainText("D-mannose · helps");
+    await expect(page.getByTestId("prevention-card")).not.toContainText("More water");
   });
 
   let episodeUrl = "";
@@ -118,6 +150,22 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await expect(page.getByRole("radio", { name: "Good" })).toHaveAttribute("aria-checked", "true");
   });
 
+  await test.step("Dashboard while open: Edit today once logged, Day card and 12 months card are links", async () => {
+    await page.goto("/portal/tracker");
+    const openCard = page.getByTestId("open-episode-card");
+    await expect(openCard.getByRole("link", { name: "Edit today" })).toBeVisible();
+    await expect(openCard.getByRole("link", { name: "Log today" })).toHaveCount(0);
+    await openCard.getByRole("link", { name: "Open this UTI" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
+    await page.goto("/portal/tracker");
+    await page.getByTestId("last-year-card").getByRole("link", { name: "See full history" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/history$/);
+    await page.goBack();
+    await openCard.getByRole("link", { name: "Edit today" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
+    await expect(page.getByTestId("today-card")).toBeVisible();
+  });
+
   await test.step("I feel better: close the episode and rate the antibiotic", async () => {
     await page.getByRole("button", { name: "I feel better" }).click();
     const panel = page.getByTestId("close-panel");
@@ -147,6 +195,8 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     const body = await json.json();
     expect(body.episodes).toHaveLength(1);
     expect(body.treatments[0].antibiotic_id).toBe("nitrofurantoin");
+    expect(body.preventions.map((p: { option_key: string }) => p.option_key).sort()).toEqual(["d_mannose", "p_happi", "vaginal_oestrogen", "water"]);
+    expect(body.preventions.find((p: { option_key: string }) => p.option_key === "water").stopped_on).toBeTruthy();
     expect(body.treatments[0].worked).toBe("yes");
     expect(body.account.date_of_birth).toBe("1990-05-14");
     expect(body.profile.age_band).toBe("35_44");
@@ -182,6 +232,35 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await octx.close();
   });
 
+  await test.step("A past UTI is logged as one summary, not a daily check-in", async () => {
+    const tenDaysAgo = new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10);
+    const fiveDaysAgo = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
+    await page.goto("/portal/tracker/log");
+    await expect(page.getByTestId("still-going")).toHaveCount(0);
+    await page.getByTestId("start-date").getByRole("button", { name: "Earlier" }).click();
+    await page.getByTestId("start-date").getByLabel("When did it start?").fill(tenDaysAgo);
+    await expect(page.getByText("What are you noticing?")).toBeVisible();
+    await page.getByTestId("still-going").getByRole("button", { name: "It's over" }).click();
+    await expect(page.getByText("What did you notice?")).toBeVisible();
+    await page.getByTestId("end-date").getByRole("button", { name: "Earlier" }).click();
+    await page.getByTestId("end-date").getByLabel("When did it end?").fill(fiveDaysAgo);
+    await page.getByRole("button", { name: "Burning or stinging when peeing" }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
+    await expect(page.getByText(/^Ended /)).toBeVisible();
+    await expect(page.getByTestId("today-card")).toHaveCount(0);
+    const about = page.getByTestId("about-card");
+    await expect(about.getByRole("button", { name: /^What you noticed/ })).toContainText("Burning or stinging when peeing");
+    await about.getByRole("button", { name: /^What you noticed/ }).click();
+    await page.getByTestId("sheet-symptoms").getByRole("button", { name: "Needing to pee more often" }).click();
+    await page.getByTestId("sheet-symptoms").getByRole("button", { name: "Done" }).click();
+    await expect(about.getByRole("button", { name: /^What you noticed/ })).toContainText("Needing to pee more often");
+    await page.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Delete this UTI" }).click();
+    await page.getByRole("button", { name: "Yes, delete it" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker\/history/);
+  });
+
   await test.step("Delete is only reachable via the menu, with confirmation", async () => {
     await page.goto("/portal/tracker/log");
     await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -206,7 +285,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await page.getByLabel("Type DELETE to confirm").fill("DELETE");
     await page.getByRole("button", { name: "Delete everything" }).click();
     await expect(page).toHaveURL(/\/portal\?tracker=deleted/);
-    for (const table of ["tracker_episodes", "tracker_symptoms", "tracker_treatments", "tracker_tests", "tracker_checkins", "tracker_consents", "tracker_profiles"]) {
+    for (const table of ["tracker_episodes", "tracker_symptoms", "tracker_treatments", "tracker_tests", "tracker_checkins", "tracker_preventions", "tracker_consents", "tracker_profiles"]) {
       const { count } = await admin().from(table).select("*", { count: "exact", head: true }).eq("user_id", me!.id);
       expect(count, table).toBe(0);
     }

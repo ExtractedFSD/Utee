@@ -4,6 +4,7 @@ import { searchAntibiotics, antibioticName, PINNED_ANTIBIOTICS, ANTIBIOTICS } fr
 import { summarise, patterns, episodeLength, orderByUsage, daysBetween, ageBandFor } from "./stats";
 import { copy } from "./copy";
 import { SYMPTOMS, TRIGGERS } from "./options";
+import { diffPreventions, preventionName } from "./prevention";
 
 describe("red flags", () => {
   it("shows for each listed symptom and not otherwise", () => {
@@ -136,5 +137,19 @@ describe("copy", () => {
     const all = walk(copy).join(" ");
     expect(all).not.toContain(String.fromCharCode(0x2014));
     for (const banned of ["Probiotics", "D-Mannose", "supplement", "prevents", "recommended"]) expect(all).not.toContain(banned);
+  });
+});
+
+
+describe("prevention", () => {
+  it("diffs a re-picked list into adds and stops, ignoring unknown keys", () => {
+    const d = diffPreventions(["d_mannose", "water"], ["water", "vaginal_oestrogen", "made_up"]);
+    expect(d.add).toEqual(["vaginal_oestrogen"]);
+    expect(d.stop).toEqual(["d_mannose"]);
+  });
+  it("names things the way people know them", () => {
+    expect(preventionName({ option_key: "p_happi", other_name: null, antibiotic_id: null })).toBe("P Happi spray");
+    expect(preventionName({ option_key: "other", other_name: "Cystopurin", antibiotic_id: null })).toBe("Cystopurin");
+    expect(preventionName({ option_key: "low_dose_antibiotic", other_name: null, antibiotic_id: "nitrofurantoin" })).toBe("Low-dose daily antibiotic: Nitrofurantoin");
   });
 });

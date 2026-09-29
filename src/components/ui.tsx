@@ -100,10 +100,10 @@ export function Pill({ children, tone = "slate" }: { children: React.ReactNode; 
  * maroon (→ "primary"). Hover is a slight darken, not specified in the
  * source, flagged there as an assumption.
  */
-const buttonBase =
+export const buttonBase =
   "inline-flex min-h-[44px] items-center justify-center whitespace-nowrap rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
-const buttonVariants = {
+export const buttonVariants = {
   primary: "bg-maroon text-white hover:bg-brand-700 shadow-card",
   secondary: "bg-white text-midnight border border-midnight/15 hover:bg-pink-25",
   white: "bg-white text-midnight hover:bg-pink-25 shadow-card",

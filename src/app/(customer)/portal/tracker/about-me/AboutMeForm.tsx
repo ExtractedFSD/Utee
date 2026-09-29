@@ -4,9 +4,10 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { CONTRACEPTION, MENOPAUSE_STAGES, PREGNANT } from "@/lib/tracker/options";
-import type { TrackerProfile } from "@/lib/tracker/data";
+import type { PreventionRow, TrackerProfile } from "@/lib/tracker/data";
+import { ANTIBIOTIC_PREVENTIONS } from "@/lib/tracker/prevention";
 import { Chip } from "../components/Chips";
-import { AntibioticPicker } from "../components/AntibioticPicker";
+import { PreventionPicker } from "../components/PreventionPicker";
 import { saveAboutMe } from "../actions";
 
 function ChipRadio({ name, options, value, onChange }: { name: string; options: { key: string; label: string }[]; value: string; onChange: (v: string) => void }) {
@@ -20,15 +21,17 @@ function ChipRadio({ name, options, value, onChange }: { name: string; options: 
   );
 }
 
-export function AboutMeForm({ profile, next }: { profile: TrackerProfile | null; next: string }) {
+export function AboutMeForm({ profile, active, next }: { profile: TrackerProfile | null; active: PreventionRow[]; next: string }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [meno, setMeno] = useState(profile?.menopause_stage ?? "prefer_not");
   const [contra, setContra] = useState(profile?.contraception ?? "prefer_not");
   const [pregnant, setPregnant] = useState(profile?.pregnant_or_trying ?? "no");
-  const [takesPreventive, setTakesPreventive] = useState(!!profile?.preventive_treatment_id);
-  const [preventive, setPreventive] = useState<string | null>(profile?.preventive_treatment_id ?? null);
-  const [preventiveOther, setPreventiveOther] = useState(profile?.preventive_treatment_other ?? "");
+  const [preventions, setPreventions] = useState<Set<string>>(new Set(active.map((a) => a.option_key)));
+  const [preventionOther, setPreventionOther] = useState(active.find((a) => a.option_key === "other")?.other_name ?? "");
+  const activeAntibiotic = active.find((a) => ANTIBIOTIC_PREVENTIONS.includes(a.option_key) && a.antibiotic_id);
+  const [antibioticId, setAntibioticId] = useState<string | null>(activeAntibiotic?.antibiotic_id ?? null);
+  const [antibioticOther, setAntibioticOther] = useState(activeAntibiotic?.other_name ?? "");
 
   return (
     <form
@@ -58,15 +61,21 @@ export function AboutMeForm({ profile, next }: { profile: TrackerProfile | null;
       <div>
         <p className="text-sm font-semibold text-slate-700 mb-1">{copy.aboutMe.preventiveTitle}</p>
         <p className="text-xs text-slate-500 mb-2">{copy.aboutMe.preventiveHint}</p>
-        <div className="flex gap-2 mb-3">
-          <Chip selected={!takesPreventive} onClick={() => { setTakesPreventive(false); setPreventive(null); }}>No</Chip>
-          <Chip selected={takesPreventive} onClick={() => setTakesPreventive(true)}>Yes</Chip>
+        <input type="hidden" name="prevention_keys" value={[...preventions].join(",")} />
+        <input type="hidden" name="prevention_other" value={preventionOther} />
+        <input type="hidden" name="prevention_antibiotic_id" value={antibioticId ?? ""} />
+        <input type="hidden" name="prevention_antibiotic_other" value={antibioticOther} />
+        <div data-testid="prevention-picker">
+          <PreventionPicker
+            selected={preventions}
+            onToggle={(key, on) => setPreventions((prev) => { const n = new Set(prev); if (on) n.add(key); else n.delete(key); return n; })}
+            otherName={preventionOther}
+            onOtherName={setPreventionOther}
+            antibioticId={antibioticId}
+            antibioticOther={antibioticOther}
+            onAntibiotic={(id, other) => { setAntibioticId(id); if (other !== undefined) setAntibioticOther(other); }}
+          />
         </div>
-        <input type="hidden" name="preventive_treatment_id" value={takesPreventive ? preventive ?? "" : ""} />
-        <input type="hidden" name="preventive_treatment_other" value={preventiveOther} />
-        {takesPreventive && (
-          <AntibioticPicker value={preventive} otherName={preventiveOther} onChange={(id, other) => { setPreventive(id); if (other !== undefined) setPreventiveOther(other); }} />
-        )}
       </div>
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <Button type="submit" disabled={pending}>{pending ? "Saving..." : copy.aboutMe.button}</Button>

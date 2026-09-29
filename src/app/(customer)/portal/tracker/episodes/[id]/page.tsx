@@ -26,6 +26,7 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
       today={today}
       pregnantOrTrying={profile.pregnant_or_trying}
       todaySymptoms={symptoms.filter((s) => s.logged_on === today).map((s) => ({ key: s.symptom, other: s.other_text }))}
+      allSymptoms={[...new Set(symptoms.map((s) => s.symptom))]}
       yesterdaySymptoms={symptoms.filter((s) => s.logged_on === yesterday).map((s) => s.symptom)}
       triggers={[...new Map(triggers.map((t) => [t.trigger, { key: t.trigger, other: t.other_text }])).values()]}
       treatments={treatments}

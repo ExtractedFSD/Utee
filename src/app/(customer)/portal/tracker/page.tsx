@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card, CardTitle, LinkButton, PageHeader, StatusBadge } from "@/components/ui";
+import { Card, CardTitle, LinkButton, PageHeader, StatusBadge, buttonBase, buttonVariants } from "@/components/ui";
 import { requireTracker, loadAll, ownKits } from "@/lib/tracker/data";
 import { copy } from "@/lib/tracker/copy";
 import { redFlagFor } from "@/lib/tracker/redflags";
@@ -8,6 +8,7 @@ import type { KitStatus } from "@/lib/status";
 import { RedFlagBanner } from "./components/RedFlagBanner";
 import { MonthStrip } from "./components/MonthStrip";
 import { QuickCheckin } from "./QuickCheckin";
+import { PreventionPills } from "./components/PreventionPills";
 
 export default async function TrackerHome() {
   const { supabase, user, profile } = await requireTracker();
@@ -23,8 +24,11 @@ export default async function TrackerHome() {
   const communityUrl = process.env.NEXT_PUBLIC_COMMUNITY_URL;
   const storeUrl = process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL ?? "#";
   const brandNew = data.episodes.length === 0;
+  const taking = data.preventions.filter((x) => !x.stopped_on);
   const today = new Date().toISOString().slice(0, 10);
   const feelingToday = data.checkins.find((c) => c.on_date === today)?.feeling ?? null;
+  // "Edit today" once something has been logged for today on the open UTI; "Log today" on a new day.
+  const loggedToday = !!open && (openRows.some((x) => x.logged_on === today) || feelingToday !== null);
 
   return (
     <div className="space-y-6">
@@ -43,14 +47,17 @@ export default async function TrackerHome() {
           </div>
         </Card>
       ) : open ? (
-        <Card className="bg-gradient-brand text-white">
+        <Card className="relative bg-gradient-brand text-white" data-testid="open-episode-card">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="font-display text-3xl font-light">{copy.dashboard.openEpisodeDay(s.openDay)}</p>
+              {/* The whole card opens this UTI; the buttons sit above the stretched link. */}
+              <Link href={`/portal/tracker/episodes/${open.id}`} className="font-display text-3xl font-light after:absolute after:inset-0 after:rounded-card" aria-label={copy.dashboard.openEpisodeLink}>
+                {copy.dashboard.openEpisodeDay(s.openDay)}
+              </Link>
               <p className="text-sm text-white/85 mt-1">Started {formatDay(open.started_on)}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <LinkButton href={`/portal/tracker/episodes/${open.id}`} variant="white">{copy.dashboard.logToday}</LinkButton>
+            <div className="relative z-10 flex flex-wrap gap-2">
+              <LinkButton href={`/portal/tracker/episodes/${open.id}`} variant="white">{loggedToday ? copy.dashboard.editToday : copy.dashboard.logToday}</LinkButton>
               <QuickCheckin episodeId={open.id} feelingToday={feelingToday} />
             </div>
           </div>
@@ -64,9 +71,24 @@ export default async function TrackerHome() {
         </Card>
       )}
 
+      <Card data-testid="prevention-card">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <CardTitle>{copy.dashboard.prevention}</CardTitle>
+          {taking.length > 0 && <Link href="/portal/tracker/prevention" className="text-sm font-semibold text-maroon min-h-[44px] inline-flex items-center">{copy.dashboard.preventionManage}</Link>}
+        </div>
+        {taking.length > 0 ? (
+          <PreventionPills rows={taking} />
+        ) : (
+          <div>
+            <p className="text-sm text-slate-600 mb-4 max-w-xl">{copy.dashboard.preventionEmpty}</p>
+            <LinkButton href="/portal/tracker/prevention" variant="secondary">{copy.dashboard.preventionAdd}</LinkButton>
+          </div>
+        )}
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <Card>
+          <Card className="relative" data-testid="last-year-card">
             <CardTitle>{copy.dashboard.lastYear}</CardTitle>
             <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
               <Stat label="UTIs, 6 months" value={s.episodes6m} />
@@ -76,6 +98,12 @@ export default async function TrackerHome() {
             </dl>
             {s.averageLengthDays !== null && <p className="text-sm text-slate-700 mb-4">Average length: {s.averageLengthDays} days</p>}
             <MonthStrip months={s.months} />
+            <div className="mt-5">
+              {/* Stretched link: the whole card opens the history page. */}
+              <Link href="/portal/tracker/history" className={`${buttonBase} ${buttonVariants.secondary} after:absolute after:inset-0 after:rounded-card`}>
+                {copy.dashboard.seeHistory}
+              </Link>
+            </div>
           </Card>
 
           <Card>
