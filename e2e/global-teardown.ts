@@ -9,7 +9,7 @@ import { admin, REGISTRY_FILE, TEST_EMAIL_DOMAIN } from "./helpers";
  */
 export default async function globalTeardown() {
   if (process.env.E2E_KEEP) {
-    console.log(`[e2e] E2E_KEEP set — leaving test data in place (${REGISTRY_FILE})`);
+    console.log(`[e2e] E2E_KEEP set, leaving test data in place (${REGISTRY_FILE})`);
     return;
   }
   const db = admin();

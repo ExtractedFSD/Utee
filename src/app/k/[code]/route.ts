@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { claimKit, isClaimable } from "@/lib/kits";
 
 /**
- * QR code entry point — the QR on the kit box and urine pot encodes
+ * QR code entry point, the QR on the kit box and urine pot encodes
  * {APP_URL}/k/{code}. Where it leads depends on who scanned it:
  *   - signed-out            → login, then back here
  *   - lab (or admin)        → lab specimen page (specimen number only)
@@ -63,7 +63,7 @@ export async function GET(
         }
       }
       if (kit.customer_id !== user.id) {
-        // Kit not linked to this customer — don't leak whose it is.
+        // Kit not linked to this customer, don't leak whose it is.
         return NextResponse.redirect(url(`/portal?kit=not-yours`));
       }
       const preTriage = ["assigned", "shipped", "delivered"].includes(kit.status);

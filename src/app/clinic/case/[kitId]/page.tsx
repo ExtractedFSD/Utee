@@ -89,15 +89,15 @@ export default async function CasePage({
               <dl className="space-y-1 border-t border-slate-100 pt-3">
                 <div className="flex gap-2">
                   <dt className="font-medium text-slate-600">Duration:</dt>
-                  <dd>{symptoms.duration ?? "—"}</dd>
+                  <dd>{symptoms.duration ?? "Not answered"}</dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="font-medium text-slate-600">Previous UTI:</dt>
-                  <dd>{symptoms.previousUti ?? "—"}</dd>
+                  <dd>{symptoms.previousUti ?? "Not answered"}</dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="font-medium text-slate-600">Pregnant:</dt>
-                  <dd>{symptoms.pregnant ?? "—"}</dd>
+                  <dd>{symptoms.pregnant ?? "Not answered"}</dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="font-medium text-slate-600">Current antibiotics:</dt>

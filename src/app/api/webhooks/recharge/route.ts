@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
- * Recharge webhooks — register subscription/created, subscription/updated,
+ * Recharge webhooks, register subscription/created, subscription/updated,
  * subscription/cancelled and charge/upcoming pointing here. Keeps the local
  * subscriptions cache in sync so the portal renders instantly without
  * calling Recharge on every page view.
@@ -23,13 +23,13 @@ export async function POST(req: NextRequest) {
 
   // Recharge signs webhooks with HMAC-SHA256 of the raw body using the webhook
   // client secret (Recharge admin > API tokens > webhooks), which is a
-  // different value from the API access token — hence its own env var, with a
+  // different value from the API access token, hence its own env var, with a
   // fallback so deployments that only set RECHARGE_API_TOKEN keep working.
   // An unsigned request is never trusted: this endpoint can write subscription
   // rows and link them to a customer by email.
   const secret = process.env.RECHARGE_WEBHOOK_SECRET || process.env.RECHARGE_API_TOKEN;
   if (!secret) {
-    console.error("[recharge webhook] no RECHARGE_WEBHOOK_SECRET configured — rejecting");
+    console.error("[recharge webhook] no RECHARGE_WEBHOOK_SECRET configured, rejecting");
     return NextResponse.json({ error: "not configured" }, { status: 503 });
   }
 
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     },
     { onConflict: "recharge_subscription_id" }
   );
-  // Fail loudly so Recharge retries — a silent 200 would leave the local
+  // Fail loudly so Recharge retries, a silent 200 would leave the local
   // subscriptions cache permanently out of step with Recharge.
   if (upsertError) {
     console.error("[recharge webhook] subscription upsert failed", upsertError);

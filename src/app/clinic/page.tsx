@@ -44,7 +44,7 @@ export default async function ClinicHome() {
                       <p className="text-sm font-semibold text-slate-900">
                         <span className="font-mono">{kit.code}</span>
                         {patient?.full_name && (
-                          <span className="font-normal text-slate-500"> — {patient.full_name}</span>
+                          <span className="font-normal text-slate-500"> · {patient.full_name}</span>
                         )}
                       </p>
                       <p className="text-xs text-slate-400">

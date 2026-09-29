@@ -102,7 +102,7 @@ async function runTarget(target) {
   };
 }
 
-console.log(`Load test against ${BASE} — ${CONCURRENCY} concurrent workers × ${SECONDS}s per target\n`);
+console.log(`Load test against ${BASE}, ${CONCURRENCY} concurrent workers × ${SECONDS}s per target\n`);
 const rows = [];
 for (const target of targets) {
   process.stdout.write(`${target.name} … `);

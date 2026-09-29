@@ -103,7 +103,7 @@ export function formatMoney(amount: number | string, currency = "GBP") {
 }
 
 export function formatDate(value: string | Date | null | undefined) {
-  if (!value) return "—";
+  if (!value) return "-";
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
@@ -112,7 +112,7 @@ export function formatDate(value: string | Date | null | undefined) {
 }
 
 export function formatDateTime(value: string | Date | null | undefined) {
-  if (!value) return "—";
+  if (!value) return "-";
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",

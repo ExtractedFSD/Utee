@@ -28,7 +28,7 @@ export default async function TriagePage({
     <div className="max-w-2xl mx-auto space-y-6">
       <PageHeader
         title="Before you take your sample"
-        subtitle={`Kit ${kit.code} — please answer these questions now, then take your sample straight afterwards so your symptoms and sample arrive together.`}
+        subtitle={`Kit ${kit.code}. Please answer these questions now, then take your sample straight afterwards so your symptoms and sample arrive together.`}
       />
       <TriageForm code={kit.code} />
     </div>

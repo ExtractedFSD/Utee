@@ -23,7 +23,7 @@ export function CardTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="font-display text-2xl font-light text-midnight mb-4">{children}</h2>;
 }
 
-/** ALL-CAPS letterspaced section label — the design system's EyebrowTab. */
+/** ALL-CAPS letterspaced section label, the design system's EyebrowTab. */
 export function Eyebrow({
   children,
   pill = false,
@@ -69,7 +69,7 @@ export function PageHeader({
   );
 }
 
-/** Small ALL-CAPS pill — the design system's RangeTag, used for statuses. */
+/** Small ALL-CAPS pill, the design system's RangeTag, used for statuses. */
 const tagClass =
   "inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[.12em] whitespace-nowrap";
 
@@ -93,7 +93,7 @@ export function Pill({ children, tone = "slate" }: { children: React.ReactNode; 
 /*
  * Buttons: white pill with ALL-CAPS midnight label is the brand CTA (used on
  * coloured grounds → variant "white"). On white cards the same pill is filled
- * maroon (→ "primary"). Hover is a slight darken — not specified in the
+ * maroon (→ "primary"). Hover is a slight darken, not specified in the
  * source, flagged there as an assumption.
  */
 const buttonBase =
@@ -172,7 +172,7 @@ export function EmptyState({ title, body }: { title: string; body?: string }) {
   );
 }
 
-/** Pink→maroon gradient call-out with white text — for upsells and highlights. */
+/** Pink→maroon gradient call-out with white text, for upsells and highlights. */
 export function Callout({
   children,
   className = "",
@@ -197,17 +197,4 @@ export function Notice({ children, tone = "sun" }: { children: React.ReactNode; 
   return <div className={`rounded-card border p-4 text-sm ${tones[tone]}`}>{children}</div>;
 }
 
-/** The Utee wordmark: Cooper Light, sentence case, ™ on formal lockups. */
-export function Wordmark({
-  className = "",
-  tm = false,
-}: {
-  className?: string;
-  tm?: boolean;
-}) {
-  return (
-    <span className={`font-display font-light leading-none tracking-tight ${className}`}>
-      Utee{tm && <sup className="text-[0.35em] align-super ml-0.5">™</sup>}
-    </span>
-  );
-}
+export { Logo } from "@/components/Logo";

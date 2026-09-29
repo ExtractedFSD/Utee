@@ -7,14 +7,14 @@ function wrap(title: string, bodyHtml: string) {
 <html><body style="margin:0;padding:0;background:#ffe5f2;font-family:Poppins,Helvetica,Arial,sans-serif;color:${MIDNIGHT};">
   <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
     <div style="text-align:center;padding-bottom:24px;">
-      <span style="font-family:Cooper,Georgia,serif;font-size:30px;font-weight:300;color:${BRAND};">Utee</span>
+      <img src="${APP_URL}/logo-maroon.png" alt="Utee" width="96" height="36" style="display:inline-block;width:96px;height:auto;border:0;" />
     </div>
     <div style="background:#ffffff;border-radius:24px;padding:32px;box-shadow:0 10px 30px rgba(29,0,58,.14);">
       <h1 style="font-family:Cooper,Georgia,serif;font-weight:300;font-size:26px;line-height:1.15;margin:0 0 16px;color:${MIDNIGHT};">${title}</h1>
       ${bodyHtml}
     </div>
     <p style="text-align:center;color:#6f6188;font-size:12px;padding-top:24px;">
-      Utee — UTI testing &amp; care. This is a service email about your order or test.
+      Utee, UTI testing &amp; care. This is a service email about your order or test.
     </p>
   </div>
 </body></html>`;
@@ -40,7 +40,7 @@ export async function sendEmail(opts: {
 }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.log(`[email skipped — no RESEND_API_KEY] to=${opts.to} subject="${opts.subject}"`);
+    console.log(`[email skipped, no RESEND_API_KEY] to=${opts.to} subject="${opts.subject}"`);
     return;
   }
   try {
@@ -67,11 +67,11 @@ export async function sendEmail(opts: {
 
 export const emails = {
   portalWelcome: (orderNumber: string) => ({
-    subject: `Your Utee account is ready — order ${orderNumber}`,
+    subject: `Your Utee account is ready for order ${orderNumber}`,
     html: wrap(
       "Welcome to your Utee portal",
-      p(`Thanks for your order <strong>${orderNumber}</strong>. We've created your secure portal account — log in any time with just your email address (we'll send you a one-time code, no password needed).`) +
-        p(`In your portal you can track your order, manage any subscriptions, and — if you've ordered a UTI test kit — follow your sample's journey to the lab and download your final report.`) +
+      p(`Thanks for your order <strong>${orderNumber}</strong>. We've created your secure portal account. Log in any time with just your email address (we'll send you a one-time code, no password needed).`) +
+        p(`In your portal you can track your order, manage any subscriptions, and, if you've ordered a UTI test kit, follow your sample's journey to the lab and download your final report.`) +
         button(`${APP_URL}/login`, "Open my portal") +
         p(`<strong>Ordered a test kit?</strong> When it arrives, scan the QR code inside and complete the short symptom form <em>before</em> taking your sample. Your kit can't be processed without it.`)
     ),
@@ -81,7 +81,7 @@ export const emails = {
     subject: `Your Utee test kit ${kitCode} is registered`,
     html: wrap(
       "Your kit is linked to your account",
-      p(`Test kit <strong>${kitCode}</strong> is now registered to this email address. Log in any time with just your email — we'll send you a one-time code, no password needed.`) +
+      p(`Test kit <strong>${kitCode}</strong> is now registered to this email address. Log in any time with just your email. We'll send you a one-time code, no password needed.`) +
         p(`<strong>Next step:</strong> complete the short symptom form <em>before</em> taking your sample, then post the sample back in the pre-paid return box. You can follow your sample's journey to the lab and download your final report in your portal.`) +
         button(`${APP_URL}/portal`, "Open my portal")
     ),
@@ -92,15 +92,15 @@ export const emails = {
     html: wrap(
       "Your test kit has been dispatched",
       p(`Your UTI test kit (ref <strong>${kitCode}</strong>) is on its way via Royal Mail Tracked. Tracking number: <strong>${trackingNumber}</strong>.`) +
-        p(`<strong>Important — read before you use the kit:</strong> inside you'll find a urine pot, an absorbent pad bag, instructions, and a pre-paid return box. You <strong>must scan the QR code on the kit and complete the symptom form before taking your sample</strong>, so your symptoms reach the lab alongside your sample.`) +
+        p(`<strong>Important. Read before you use the kit:</strong> inside you'll find a urine pot, an absorbent pad bag, instructions, and a pre-paid return box. You <strong>must scan the QR code on the kit and complete the symptom form before taking your sample</strong>, so your symptoms reach the lab alongside your sample.`) +
         button(`${APP_URL}/portal`, "Track my kit")
     ),
   }),
 
   triageReceived: (kitCode: string) => ({
-    subject: "Symptoms received — you're ready to take your sample",
+    subject: "Symptoms received. You're ready to take your sample",
     html: wrap(
-      "Thanks — your symptoms have been recorded",
+      "Thanks, your symptoms have been recorded",
       p(`We've recorded the symptom form for kit <strong>${kitCode}</strong>. Please take your sample now following the instructions, seal it in the return box, and post it the same day if possible.`) +
         button(`${APP_URL}/portal`, "View my timeline")
     ),
@@ -110,13 +110,13 @@ export const emails = {
     subject: "Your sample has arrived at the lab",
     html: wrap(
       "Sample received by the lab",
-      p(`Good news — your sample (kit <strong>${kitCode}</strong>) has been received by our partner laboratory and analysis will begin shortly. We'll let you know as soon as testing is complete.`) +
+      p(`Good news: your sample (kit <strong>${kitCode}</strong>) has been received by our partner laboratory and analysis will begin shortly. We'll let you know as soon as testing is complete.`) +
         button(`${APP_URL}/portal`, "View my timeline")
     ),
   }),
 
   labComplete: (kitCode: string) => ({
-    subject: "Lab analysis complete — now with our clinical team",
+    subject: "Lab analysis complete, now with our clinical team",
     html: wrap(
       "Lab analysis complete",
       p(`The laboratory has finished analysing your sample (kit <strong>${kitCode}</strong>). Your results and symptoms are now with our clinical team, who will prepare your final report.`) +

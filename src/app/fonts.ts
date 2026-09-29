@@ -2,7 +2,7 @@ import localFont from "next/font/local";
 
 /**
  * Brand typefaces, served from the design system's own font files.
- * Cooper Light for headings, Poppins for everything else — see
+ * Cooper Light for headings, Poppins for everything else, see
  * design-system/readme.md. Cooper Black (CTAs in the brand guidelines) has
  * not been supplied, so CTAs use Poppins SemiBold in caps instead.
  */
