@@ -61,6 +61,10 @@ export type UtiExtract = z.infer<typeof utiSchema>;
 export const utisSchema = z.object({ utis: z.array(utiSchema) });
 export type UtisExtract = z.infer<typeof utisSchema>;
 
+/** Free-form: one message may hold UTIs, changes to what they take, or both. */
+export const freeSchema = z.object({ utis: z.array(utiSchema), taking: preventionSchema });
+export type FreeExtract = z.infer<typeof freeSchema>;
+
 /** The shape the review card saves. Dates must be real by then. */
 export const utiSaveSchema = z.object({
   started_on: isoDate,
@@ -78,4 +82,4 @@ export const emptyUti = (): UtiExtract => ({
   started_on: null, ended_on: null, ongoing: null, symptoms: [], other_symptom: null, triggers: [], treatments: [], tests: [], notes: null,
 });
 
-export type GuidedStep = "about" | "prevention" | "utis";
+export type GuidedStep = "about" | "prevention" | "utis" | "free";

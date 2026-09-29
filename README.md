@@ -208,6 +208,15 @@ straight to UTIs, and several UTIs in one message become one review card each;
 `?mode=prevention` ("Update by chat") reads what has started and stopped and
 updates the prevention list. Each quick mode offers the other before finishing.
 
+**Una.** The helper is called Una (`copy.guided.name`). She sits as a bubble in
+the corner of every tracker page (`tracker/layout.tsx`, `components/ChatBubble.tsx`)
+once a person is set up, and reads free-form messages: a UTI, a change in what
+they take, or both in one message (`guided/schema.ts` freeSchema). She also
+asks two data-driven questions, still from fixed copy: whether something on the
+list for three weeks or more is helping, and, when an antibiotic-type
+prevention is active, whether they were still taking it when a new UTI started.
+The monthly reminder email links to "Update by chat".
+
 **Prevention.** "What I'm taking" (`/portal/tracker/prevention`, table
 `tracker_preventions`, migration `0005_prevention.sql`) records everything a
 person takes or does to help prevent UTIs: prescribed medicines, hormonal

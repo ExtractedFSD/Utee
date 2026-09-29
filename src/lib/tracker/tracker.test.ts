@@ -5,7 +5,7 @@ import { summarise, patterns, episodeLength, orderByUsage, daysBetween, ageBandF
 import { copy } from "./copy";
 import { SYMPTOMS, TRIGGERS } from "./options";
 import { diffPreventions, preventionName } from "./prevention";
-import { parseAbout, parseDatePhrase, parsePrevention, parseUtis } from "./guided/local";
+import { parseAbout, parseDatePhrase, parseFree, parsePrevention, parseUtis } from "./guided/local";
 
 describe("red flags", () => {
   it("shows for each listed symptom and not otherwise", () => {
@@ -187,6 +187,18 @@ describe("guided setup, rule-based reading", () => {
     expect(u.ended_on).toBe("2026-09-12");
     expect(u.symptoms).toEqual(["burning", "frequency"]);
     expect(u.treatments[0]).toMatchObject({ antibiotic_id: "nitrofurantoin", days: 3, source: "gp", worked: "yes" });
+  });
+  it("free-form: tells a UTI from a change in what they take, and reads both", () => {
+    const f = parseFree("Had another one 2 days ago, burning, still got it. Also I've stopped the D-mannose", today);
+    expect(f.utis).toHaveLength(1);
+    expect(f.utis[0]).toMatchObject({ started_on: "2026-09-27", ongoing: true, symptoms: ["burning"] });
+    expect(f.taking.stopped_keys).toEqual(["d_mannose"]);
+    expect(f.taking.keys).toEqual([]);
+    const course = parseFree("trimethoprim from the GP for 3 days last week, cleared it", today);
+    expect(course.utis[0].treatments[0].antibiotic_id).toBe("trimethoprim");
+    expect(course.taking.keys).toEqual([]);
+    expect(parseFree("started taking cranberry tablets", today).utis).toHaveLength(0);
+    expect(parseFree("started taking cranberry tablets", today).taking.keys).toEqual(["cranberry"]);
   });
   it("splits several UTIs and spots an ongoing one", () => {
     const { utis } = parseUtis("One started 3 weeks ago and lasted 5 days, burning. Another one 10 days ago, urgency and cloudy, still going", today);

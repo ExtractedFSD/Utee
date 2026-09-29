@@ -1,6 +1,6 @@
 import { ANTIBIOTICS } from "../search";
 import { isoDaysAgo, isoToday } from "../stats";
-import type { AboutExtract, PreventionExtract, TestExtract, TreatmentExtract, UtiExtract, UtisExtract } from "./schema";
+import type { AboutExtract, FreeExtract, PreventionExtract, TestExtract, TreatmentExtract, UtiExtract, UtisExtract } from "./schema";
 import { emptyUti } from "./schema";
 
 /*
@@ -291,4 +291,22 @@ export function parsePrevention(text: string): PreventionExtract {
   const keys = tidy(taking).filter((k) => !stopped.includes(k));
   if (ab && !keys.some((k) => k.endsWith("_antibiotic")) && !STOP_WORDS.test(t)) keys.push("low_dose_antibiotic");
   return { keys, stopped_keys: tidy(stopped), other_name: null, antibiotic_id: ab };
+}
+
+const UTI_CUES = /\buti\b|infection|cystitis|flare|episode|kicked off|came on|started|had one|got one|another one/;
+
+/** Free-form: decide what the message is about and read each part. */
+export function parseFree(text: string, today = isoToday()): FreeExtract {
+  const t = text.toLowerCase();
+  const symptomatic = SYMPTOM_RULES.some(([, re]) => re.test(t));
+  const treated = antibioticsIn(t).length > 0 && /course|days?\b|gp|doctor|pharmac|prescri|took|gave me|put me on/.test(t);
+  const looksLikeUti = symptomatic || treated || (UTI_CUES.test(t) && parseDatePhrase(t, today) !== null);
+  const utis = looksLikeUti ? parseUtis(text, today).utis.filter((u) => u.started_on || u.symptoms.length || u.treatments.length || u.tests.length) : [];
+  const taking = parsePrevention(text);
+  if (utis.length && !/low[- ]dose|daily|every (day|night|morning)|prophyla|to prevent/.test(t)) {
+    taking.keys = taking.keys.filter((k) => k !== "low_dose_antibiotic");
+    taking.antibiotic_id = null;
+  }
+  if (utis.length && !/water|hydrat/.test(t.replace(/not drinking|didn'?t drink|dehydrat/g, ""))) taking.keys = taking.keys.filter((k) => k !== "water");
+  return { utis, taking };
 }

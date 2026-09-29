@@ -79,11 +79,19 @@ export const copy = {
   },
 
   guided: {
+    name: "Una",
     title: "Guided setup",
     titleQuick: "Add UTIs quickly",
     titlePrevention: "Update what I'm taking",
-    intro: "Hi. I'll set up your tracker with a few short questions. Answer in your own words or tap the options. I only fill in your record. I don't give medical advice.",
-    introQuick: "Tell me about your UTIs in your own words and I'll fill in the record for you to check.",
+    intro: "Hi, I'm Una, your Utee tracker helper. I'll set up your tracker with a few short questions. Answer in your own words or tap the options. I only fill in your record. I don't give medical advice.",
+    introQuick: "Hi, it's Una. Tell me about your UTIs in your own words and I'll fill in the record for you to check.",
+    introFree: "Hi, it's Una. Tell me about a UTI, something you've started or stopped taking, or both, and I'll fill in your record for you to check.",
+    askFree: "What would you like to add or update?",
+    anythingElse: "Done. Anything else?",
+    nudgeHelping: (name: string) => `Quick one. You've had ${name} on your list for a few weeks. Is it helping?`,
+    nudgeThanks: "Thanks, noted.",
+    bubbleOpen: "Chat with Una",
+    bubbleClose: "Close",
     aiNote: "What you type is sent to Utee's AI provider only to fill in the form. Switch it off to tap the options instead.",
     aiOn: "AI reading on",
     aiOff: "AI reading off",
@@ -101,6 +109,9 @@ export const copy = {
     yes: "Yes",
     noDone: "No, I'm done",
     followUp: {
+      wasTaking: (name: string) => `Were you still taking your ${name} when it started?`,
+      wasTakingNote: (name: string, answer: string) => `Still taking ${name} when it started: ${answer}`,
+      notSure: "Not sure",
       ended: "Has it cleared up now, or is it still going?",
       treatment: "Did you take anything for it, like an antibiotic?",
       worked: (name: string) => `Did the ${name} help?`,
@@ -291,6 +302,7 @@ export const copy = {
   },
 
   reminders: {
+    chatButton: "Update what you're taking by chat",
     dailySubject: "Your Utee check-in",
     dailyBody:
       "You asked us to remind you to check in. Open your tracker whenever you have a moment.",

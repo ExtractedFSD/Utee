@@ -40,6 +40,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
   await test.step("Guided setup: typed answers fill the chips, nothing saved until Next", async () => {
     const chat = page.getByTestId("guided-chat");
     const input = page.getByPlaceholder("Type here...");
+    await expect(chat).toHaveAttribute("data-hydrated", "true");
     await expect(chat).toContainText("Are you before, around or after the menopause?");
     await input.fill("I'm post menopause, no contraception, not pregnant");
     await page.getByRole("button", { name: "Send" }).click();
@@ -367,6 +368,7 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await page.getByRole("button", { name: "Start tracking" }).click();
   await expect(page).toHaveURL(/\/portal\/tracker\/setup/);
   const chat = page.getByTestId("guided-chat");
+  await expect(chat).toHaveAttribute("data-hydrated", "true");
   await page.getByTestId("guided-about").getByRole("button", { name: "Next" }).click();
   await page.getByTestId("guided-prevention").getByRole("button", { name: "Next" }).click();
   await expect(chat).toContainText("Now your UTIs");
@@ -422,6 +424,7 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   // Updating what they take by chat: add two, then stop one and start another.
   await page.goto("/portal/tracker/prevention");
   await page.getByRole("link", { name: "Update by chat" }).click();
+  await expect(chat).toHaveAttribute("data-hydrated", "true");
   await expect(chat).toContainText("has anything stopped?");
   await input.fill("I've started D-mannose and cranberry");
   await page.getByRole("button", { name: "Send" }).click();
@@ -435,6 +438,7 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await expect(page.getByTestId("guided-done")).toBeVisible();
 
   await page.goto("/portal/tracker/setup?mode=prevention");
+  await expect(chat).toHaveAttribute("data-hydrated", "true");
   await expect(prev.getByRole("button", { name: "Cranberry (juice, tablets or capsules)" })).toHaveAttribute("aria-pressed", "true");
   await input.fill("I've stopped the cranberry and started drinking more water");
   await page.getByRole("button", { name: "Send" }).click();
@@ -449,12 +453,43 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
 
   // Quick UTI mode asks about what they take once the UTIs are done.
   await page.goto("/portal/tracker/setup?mode=utis");
+  await expect(chat).toHaveAttribute("data-hydrated", "true");
   await input.fill("none");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(chat).toContainText("Has anything changed in what you take");
   await page.getByTestId("guided-changed-taking").getByRole("button", { name: "No, I'm done" }).click();
   await expect(page.getByTestId("guided-done")).toBeVisible();
+
+  // Una in the corner of the tracker: nudges for a rating, then reads a UTI and a stop from one message.
+  const monthAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  await admin().from("tracker_preventions").update({ created_at: monthAgo }).eq("user_id", user.id).eq("option_key", "water");
+  await page.goto("/portal/tracker");
+  await expect(page.getByTestId("chat-bubble")).toHaveAttribute("data-hydrated", "true");
+  await page.getByTestId("chat-bubble").click();
+  const panel = page.getByTestId("chat-panel");
+  await expect(panel.getByTestId("guided-chat")).toHaveAttribute("data-hydrated", "true");
+  await expect(panel).toContainText("Drinking more water on your list for a few weeks. Is it helping?");
+  await page.getByTestId("guided-rate").getByRole("button", { name: "Yes", exact: true }).click();
+  await expect(panel).toContainText("Thanks, noted.");
+  await panel.getByPlaceholder("Type here...").fill("Had another one 2 days ago, burning, still got it. Also I've stopped the D-mannose");
+  await panel.getByRole("button", { name: "Send" }).click();
+  await expect(panel.getByTestId("uti-review")).toHaveCount(1);
+  await expect(panel).toContainText("Did you take anything for it");
+  await panel.getByTestId("follow-up-chips").getByRole("button", { name: "No antibiotics" }).click();
+  await panel.getByTestId("follow-up-chips").getByRole("button", { name: "No test" }).click();
+  await panel.getByTestId("uti-review").getByRole("button", { name: "Save this UTI" }).click();
+  await panel.getByTestId("guided-another").getByRole("button", { name: "That's all" }).click();
+  const bubblePrev = panel.getByTestId("guided-prevention");
+  await expect(bubblePrev.getByRole("button", { name: "D-mannose" })).toHaveAttribute("aria-pressed", "false");
+  await expect(bubblePrev.getByRole("button", { name: "Drinking more water" })).toHaveAttribute("aria-pressed", "true");
+  await bubblePrev.getByRole("button", { name: "Next" }).click();
+  await expect(panel).toContainText("Stopped 1.");
+  await expect(panel).toContainText("Anything else?");
+  const final = await (await page.request.get("/portal/tracker/export?format=json")).json();
+  expect(final.episodes).toHaveLength(3);
+  expect(final.preventions.find((p: { option_key: string }) => p.option_key === "d_mannose").stopped_on).toBeTruthy();
+  expect(final.preventions.find((p: { option_key: string }) => p.option_key === "water").helping).toBe("yes");
   const { data: log } = await admin().from("tracker_audit_log").select("action").eq("user_id", user.id);
-  expect(log?.filter((l) => l.action === "guided_uti_saved")).toHaveLength(2);
+  expect(log?.filter((l) => l.action === "guided_uti_saved")).toHaveLength(3);
   await ctx.close();
 });
