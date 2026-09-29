@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { KIT_STATUS_COLORS, KIT_STATUS_LABELS, type KitStatus } from "@/lib/status";
 
+/*
+ * Shared primitives, styled to the Utee design system
+ * (design-system/readme.md → VISUAL FOUNDATIONS):
+ *   - everything rounded: pill buttons and tags, 24px cards
+ *   - white cards float on coloured grounds with a soft maroon-tinted shadow
+ *   - Cooper Light headings, Poppins body, ALL-CAPS letterspaced labels/CTAs
+ */
+
 export function Card({
   children,
   className = "",
@@ -8,81 +16,105 @@ export function Card({
   children: React.ReactNode;
   className?: string;
 }) {
-  return (
-    <div className={`bg-white border border-slate-200 rounded-2xl p-6 ${className}`}>
-      {children}
-    </div>
-  );
+  return <div className={`bg-white rounded-card shadow-card p-6 ${className}`}>{children}</div>;
 }
 
 export function CardTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-base font-semibold text-slate-900 mb-4">{children}</h2>;
+  return <h2 className="font-display text-2xl font-light text-midnight mb-4">{children}</h2>;
+}
+
+/** ALL-CAPS letterspaced section label — the design system's EyebrowTab. */
+export function Eyebrow({
+  children,
+  pill = false,
+  className = "",
+}: {
+  children: React.ReactNode;
+  pill?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`inline-block text-eyebrow uppercase ${
+        pill ? "rounded-full bg-white text-midnight px-4 py-2 shadow-card" : ""
+      } ${className}`}
+    >
+      {children}
+    </span>
+  );
 }
 
 export function PageHeader({
   title,
   subtitle,
+  eyebrow,
   action,
 }: {
   title: string;
   subtitle?: string;
+  eyebrow?: string;
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
-        {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
+    <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
+      <div className="max-w-2xl">
+        {eyebrow && <Eyebrow className="text-maroon mb-3">{eyebrow}</Eyebrow>}
+        <h1 className="font-display text-4xl sm:text-5xl font-light leading-[1.08] text-midnight">
+          {title}
+        </h1>
+        {subtitle && <p className="text-base text-slate-600 mt-3 leading-relaxed">{subtitle}</p>}
       </div>
       {action}
     </div>
   );
 }
 
-export function StatusBadge({ status, admin = false }: { status: KitStatus; admin?: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${KIT_STATUS_COLORS[status]}`}
-    >
-      {KIT_STATUS_LABELS[status]}
-    </span>
-  );
+/** Small ALL-CAPS pill — the design system's RangeTag, used for statuses. */
+const tagClass =
+  "inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[.12em] whitespace-nowrap";
+
+export function StatusBadge({ status }: { status: KitStatus; admin?: boolean }) {
+  return <span className={`${tagClass} ${KIT_STATUS_COLORS[status]}`}>{KIT_STATUS_LABELS[status]}</span>;
 }
 
 export function Pill({ children, tone = "slate" }: { children: React.ReactNode; tone?: string }) {
   const tones: Record<string, string> = {
     slate: "bg-slate-100 text-slate-700",
-    green: "bg-emerald-100 text-emerald-800",
-    amber: "bg-amber-100 text-amber-800",
-    red: "bg-rose-100 text-rose-800",
-    brand: "bg-brand-100 text-brand-800",
+    green: "bg-mint text-emerald-800",
+    amber: "bg-sun text-amber-800",
+    red: "bg-peach-50 text-maroon",
+    brand: "bg-pink-50 text-maroon",
+    sky: "bg-sky text-sky-800",
+    lavender: "bg-lavender-50 text-violet-800",
   };
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tones[tone] ?? tones.slate}`}
-    >
-      {children}
-    </span>
-  );
+  return <span className={`${tagClass} ${tones[tone] ?? tones.slate}`}>{children}</span>;
 }
+
+/*
+ * Buttons: white pill with ALL-CAPS midnight label is the brand CTA (used on
+ * coloured grounds → variant "white"). On white cards the same pill is filled
+ * maroon (→ "primary"). Hover is a slight darken — not specified in the
+ * source, flagged there as an assumption.
+ */
+const buttonBase =
+  "inline-flex items-center justify-center whitespace-nowrap rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+
+const buttonVariants = {
+  primary: "bg-maroon text-white hover:bg-brand-700 shadow-card",
+  secondary: "bg-white text-midnight border border-midnight/15 hover:bg-pink-25",
+  white: "bg-white text-midnight hover:bg-pink-25 shadow-card",
+  danger: "bg-white text-maroon border border-maroon/30 hover:bg-rose-50",
+};
+
+export type ButtonVariant = keyof typeof buttonVariants;
 
 export function Button({
   children,
   variant = "primary",
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "danger";
-}) {
-  const styles = {
-    primary: "bg-brand-600 text-white hover:bg-brand-700",
-    secondary: "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50",
-    danger: "bg-white text-rose-600 border border-rose-200 hover:bg-rose-50",
-  };
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
   return (
-    <button
-      {...props}
-      className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${styles[variant]} ${props.className ?? ""}`}
-    >
+    <button {...props} className={`${buttonBase} ${buttonVariants[variant]} ${props.className ?? ""}`}>
       {children}
     </button>
   );
@@ -96,18 +128,14 @@ export function LinkButton({
 }: {
   href: string;
   children: React.ReactNode;
-  variant?: "primary" | "secondary";
+  variant?: ButtonVariant;
   external?: boolean;
 }) {
-  const styles = {
-    primary: "bg-brand-600 text-white hover:bg-brand-700",
-    secondary: "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50",
-  };
   return (
     <Link
       href={href}
       target={external ? "_blank" : undefined}
-      className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition-colors ${styles[variant]}`}
+      className={`${buttonBase} ${buttonVariants[variant]}`}
     >
       {children}
     </Link>
@@ -125,21 +153,61 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-sm font-medium text-slate-700 mb-1">{label}</span>
+      <span className="block text-sm font-semibold text-slate-700 mb-1.5">{label}</span>
       {children}
-      {hint && <span className="block text-xs text-slate-400 mt-1">{hint}</span>}
+      {hint && <span className="block text-xs text-slate-500 mt-1.5">{hint}</span>}
     </label>
   );
 }
 
 export const inputClass =
-  "block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100";
+  "block w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-midnight placeholder-slate-400 focus:border-maroon focus:outline-none focus:ring-2 focus:ring-pink-50";
 
 export function EmptyState({ title, body }: { title: string; body?: string }) {
   return (
     <div className="text-center py-12">
-      <p className="text-sm font-medium text-slate-600">{title}</p>
-      {body && <p className="text-sm text-slate-400 mt-1">{body}</p>}
+      <p className="text-sm font-semibold text-slate-700">{title}</p>
+      {body && <p className="text-sm text-slate-500 mt-1">{body}</p>}
     </div>
+  );
+}
+
+/** Pink→maroon gradient call-out with white text — for upsells and highlights. */
+export function Callout({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-card bg-gradient-brand text-white p-6 shadow-card ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/** Soft notice banner (amber/sun tint) for inline warnings. */
+export function Notice({ children, tone = "sun" }: { children: React.ReactNode; tone?: "sun" | "mint" | "pink" }) {
+  const tones = {
+    sun: "bg-sun-50 border-sun text-amber-800",
+    mint: "bg-mint-50 border-mint text-emerald-800",
+    pink: "bg-pink-25 border-pink-50 text-midnight",
+  };
+  return <div className={`rounded-card border p-4 text-sm ${tones[tone]}`}>{children}</div>;
+}
+
+/** The Utee wordmark: Cooper Light, sentence case, ™ on formal lockups. */
+export function Wordmark({
+  className = "",
+  tm = false,
+}: {
+  className?: string;
+  tm?: boolean;
+}) {
+  return (
+    <span className={`font-display font-light leading-none tracking-tight ${className}`}>
+      Utee{tm && <sup className="text-[0.35em] align-super ml-0.5">™</sup>}
+    </span>
   );
 }

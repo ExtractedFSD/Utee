@@ -5,6 +5,7 @@ export default async function CustomerLayout({ children }: { children: React.Rea
   const user = await requireRole(["customer"]);
   return (
     <Shell
+      tone="brand"
       areaLabel="Patient portal"
       userEmail={user.email}
       nav={[

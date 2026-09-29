@@ -1,15 +1,31 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Brand fonts are loaded through next/font (src/app/fonts.ts) and exposed as
+   --font-cooper / --font-poppins on <html>. */
+
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-slate-50 text-midnight antialiased;
+}
+
+h1,
+h2,
+h3 {
+  @apply font-display font-light tracking-tight;
+}
+
+/* Native form controls pick up the brand accent. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #91193b;
 }
 
 @media print {
   .no-print {
     display: none !important;
+  }
+  body {
+    background: #fff;
   }
 }

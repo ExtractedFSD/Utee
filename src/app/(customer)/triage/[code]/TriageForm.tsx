@@ -47,7 +47,7 @@ export function TriageForm({ code }: { code: string }) {
   return (
     <form action={onSubmit} className="space-y-6">
       <Card>
-        <h2 className="text-base font-semibold text-slate-900 mb-1">Your symptoms</h2>
+        <h2 className="font-display text-2xl font-light text-midnight mb-1">Your symptoms</h2>
         <p className="text-sm text-slate-500 mb-4">Tick everything you&apos;re experiencing.</p>
         <div className="space-y-2.5">
           {SYMPTOMS.map((s) => (

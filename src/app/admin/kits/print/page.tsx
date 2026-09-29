@@ -1,7 +1,7 @@
 import QRCode from "react-qr-code";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PageHeader } from "@/components/ui";
+import { PageHeader, Wordmark } from "@/components/ui";
 import { PrintButton } from "./PrintButton";
 
 /** Printable sheet of QR labels for all unassigned kits. */
@@ -29,13 +29,14 @@ export default async function PrintLabelsPage() {
         {kits?.map((kit) => (
           <div
             key={kit.id}
-            className="border border-slate-300 rounded-xl p-4 flex flex-col items-center gap-2 bg-white break-inside-avoid"
+            className="border border-slate-300 rounded-card p-4 flex flex-col items-center gap-2 bg-white break-inside-avoid"
           >
             <QRCode value={`${appUrl}/k/${kit.code}`} size={112} />
-            <p className="font-mono text-sm font-semibold">{kit.code}</p>
-            <p className="text-[10px] text-slate-400 text-center">
-              Scan before taking your sample — utee
+            <p className="font-mono text-sm font-semibold text-midnight">{kit.code}</p>
+            <p className="text-[10px] text-slate-500 text-center leading-snug">
+              Scan before taking your sample
             </p>
+            <Wordmark className="text-base text-maroon" />
           </div>
         ))}
       </div>

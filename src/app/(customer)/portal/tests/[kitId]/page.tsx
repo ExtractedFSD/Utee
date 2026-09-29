@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardTitle, PageHeader, StatusBadge, LinkButton } from "@/components/ui";
+import { Card, CardTitle, PageHeader, StatusBadge, LinkButton, Callout, Notice } from "@/components/ui";
 import { Timeline, type TimelineEvent } from "@/components/Timeline";
 import { royalMailTrackingUrl } from "@/lib/tracking";
 import { formatDateTime, type KitStatus } from "@/lib/status";
@@ -69,31 +69,31 @@ export default async function TestDetailPage({
       />
 
       {needsTriage && (
-        <div className="rounded-2xl border border-brand-200 bg-brand-50 p-5 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">
-              Before you take your sample
-            </p>
-            <p className="text-sm text-slate-600">
+        <Callout className="flex flex-wrap items-center justify-between gap-4">
+          <div className="max-w-xl">
+            <p className="font-display text-2xl font-light">Before you take your sample</p>
+            <p className="text-sm text-white/85 mt-1 leading-relaxed">
               Scan the QR code on your kit, or tap here, to record your symptoms first —
               your sample can&apos;t be processed without them.
             </p>
           </div>
-          <LinkButton href={`/triage/${kit.code}`}>Complete symptom form</LinkButton>
-        </div>
+          <LinkButton href={`/triage/${kit.code}`} variant="white">Complete symptom form</LinkButton>
+        </Callout>
       )}
 
       {report?.status === "complete" && report.report_path && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Your report is ready</p>
-            <p className="text-sm text-slate-600">
-              Reviewed by our clinical team {formatDateTime(report.completed_at)}. Download
-              it to share with your GP or doctor.
-            </p>
+        <Notice tone="mint">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="font-display text-2xl font-light text-midnight">Your report is ready</p>
+              <p className="text-sm text-slate-700 mt-1">
+                Reviewed by our clinical team {formatDateTime(report.completed_at)}. Download
+                it to share with your GP or doctor.
+              </p>
+            </div>
+            <LinkButton href={`/portal/tests/${kit.id}/report`}>Download report (PDF)</LinkButton>
           </div>
-          <LinkButton href={`/portal/tests/${kit.id}/report`}>Download report (PDF)</LinkButton>
-        </div>
+        </Notice>
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -131,8 +131,8 @@ export default async function TestDetailPage({
               <CardTitle>Your submitted symptoms</CardTitle>
               <ul className="space-y-1.5">
                 {(symptoms.selected ?? []).map((key) => (
-                  <li key={key} className="text-sm text-slate-600 flex gap-2">
-                    <span className="text-brand-600">✓</span>
+                  <li key={key} className="text-sm text-slate-700 flex gap-2">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="mt-1 shrink-0 text-maroon"><path d="M20 6 9 17l-5-5" /></svg>
                     {SYMPTOM_LABELS[key] ?? key}
                   </li>
                 ))}

@@ -92,7 +92,7 @@ export function SpecimenActions({
           <input type="file" name="report" accept="application/pdf" className="text-sm" />
         </Field>
 
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <div className="rounded-2xl border border-sun bg-sun-50 p-4">
           <Field
             label="Confirm specimen code"
             hint="Re-type the code printed on the pot you are holding. This must match the specimen on this page."

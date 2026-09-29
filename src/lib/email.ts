@@ -1,18 +1,19 @@
-const BRAND = "#0d9488";
+const BRAND = "#91193b"; // Utee maroon
+const MIDNIGHT = "#1d003a";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 function wrap(title: string, bodyHtml: string) {
   return `<!doctype html>
-<html><body style="margin:0;padding:0;background:#f8fafc;font-family:Helvetica,Arial,sans-serif;color:#0f172a;">
+<html><body style="margin:0;padding:0;background:#ffe5f2;font-family:Poppins,Helvetica,Arial,sans-serif;color:${MIDNIGHT};">
   <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
     <div style="text-align:center;padding-bottom:24px;">
-      <span style="font-size:24px;font-weight:700;color:${BRAND};letter-spacing:-0.5px;">utee</span>
+      <span style="font-family:Cooper,Georgia,serif;font-size:30px;font-weight:300;color:${BRAND};">Utee</span>
     </div>
-    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:32px;">
-      <h1 style="font-size:18px;margin:0 0 16px;">${title}</h1>
+    <div style="background:#ffffff;border-radius:24px;padding:32px;box-shadow:0 10px 30px rgba(29,0,58,.14);">
+      <h1 style="font-family:Cooper,Georgia,serif;font-weight:300;font-size:26px;line-height:1.15;margin:0 0 16px;color:${MIDNIGHT};">${title}</h1>
       ${bodyHtml}
     </div>
-    <p style="text-align:center;color:#94a3b8;font-size:12px;padding-top:24px;">
+    <p style="text-align:center;color:#6f6188;font-size:12px;padding-top:24px;">
       Utee — UTI testing &amp; care. This is a service email about your order or test.
     </p>
   </div>
@@ -21,12 +22,12 @@ function wrap(title: string, bodyHtml: string) {
 
 function button(href: string, label: string) {
   return `<p style="text-align:center;margin:24px 0;">
-    <a href="${href}" style="background:${BRAND};color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:9999px;font-weight:600;display:inline-block;">${label}</a>
+    <a href="${href}" style="background:${BRAND};color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:9999px;font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;display:inline-block;">${label}</a>
   </p>`;
 }
 
 const p = (text: string) =>
-  `<p style="font-size:14px;line-height:1.6;color:#334155;margin:0 0 12px;">${text}</p>`;
+  `<p style="font-size:15px;line-height:1.55;color:${MIDNIGHT};margin:0 0 12px;">${text}</p>`;
 
 /**
  * Sends via Resend. Soft-fails (logs) when RESEND_API_KEY is unset so local
