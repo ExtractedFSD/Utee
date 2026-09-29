@@ -22,6 +22,7 @@ export type AboutExtract = z.infer<typeof aboutSchema>;
 
 export const preventionSchema = z.object({
   keys: z.array(z.enum(PREVENTION_KEYS as [string, ...string[]])),
+  stopped_keys: z.array(z.enum(PREVENTION_KEYS as [string, ...string[]])),
   other_name: z.string().nullable(),
   antibiotic_id: z.enum(ANTIBIOTIC_IDS).nullable(),
 });

@@ -14,19 +14,19 @@ export default async function GuidedSetupPage({ searchParams }: { searchParams: 
   const { mode } = await searchParams;
   const ctx = await trackerContext();
   if (!ctx.consents.tracker) redirect("/portal/tracker/consent");
-  const quick = mode === "utis" && !!ctx.profile;
+  const quick = (mode === "utis" || mode === "prevention") && !!ctx.profile;
   const active = ctx.profile ? (await loadPreventions(ctx.supabase, ctx.user.id)).filter((p) => !p.stopped_on).map((p) => p.option_key) : [];
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <PageHeader
         eyebrow="Tracker"
-        title={quick ? copy.guided.titleQuick : copy.guided.title}
+        title={quick ? (mode === "prevention" ? copy.guided.titlePrevention : copy.guided.titleQuick) : copy.guided.title}
         action={quick
           ? <Link href="/portal/tracker" className="text-sm font-semibold text-maroon">Back to tracker</Link>
           : <Link href="/portal/tracker/about-me" className="text-sm font-semibold text-maroon">{copy.guided.preferForm}</Link>}
       />
       <GuidedChat
-        mode={quick ? "utis" : "full"}
+        mode={quick ? (mode === "prevention" ? "prevention" : "utis") : "full"}
         aiAvailable={aiAvailable()}
         pregnantOrTrying={ctx.profile?.pregnant_or_trying ?? "no"}
         activePreventions={active}

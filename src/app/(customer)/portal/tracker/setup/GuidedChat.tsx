@@ -5,18 +5,24 @@ import { Button, Card, LinkButton, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { CONTRACEPTION, MENOPAUSE_STAGES, PREGNANT, SOURCES, SYMPTOMS, TEST_KINDS, TEST_RESULTS, TRIGGERS, WORKED, labelFor } from "@/lib/tracker/options";
 import { antibioticName } from "@/lib/tracker/search";
+import { diffPreventions } from "@/lib/tracker/prevention";
 import { redFlagFor } from "@/lib/tracker/redflags";
 import { formatDay, isoToday } from "@/lib/tracker/stats";
-import { emptyUti, type AboutExtract, type PreventionExtract, type UtiExtract, type UtiSave } from "@/lib/tracker/guided/schema";
+import { parseDatePhrase, workedIn } from "@/lib/tracker/guided/local";
+import { emptyUti, type AboutExtract, type PreventionExtract, type TestExtract, type TreatmentExtract, type UtiExtract, type UtiSave } from "@/lib/tracker/guided/schema";
 import { Chip, ChipGroup, DateChips } from "../components/Chips";
 import { PreventionPicker } from "../components/PreventionPicker";
 import { AntibioticPicker } from "../components/AntibioticPicker";
 import { RedFlagBanner } from "../components/RedFlagBanner";
-import { addPreventions, extractGuided, saveAboutMeValues, saveGuidedUti } from "../actions";
+import { addPreventions, extractGuided, saveAboutMeValues, saveGuidedUti, stopPreventions } from "../actions";
 
 type Msg = { id: number; role: "assistant" | "user"; text: string };
 type Step = "about" | "prevention" | "utis" | "done";
+type Mode = "full" | "utis" | "prevention";
 type About = { menopause_stage: string; contraception: string; pregnant_or_trying: string };
+type Draft = { id: number; uti: UtiExtract; asked: FollowUp[] };
+type FollowUp = "ended" | "treatment" | "worked" | "tests";
+type Prompt = { kind: "another" } | { kind: "changedTaking" } | { kind: "moreUtis" } | null;
 
 let nextId = 1;
 const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
@@ -24,39 +30,40 @@ const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
 /**
  * The conversation is scripted: every assistant line comes from the copy
  * file. Typing fills the same chips a person could tap, and nothing is saved
- * until they press Next or Save.
+ * until they press Next or Save. After reading a UTI it asks, in turn, only
+ * for what is still missing: has it ended, any antibiotic, did it help, any
+ * test.
  */
 export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventions, initialAbout }: {
-  mode: "full" | "utis"; aiAvailable: boolean; pregnantOrTrying: string; activePreventions: string[]; initialAbout: About | null;
+  mode: Mode; aiAvailable: boolean; pregnantOrTrying: string; activePreventions: string[]; initialAbout: About | null;
 }) {
-  const [messages, setMessages] = useState<Msg[]>(() => {
-    const first: Msg[] = mode === "utis"
-      ? [{ id: nextId++, role: "assistant", text: copy.guided.introQuick }, { id: nextId++, role: "assistant", text: copy.guided.askUtisQuick }]
-      : [{ id: nextId++, role: "assistant", text: copy.guided.intro }, { id: nextId++, role: "assistant", text: copy.guided.askAbout }];
-    return first;
-  });
-  const [step, setStep] = useState<Step>(mode === "utis" ? "utis" : "about");
+  const [messages, setMessages] = useState<Msg[]>(() =>
+    mode === "utis" ? [{ id: nextId++, role: "assistant", text: copy.guided.introQuick }, { id: nextId++, role: "assistant", text: copy.guided.askUtisQuick }]
+    : mode === "prevention" ? [{ id: nextId++, role: "assistant", text: copy.guided.askPreventionUpdate }]
+    : [{ id: nextId++, role: "assistant", text: copy.guided.intro }, { id: nextId++, role: "assistant", text: copy.guided.askAbout }]
+  );
+  const [step, setStep] = useState<Step>(mode === "full" ? "about" : mode);
   const [useAi, setUseAi] = useState(aiAvailable);
   const [text, setText] = useState("");
   const [pending, startTransition] = useTransition();
   const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [about, setAbout] = useState<About>(initialAbout ?? { menopause_stage: "prefer_not", contraception: "prefer_not", pregnant_or_trying: "no" });
-  const [prevention, setPrevention] = useState<PreventionExtract>({ keys: [], other_name: null, antibiotic_id: null });
+  const [active, setActive] = useState<string[]>(activePreventions);
+  const [prevention, setPrevention] = useState<PreventionExtract>({ keys: activePreventions, stopped_keys: [], other_name: null, antibiotic_id: null });
   const [antibioticOther, setAntibioticOther] = useState("");
-  // Each draft carries its own id so a review card keeps its state when an
-  // earlier card is saved and the list shifts.
-  const [drafts, setDrafts] = useState<{ id: number; uti: UtiExtract }[]>([]);
-  const withIds = (utis: UtiExtract[]) => utis.map((uti) => ({ id: nextId++, uti }));
-  const [askingAnother, setAskingAnother] = useState(false);
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [followUp, setFollowUp] = useState<FollowUp | null>(null);
+  const [prompt, setPrompt] = useState<Prompt>(null);
   const [savedCount, setSavedCount] = useState(0);
+  const [visited, setVisited] = useState<Set<Step>>(new Set([mode === "full" ? "about" : mode]));
   const [pregnant, setPregnant] = useState(pregnantOrTrying);
   const endRef = useRef<HTMLDivElement | null>(null);
 
-  const say = (role: Msg["role"], t: string) => setMessages((m) => [...m, { id: nextId++, role, text: t }]);
-  useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [messages, drafts, step, askingAnother]);
+  const say = (t: string, role: Msg["role"] = "assistant") => setMessages((m) => [...m, { id: nextId++, role, text: t }]);
+  useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [messages, drafts, step, prompt, followUp]);
 
-  const run = (fn: () => Promise<{ error?: string } | unknown>, after?: () => void) => {
+  const run = (fn: () => Promise<unknown>, after?: () => void) => {
     setError(null);
     startTransition(async () => {
       const r = await fn();
@@ -66,107 +73,186 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
     });
   };
 
+  // ------------------------------------------------------- follow-ups
+  const current = drafts[0] ?? null;
+  const nextFollowUp = (d: Draft): FollowUp | null => {
+    const u = d.uti;
+    if (u.ongoing === null && !u.ended_on && !d.asked.includes("ended")) return "ended";
+    if (!u.treatments.length && !d.asked.includes("treatment")) return "treatment";
+    if (u.treatments.some((t) => !t.worked) && !d.asked.includes("worked")) return "worked";
+    if (!u.tests.length && !d.asked.includes("tests")) return "tests";
+    return null;
+  };
+  const askNext = (d: Draft | null) => {
+    const q = d ? nextFollowUp(d) : null;
+    setFollowUp(q);
+    if (!q || !d) return;
+    if (q === "worked") {
+      const t = d.uti.treatments.find((x) => !x.worked)!;
+      say(copy.guided.followUp.worked(t.antibiotic_id ? antibioticName(t.antibiotic_id, t.other_name) : "antibiotic"));
+    } else say(copy.guided.followUp[q]);
+  };
+  const updateDraft = (id: number, patch: Partial<UtiExtract>, asked?: FollowUp) =>
+    setDrafts((list) => list.map((d) => (d.id === id ? { id, uti: { ...d.uti, ...patch }, asked: asked && !d.asked.includes(asked) ? [...d.asked, asked] : d.asked } : d)));
+  const answerFollowUp = (patch: Partial<UtiExtract>) => {
+    if (!current || !followUp) return;
+    const d: Draft = { ...current, uti: { ...current.uti, ...patch }, asked: [...current.asked, followUp] };
+    updateDraft(current.id, patch, followUp);
+    askNext(d);
+  };
+  /** Apply a typed answer to the open follow-up, using what was read from it. */
+  const applyTyped = (q: FollowUp, t: string, read: UtiExtract) => {
+    const lower = t.toLowerCase();
+    const no = /^\s*(no|nope|nothing|none|didn'?t|not really|no,? )/.test(lower);
+    if (q === "ended") {
+      if (read.ongoing || /still|ongoing|not yet|hasn'?t/.test(lower)) return { ongoing: true, ended_on: null };
+      const date = read.ended_on ?? parseDatePhrase(lower);
+      return { ongoing: false, ended_on: date ?? current?.uti.ended_on ?? null };
+    }
+    if (q === "treatment") return no && !read.treatments.length ? {} : { treatments: [...(current?.uti.treatments ?? []), ...read.treatments] };
+    if (q === "worked") {
+      const w = read.treatments.find((x) => x.worked)?.worked ?? workedIn(lower) ?? (no ? "no" : null);
+      return w ? { treatments: (current?.uti.treatments ?? []).map((x) => (x.worked ? x : { ...x, worked: w })) } : {};
+    }
+    return no && !read.tests.length ? {} : { tests: [...(current?.uti.tests ?? []), ...read.tests] };
+  };
+
   // ------------------------------------------------------------ typing
   const send = () => {
     const t = text.trim();
-    if (!t || step === "done") return;
-    say("user", t);
+    if (!t || step === "done" || prompt) return;
+    say(t, "user");
     setText("");
-    const current = step;
-    if (current === "utis" && /^(none|no(ne)? yet|nothing|no|skip|not yet)\b/i.test(t)) { finishUtis(); return; }
+    const q = followUp;
+    if (step === "utis" && !q && /^(none|no(ne)? yet|nothing|no|skip|not yet)\b/i.test(t)) { finishUtis(); return; }
     setReading(true);
     startTransition(async () => {
-      const r = await extractGuided(current, t);
+      const r = await extractGuided(step, t);
       setReading(false);
       if ("error" in r) { setError(r.error); return; }
-      if (current === "about") {
+      if (step === "about") {
         const a = r.result as AboutExtract;
-        const got = Object.values(a).some(Boolean);
         setAbout((prev) => ({
           menopause_stage: a.menopause_stage ?? prev.menopause_stage,
           contraception: a.contraception ?? prev.contraception,
           pregnant_or_trying: a.pregnant_or_trying ?? prev.pregnant_or_trying,
         }));
-        say("assistant", got ? copy.guided.gotIt : copy.guided.gotNothing);
-      } else if (current === "prevention") {
+        say(Object.values(a).some(Boolean) ? copy.guided.gotIt : copy.guided.gotNothing);
+      } else if (step === "prevention") {
         const p = r.result as PreventionExtract;
-        setPrevention((prev) => ({ keys: [...new Set([...prev.keys, ...p.keys])], other_name: p.other_name ?? prev.other_name, antibiotic_id: p.antibiotic_id ?? prev.antibiotic_id }));
-        say("assistant", p.keys.length ? copy.guided.gotIt : copy.guided.gotNothing);
+        setPrevention((prev) => ({
+          keys: [...new Set([...prev.keys, ...p.keys])].filter((k) => !p.stopped_keys.includes(k)),
+          stopped_keys: [...new Set([...prev.stopped_keys, ...p.stopped_keys])],
+          other_name: p.other_name ?? prev.other_name,
+          antibiotic_id: p.antibiotic_id ?? prev.antibiotic_id,
+        }));
+        say(p.keys.length || p.stopped_keys.length ? copy.guided.gotIt : copy.guided.gotNothing);
+      } else if (q && current) {
+        const read = (r.result as { utis: UtiExtract[] }).utis[0] ?? emptyUti();
+        say(copy.guided.addedToCard);
+        answerFollowUp(applyTyped(q, t, read));
       } else {
         const utis = (r.result as { utis: UtiExtract[] }).utis.filter((u) => u.started_on || u.symptoms.length || u.treatments.length || u.tests.length);
-        if (!utis.length) { say("assistant", copy.guided.gotNothing); setDrafts(withIds([emptyUti()])); return; }
-        setDrafts(withIds(utis));
-        setAskingAnother(false);
-        say("assistant", utis.length > 1 ? copy.guided.gotSeveral(utis.length) : copy.guided.gotIt);
+        const list: Draft[] = (utis.length ? utis : [emptyUti()]).map((uti) => ({ id: nextId++, uti, asked: [] }));
+        setDrafts(list);
+        say(!utis.length ? copy.guided.gotNothing : utis.length > 1 ? copy.guided.gotSeveral(utis.length) : copy.guided.gotIt);
+        if (utis.length) askNext(list[0]);
       }
     });
   };
 
   // ------------------------------------------------------------ steps
+  const goTo = (next: Step) => {
+    setVisited((v) => new Set(v).add(next));
+    setStep(next);
+    setPrompt(null);
+    if (next === "prevention") say(visited.has("about") || mode === "full" ? copy.guided.askPrevention : copy.guided.askPreventionUpdate);
+    if (next === "utis") say(mode === "full" && !visited.has("utis") ? copy.guided.askUtis : copy.guided.askUtisQuick);
+  };
+
   const finishAbout = () => run(() => saveAboutMeValues(about), () => {
     setPregnant(about.pregnant_or_trying);
-    say("assistant", copy.guided.savedAbout);
-    say("assistant", copy.guided.askPrevention);
-    setStep("prevention");
+    say(copy.guided.savedAbout);
+    goTo("prevention");
   });
 
   const finishPrevention = () => {
-    const keys = prevention.keys.filter((k) => !activePreventions.includes(k));
-    const done = () => { say("assistant", copy.guided.savedPrevention(keys.length)); say("assistant", copy.guided.askUtis); setStep("utis"); };
-    if (!keys.length) { done(); return; }
-    run(() => addPreventions({ keys, otherName: prevention.other_name ?? undefined, antibioticId: prevention.antibiotic_id ?? undefined, antibioticOther }), done);
+    const { add, stop } = diffPreventions(active, prevention.keys);
+    const done = () => {
+      say(mode === "full" ? copy.guided.savedPrevention(add.length) : copy.guided.savedPreventionUpdate(add.length, stop.length));
+      setActive(prevention.keys);
+      if (mode === "full") goTo("utis");
+      else if (visited.has("utis")) finish();
+      else { setPrompt({ kind: "moreUtis" }); say(copy.guided.askMoreUtis); }
+    };
+    if (!add.length && !stop.length) { done(); return; }
+    run(async () => {
+      if (add.length) {
+        const r = await addPreventions({ keys: add, otherName: prevention.other_name ?? undefined, antibioticId: prevention.antibiotic_id ?? undefined, antibioticOther });
+        if ((r as { error?: string }).error) return r;
+      }
+      return stop.length ? stopPreventions(stop) : { ok: true };
+    }, done);
   };
 
   const dropDraft = (id: number) => {
     const rest = drafts.filter((d) => d.id !== id);
     setDrafts(rest);
-    if (!rest.length) { setAskingAnother(true); say("assistant", copy.guided.anotherQ); }
+    if (rest.length) askNext(rest[0]);
+    else { setFollowUp(null); setPrompt({ kind: "another" }); say(copy.guided.anotherQ); }
   };
-
   const saveDraft = (id: number, uti: UtiSave) => run(() => saveGuidedUti(uti), () => {
     setSavedCount((n) => n + 1);
-    say("assistant", copy.guided.savedUti(formatDay(uti.started_on)));
+    say(copy.guided.savedUti(formatDay(uti.started_on)));
     dropDraft(id);
   });
 
   const finishUtis = () => {
-    setDrafts([]);
-    setAskingAnother(false);
-    say("assistant", mode === "utis" ? copy.guided.doneQuick : copy.guided.done);
+    setDrafts([]); setFollowUp(null); setPrompt(null);
+    if (mode === "full" || visited.has("prevention")) finish();
+    else { setPrompt({ kind: "changedTaking" }); say(copy.guided.askChangedTaking); }
+  };
+  const finish = () => {
+    setPrompt(null);
+    say(mode === "full" ? copy.guided.done : copy.guided.doneQuick);
     setStep("done");
   };
 
   const busy = pending || reading;
+  const showInput = step !== "done" && !prompt;
 
   return (
     <div className="space-y-4" data-testid="guided-chat">
       <div className="space-y-3" aria-live="polite">
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] rounded-3xl px-4 py-3 text-sm leading-relaxed ${m.role === "user" ? "bg-maroon text-white rounded-br-md" : "bg-white text-midnight shadow-card rounded-bl-md"}`} data-role={m.role}>
-              {m.text}
-            </div>
+            <div className={`max-w-[85%] rounded-3xl px-4 py-3 text-sm leading-relaxed ${m.role === "user" ? "bg-maroon text-white rounded-br-md" : "bg-white text-midnight shadow-card rounded-bl-md"}`} data-role={m.role}>{m.text}</div>
           </div>
         ))}
-        {reading && (
-          <div className="flex justify-start"><div className="rounded-3xl rounded-bl-md bg-white px-4 py-3 text-sm text-slate-500 shadow-card">{copy.guided.thinking}</div></div>
-        )}
+        {reading && <div className="flex justify-start"><div className="rounded-3xl rounded-bl-md bg-white px-4 py-3 text-sm text-slate-500 shadow-card">{copy.guided.thinking}</div></div>}
       </div>
 
-      {step !== "done" && !askingAnother && (
+      {showInput && (
         <Card>
+          {followUp && current && (
+            <div className="mb-3 flex flex-wrap gap-2" data-testid="follow-up-chips">
+              {followUp === "ended" && <>
+                <Chip onClick={() => answerFollowUp({ ongoing: true, ended_on: null })}>{copy.guided.fields.stillGoing}</Chip>
+                <Chip onClick={() => answerFollowUp({ ongoing: false })}>{copy.guided.fields.over}</Chip>
+              </>}
+              {followUp === "treatment" && <Chip onClick={() => answerFollowUp({})}>{copy.guided.followUp.noAntibiotics}</Chip>}
+              {followUp === "worked" && WORKED.map((w) => (
+                <Chip key={w.key} onClick={() => answerFollowUp({ treatments: current.uti.treatments.map((x) => (x.worked ? x : { ...x, worked: w.key })) })}>{w.label}</Chip>
+              ))}
+              {followUp === "tests" && <>
+                <Chip onClick={() => answerFollowUp({})}>{copy.guided.followUp.noTest}</Chip>
+                {TEST_KINDS.map((k) => <Chip key={k.key} onClick={() => answerFollowUp({ tests: [...current.uti.tests, { kind: k.key, result: null, tested_on: null }] })}>{k.label}</Chip>)}
+              </>}
+            </div>
+          )}
           <label className="sr-only" htmlFor="guided-input">{copy.guided.placeholder}</label>
           <div className="flex gap-2">
-            <textarea
-              id="guided-input"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder={copy.guided.placeholder}
-              rows={2}
-              className={`${inputClass} flex-1 resize-none`}
-              disabled={busy}
-            />
+            <textarea id="guided-input" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder={copy.guided.placeholder} rows={2} className={`${inputClass} flex-1 resize-none`} disabled={busy} />
             <Button onClick={send} disabled={busy || !text.trim()}>{copy.guided.send}</Button>
           </div>
           {aiAvailable && (
@@ -202,27 +288,38 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
             antibioticId={prevention.antibiotic_id}
             antibioticOther={antibioticOther}
             onAntibiotic={(id, other) => { setPrevention((p) => ({ ...p, antibiotic_id: id })); if (other !== undefined) setAntibioticOther(other); }}
-            exclude={activePreventions}
           />
           <div className="mt-5 flex justify-end"><Button disabled={busy} onClick={finishPrevention}>{copy.guided.next}</Button></div>
         </Card>
       )}
 
       {step === "utis" && drafts.map((d) => (
-        <UtiReview key={d.id} draft={d.uti} pregnantOrTrying={pregnant} busy={busy} onSave={(u) => saveDraft(d.id, u)} onDiscard={() => dropDraft(d.id)} />
+        <UtiReview key={d.id} draft={d.uti} onChange={(patch) => updateDraft(d.id, patch)} pregnantOrTrying={pregnant} busy={busy} onSave={(u) => saveDraft(d.id, u)} onDiscard={() => dropDraft(d.id)} />
       ))}
 
-      {step === "utis" && !drafts.length && !askingAnother && (
+      {step === "utis" && !drafts.length && !prompt && (
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={linkBtn} disabled={busy} onClick={() => setDrafts(withIds([emptyUti()]))}>{copy.guided.tapInstead}</button>
-          <button type="button" className={`${linkBtn} ml-auto`} disabled={busy} onClick={finishUtis}>{mode === "utis" && savedCount === 0 ? copy.guided.skip : savedCount === 0 ? copy.guided.noneYet : copy.guided.allDone}</button>
+          <button type="button" className={linkBtn} disabled={busy} onClick={() => setDrafts([{ id: nextId++, uti: emptyUti(), asked: ["ended", "treatment", "worked", "tests"] }])}>{copy.guided.tapInstead}</button>
+          <button type="button" className={`${linkBtn} ml-auto`} disabled={busy} onClick={finishUtis}>{mode !== "full" && savedCount === 0 ? copy.guided.skip : savedCount === 0 ? copy.guided.noneYet : copy.guided.allDone}</button>
         </div>
       )}
 
-      {step === "utis" && askingAnother && (
+      {prompt?.kind === "another" && (
         <div className="flex flex-wrap gap-2" data-testid="guided-another">
-          <Button variant="secondary" onClick={() => { setAskingAnother(false); say("assistant", copy.guided.askUtisQuick); }}>{copy.guided.another}</Button>
+          <Button variant="secondary" onClick={() => { setPrompt(null); say(copy.guided.askUtisQuick); }}>{copy.guided.another}</Button>
           <Button onClick={finishUtis}>{copy.guided.allDone}</Button>
+        </div>
+      )}
+      {prompt?.kind === "changedTaking" && (
+        <div className="flex flex-wrap gap-2" data-testid="guided-changed-taking">
+          <Button variant="secondary" onClick={() => goTo("prevention")}>{copy.guided.yes}</Button>
+          <Button onClick={finish}>{copy.guided.noDone}</Button>
+        </div>
+      )}
+      {prompt?.kind === "moreUtis" && (
+        <div className="flex flex-wrap gap-2" data-testid="guided-more-utis">
+          <Button variant="secondary" onClick={() => goTo("utis")}>{copy.guided.yes}</Button>
+          <Button onClick={finish}>{copy.guided.noDone}</Button>
         </div>
       )}
 
@@ -255,66 +352,64 @@ function ChipRadio({ options, value, onChange }: { options: { key: string; label
   );
 }
 
-/** One extracted UTI, every field editable, saved as a whole. */
-function UtiReview({ draft, pregnantOrTrying, busy, onSave, onDiscard }: { draft: UtiExtract; pregnantOrTrying: string; busy: boolean; onSave: (u: UtiSave) => void; onDiscard: () => void }) {
+/** One extracted UTI, every field editable in place, saved as a whole. */
+function UtiReview({ draft, onChange, pregnantOrTrying, busy, onSave, onDiscard }: {
+  draft: UtiExtract; onChange: (patch: Partial<UtiExtract>) => void; pregnantOrTrying: string; busy: boolean; onSave: (u: UtiSave) => void; onDiscard: () => void;
+}) {
   const today = isoToday();
-  const [startedOn, setStartedOn] = useState(draft.started_on ?? "");
-  const [over, setOver] = useState<boolean>(draft.ongoing === true ? false : draft.ended_on ? true : draft.ongoing === false);
-  const [endedOn, setEndedOn] = useState(draft.ended_on ?? today);
-  const [symptoms, setSymptoms] = useState<Set<string>>(new Set(draft.symptoms));
-  const [otherSymptom, setOtherSymptom] = useState(draft.other_symptom ?? "");
-  const [triggers, setTriggers] = useState<Set<string>>(new Set(draft.triggers));
-  const [treatments, setTreatments] = useState(draft.treatments);
-  const [tests, setTests] = useState(draft.tests);
-  const [notes, setNotes] = useState(draft.notes ?? "");
+  const over = draft.ongoing === false || (!!draft.ended_on && draft.ongoing !== true);
   const [addingAb, setAddingAb] = useState(false);
   const [addingTest, setAddingTest] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
-  const flag = redFlagFor([...symptoms], pregnantOrTrying);
+  const flag = redFlagFor(draft.symptoms, pregnantOrTrying);
   const f = copy.guided.fields;
+  const toggle = (list: string[], k: string, on: boolean) => (on ? [...new Set([...list, k])] : list.filter((x) => x !== k));
+  const setTreatments = (fn: (t: TreatmentExtract[]) => TreatmentExtract[]) => onChange({ treatments: fn(draft.treatments) });
+  const setTests = (fn: (t: TestExtract[]) => TestExtract[]) => onChange({ tests: fn(draft.tests) });
 
   const save = () => {
-    if (!startedOn) { setLocalError(copy.guided.startNeeded); return; }
+    if (!draft.started_on) { setLocalError(copy.guided.startNeeded); return; }
     setLocalError(null);
+    const ended = over ? draft.ended_on ?? today : null;
     onSave({
-      started_on: startedOn,
-      ended_on: over ? (endedOn < startedOn ? startedOn : endedOn) : null,
-      symptoms: [...symptoms],
-      other_symptom: otherSymptom || null,
-      triggers: [...triggers],
-      treatments: treatments.filter((t) => t.antibiotic_id).map((t) => ({ ...t, days: t.days && t.days > 0 ? Math.min(t.days, 365) : null })),
-      tests,
-      notes: notes || null,
+      started_on: draft.started_on,
+      ended_on: ended && ended < draft.started_on ? draft.started_on : ended,
+      symptoms: draft.symptoms,
+      other_symptom: draft.other_symptom || null,
+      triggers: draft.triggers,
+      treatments: draft.treatments.filter((t) => t.antibiotic_id).map((t) => ({ ...t, days: t.days && t.days > 0 ? Math.min(t.days, 365) : null })),
+      tests: draft.tests,
+      notes: draft.notes || null,
     });
   };
 
   return (
     <Card data-testid="uti-review" className="space-y-5">
       <div data-testid="review-start">
-        <DateChips label={f.started} value={startedOn || today} onChange={setStartedOn} />
-        {!startedOn && <p className="mt-2 text-xs text-slate-500">{copy.guided.startNeeded}</p>}
+        <DateChips label={f.started} value={draft.started_on || today} onChange={(iso) => onChange({ started_on: iso })} />
+        {!draft.started_on && <p className="mt-2 text-xs text-slate-500">{copy.guided.startNeeded}</p>}
       </div>
       <div>
         <p className="text-sm font-semibold text-slate-700 mb-2">{f.ended}</p>
         <div className="flex flex-wrap gap-2">
-          <Chip selected={!over} onClick={() => setOver(false)}>{f.stillGoing}</Chip>
-          <Chip selected={over} onClick={() => setOver(true)}>{f.over}</Chip>
+          <Chip selected={!over} onClick={() => onChange({ ongoing: true, ended_on: null })}>{f.stillGoing}</Chip>
+          <Chip selected={over} onClick={() => onChange({ ongoing: false })}>{f.over}</Chip>
         </div>
-        {over && <div className="mt-3" data-testid="review-end"><DateChips label={f.endedOn} value={endedOn} onChange={setEndedOn} /></div>}
+        {over && <div className="mt-3" data-testid="review-end"><DateChips label={f.endedOn} value={draft.ended_on ?? today} onChange={(iso) => onChange({ ended_on: iso, ongoing: false })} /></div>}
       </div>
       <div data-testid="review-symptoms">
         <p className="text-sm font-semibold text-slate-700 mb-2">{f.symptoms}</p>
-        <ChipGroup options={SYMPTOMS} selected={symptoms} onToggle={(k, on) => setSymptoms((s) => { const n = new Set(s); if (on) n.add(k); else n.delete(k); return n; })} otherText={otherSymptom} onOtherText={setOtherSymptom} />
+        <ChipGroup options={SYMPTOMS} selected={new Set(draft.symptoms)} onToggle={(k, on) => onChange({ symptoms: toggle(draft.symptoms, k, on) })} otherText={draft.other_symptom ?? ""} onOtherText={(t) => onChange({ other_symptom: t })} />
         {flag.show && <div className="mt-3"><RedFlagBanner flag={flag} /></div>}
       </div>
       <div data-testid="review-triggers">
         <p className="text-sm font-semibold text-slate-700 mb-2">{f.triggers}</p>
-        <ChipGroup options={TRIGGERS.filter((t) => t.key !== "other")} selected={triggers} onToggle={(k, on) => setTriggers((s) => { const n = new Set(s); if (on) n.add(k); else n.delete(k); return n; })} />
+        <ChipGroup options={TRIGGERS.filter((t) => t.key !== "other")} selected={new Set(draft.triggers)} onToggle={(k, on) => onChange({ triggers: toggle(draft.triggers, k, on) })} />
       </div>
       <div data-testid="review-treatments">
         <p className="text-sm font-semibold text-slate-700 mb-2">{f.treatments}</p>
         <ul className="space-y-3">
-          {treatments.map((t, i) => (
+          {draft.treatments.map((t, i) => (
             <li key={i} className="rounded-2xl bg-pink-25 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-midnight">
@@ -343,7 +438,7 @@ function UtiReview({ draft, pregnantOrTrying, busy, onSave, onDiscard }: { draft
       <div data-testid="review-tests">
         <p className="text-sm font-semibold text-slate-700 mb-2">{f.tests}</p>
         <ul className="space-y-2">
-          {tests.map((t, i) => (
+          {draft.tests.map((t, i) => (
             <li key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-pink-25 p-3">
               <span className="text-sm font-semibold text-midnight">{labelFor(TEST_KINDS, t.kind)}{t.result ? ` · ${labelFor(TEST_RESULTS, t.result)}` : ""}</span>
               <button type="button" className={linkBtn} onClick={() => setTests((list) => list.filter((_, j) => j !== i))}>{f.remove}</button>
@@ -358,7 +453,7 @@ function UtiReview({ draft, pregnantOrTrying, busy, onSave, onDiscard }: { draft
       </div>
       <div>
         <label className="block text-sm font-semibold text-slate-700 mb-2" htmlFor="review-notes">{f.notes}</label>
-        <textarea id="review-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={`${inputClass} w-full`} />
+        <textarea id="review-notes" value={draft.notes ?? ""} onChange={(e) => onChange({ notes: e.target.value })} rows={2} className={`${inputClass} w-full`} />
       </div>
       {localError && <p className="text-sm text-rose-600">{localError}</p>}
       <div className="flex flex-wrap items-center gap-3">

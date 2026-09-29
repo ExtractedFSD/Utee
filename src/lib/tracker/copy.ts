@@ -81,6 +81,7 @@ export const copy = {
   guided: {
     title: "Guided setup",
     titleQuick: "Add UTIs quickly",
+    titlePrevention: "Update what I'm taking",
     intro: "Hi. I'll set up your tracker with a few short questions. Answer in your own words or tap the options. I only fill in your record. I don't give medical advice.",
     introQuick: "Tell me about your UTIs in your own words and I'll fill in the record for you to check.",
     aiNote: "What you type is sent to Utee's AI provider only to fill in the form. Switch it off to tap the options instead.",
@@ -91,6 +92,23 @@ export const copy = {
     askUtis: "Now your UTIs, one or several. For each, roughly when it started and ended, what you noticed, what you took and whether it helped. Or say \"none yet\".",
     askUtisQuick: "Tell me about a UTI, or several at once. Roughly when it started and ended, what you noticed, what you took and whether it helped.",
     gotIt: "Here's what I picked up. Check it and change anything that's wrong.",
+    addedToCard: "Added that below. Change it if it's not right.",
+    askPreventionUpdate: "What are you taking or doing now to help prevent UTIs, and has anything stopped? I'll update your list.",
+    savedPreventionUpdate: (added: number, stopped: number) =>
+      added === 0 && stopped === 0 ? "Noted. Your list is unchanged." : [added ? `added ${added}` : "", stopped ? `stopped ${stopped}` : ""].filter(Boolean).join(" and ").replace(/^./, (c) => c.toUpperCase()) + ".",
+    askChangedTaking: "Has anything changed in what you take or do to prevent UTIs?",
+    askMoreUtis: "Any UTIs to add?",
+    yes: "Yes",
+    noDone: "No, I'm done",
+    followUp: {
+      ended: "Has it cleared up now, or is it still going?",
+      treatment: "Did you take anything for it, like an antibiotic?",
+      worked: (name: string) => `Did the ${name} help?`,
+      tests: "Did you have a test for it? At home, at the GP or pharmacy, or a Utee test?",
+      noAntibiotics: "No antibiotics",
+      noTest: "No test",
+      dontRemember: "Don't remember",
+    },
     gotSeveral: (n: number) => `I picked up ${n} UTIs. Check each one and change anything that's wrong.`,
     gotNothing: "I couldn't pick anything out of that. Tap the options below, or try again with a little more detail.",
     thinking: "Reading that...",
@@ -156,6 +174,7 @@ export const copy = {
     otherLabel: "Other, name it",
     groupNote: "Groups are for finding things quickly. Nothing here is a recommendation.",
     edit: "Edit",
+    updateByChat: "Update by chat",
   },
 
   patterns: {

@@ -547,6 +547,24 @@ export async function addPreventions(input: { keys: string[]; otherName?: string
   return { ok: true };
 }
 
+/** Stop everything currently active with these keys, keeping the history. */
+export async function stopPreventions(keys: string[]) {
+  const { user, supabase } = await session();
+  const wanted = keys.filter((k) => PREVENTION_KEYS.includes(k));
+  if (!wanted.length) return { ok: true, stopped: 0 };
+  const { data } = await supabase
+    .from("tracker_preventions")
+    .update({ stopped_on: isoToday(), updated_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .is("stopped_on", null)
+    .in("option_key", wanted)
+    .select("id");
+  const n = data?.length ?? 0;
+  if (n) await audit(supabase, user.id, "prevention_stopped", { keys: wanted, count: n });
+  revalidatePrevention();
+  return { ok: true, stopped: n };
+}
+
 export async function updatePrevention(id: string, patch: { startedOn?: string | null; stoppedOn?: string | null; helping?: string | null; notes?: string }) {
   const { user, supabase } = await session();
   if (!uuid.safeParse(id).success) return { error: "Not found" };

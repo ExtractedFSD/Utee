@@ -137,7 +137,7 @@ function antibioticsIn(t: string): { id: string; index: number }[] {
   return found.sort((x, y) => x.index - y.index);
 }
 
-function workedIn(t: string): string | null {
+export function workedIn(t: string): string | null {
   if (/didn'?t (work|help|do anything)|did not (work|help)|no (better|help|good)|made no difference|not work|no difference|useless|still had it/.test(t)) return "no";
   if (/partly|a bit better|somewhat|little better|helped a bit|half/.test(t)) return "partly";
   if (/too early|still taking|just started|only started/.test(t)) return "too_early";
@@ -269,12 +269,26 @@ const PREVENTION_RULES: [string, RegExp][] = [
   ["bladder_training", /bladder training|bladder retraining/],
 ];
 
+const STOP_WORDS = /stopp?ed|no longer|not (taking|using|doing) .* any ?more|gave up|quit|came off|ran out|finished with|don'?t (take|use|do) .* any ?more|used to/;
+
+/** Things being taken now and things that have stopped, read clause by clause. */
 export function parsePrevention(text: string): PreventionExtract {
   const t = text.toLowerCase();
-  let keys = matchAll(PREVENTION_RULES, t);
-  if (keys.includes("uromune") || keys.includes("urovaxom")) keys = keys.filter((k) => k !== "other_vaccine");
-  if (/^\s*(no|nothing|none|nope|not really|no,? nothing)\b/.test(t) && !keys.length) return { keys: [], other_name: null, antibiotic_id: null };
+  const empty: PreventionExtract = { keys: [], stopped_keys: [], other_name: null, antibiotic_id: null };
+  if (/^\s*(no|nothing|none|nope|not really|no,? nothing|nothing'?s changed|no change)\b/.test(t)) return empty;
+  const taking: string[] = [];
+  const stopped: string[] = [];
+  for (const clause of t.split(/[,.;]|\bbut\b|\band\b(?= (?:i'?ve |i |also |have )?(?:stopp?ed|started|no longer|gave up|quit|came off|take|taking|use|using))/)) {
+    const found = matchAll(PREVENTION_RULES, clause);
+    (STOP_WORDS.test(clause) ? stopped : taking).push(...found);
+  }
+  const tidy = (list: string[]) => {
+    let keys = [...new Set(list)];
+    if (keys.includes("uromune") || keys.includes("urovaxom")) keys = keys.filter((k) => k !== "other_vaccine");
+    return keys;
+  };
   const ab = antibioticsIn(t)[0]?.id ?? null;
-  if (ab && !keys.some((k) => k.endsWith("_antibiotic"))) keys.push("low_dose_antibiotic");
-  return { keys: [...new Set(keys)], other_name: null, antibiotic_id: ab };
+  const keys = tidy(taking).filter((k) => !stopped.includes(k));
+  if (ab && !keys.some((k) => k.endsWith("_antibiotic")) && !STOP_WORDS.test(t)) keys.push("low_dose_antibiotic");
+  return { keys, stopped_keys: tidy(stopped), other_name: null, antibiotic_id: ab };
 }

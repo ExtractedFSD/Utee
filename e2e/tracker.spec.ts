@@ -382,12 +382,27 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await expect(first.getByTestId("review-treatments")).toContainText("Nitrofurantoin · 3 days · GP");
   await expect(first.getByTestId("review-treatments").getByRole("button", { name: "Yes", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(first.getByRole("button", { name: "It's over" })).toHaveAttribute("aria-pressed", "true");
+  // The first UTI only lacks a test, so that is the one follow-up it asks.
+  await expect(chat).toContainText("Did you have a test for it?");
+  await page.getByTestId("follow-up-chips").getByRole("button", { name: "No test" }).click();
+  await expect(page.getByTestId("follow-up-chips")).toHaveCount(0);
   await first.getByRole("button", { name: "Save this UTI" }).click();
   await expect(chat).toContainText("Saved the UTI from");
   await expect(cards).toHaveCount(1);
   const second = cards.nth(0);
   await expect(second.getByRole("button", { name: "Still going" })).toHaveAttribute("aria-pressed", "true");
   await expect(second.getByTestId("review-symptoms").getByRole("button", { name: "Cloudy urine" })).toHaveAttribute("aria-pressed", "true");
+  // The second one has no antibiotic: it asks, a typed answer lands on the card, then it asks how it went and about tests.
+  await expect(chat).toContainText("Did you take anything for it");
+  await input.fill("trimethoprim for 3 days from the pharmacy");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(second.getByTestId("review-treatments")).toContainText("Trimethoprim · 3 days · Pharmacy");
+  await expect(chat).toContainText("Did the Trimethoprim help?");
+  await page.getByTestId("follow-up-chips").getByRole("button", { name: "Too early to say" }).click();
+  await expect(second.getByTestId("review-treatments").getByRole("button", { name: "Too early to say" })).toHaveAttribute("aria-pressed", "true");
+  await expect(chat).toContainText("Did you have a test for it?");
+  await page.getByTestId("follow-up-chips").getByRole("button", { name: "Dipstick at GP or pharmacy" }).click();
+  await expect(second.getByTestId("review-tests")).toContainText("Dipstick at GP or pharmacy");
   await second.getByRole("button", { name: "Save this UTI" }).click();
   await expect(page.getByTestId("guided-another")).toBeVisible();
   await page.getByTestId("guided-another").getByRole("button", { name: "That's all" }).click();
@@ -397,9 +412,48 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   const body = await json.json();
   expect(body.episodes).toHaveLength(2);
   expect(body.episodes.filter((e: { ended_on: string | null }) => e.ended_on === null)).toHaveLength(1);
-  expect(body.treatments).toHaveLength(1);
-  expect(body.treatments[0]).toMatchObject({ antibiotic_id: "nitrofurantoin", days: 3, source: "gp", worked: "yes" });
+  expect(body.treatments).toHaveLength(2);
+  expect(body.treatments.find((t: { antibiotic_id: string }) => t.antibiotic_id === "nitrofurantoin")).toMatchObject({ days: 3, source: "gp", worked: "yes" });
+  expect(body.treatments.find((t: { antibiotic_id: string }) => t.antibiotic_id === "trimethoprim")).toMatchObject({ days: 3, source: "pharmacy", worked: "too_early" });
+  expect(body.tests).toHaveLength(1);
+  expect(body.tests[0].kind).toBe("dipstick_gp_pharmacy");
   expect(body.symptoms.map((s: { symptom: string }) => s.symptom).sort()).toEqual(["burning", "cloudy", "frequency", "urgency"]);
+
+  // Updating what they take by chat: add two, then stop one and start another.
+  await page.goto("/portal/tracker/prevention");
+  await page.getByRole("link", { name: "Update by chat" }).click();
+  await expect(chat).toContainText("has anything stopped?");
+  await input.fill("I've started D-mannose and cranberry");
+  await page.getByRole("button", { name: "Send" }).click();
+  const prev = page.getByTestId("guided-prevention");
+  await expect(prev.getByRole("button", { name: "D-mannose" })).toHaveAttribute("aria-pressed", "true");
+  await expect(prev.getByRole("button", { name: "Cranberry (juice, tablets or capsules)" })).toHaveAttribute("aria-pressed", "true");
+  await prev.getByRole("button", { name: "Next" }).click();
+  await expect(chat).toContainText("Added 2.");
+  await expect(chat).toContainText("Any UTIs to add?");
+  await page.getByTestId("guided-more-utis").getByRole("button", { name: "No, I'm done" }).click();
+  await expect(page.getByTestId("guided-done")).toBeVisible();
+
+  await page.goto("/portal/tracker/setup?mode=prevention");
+  await expect(prev.getByRole("button", { name: "Cranberry (juice, tablets or capsules)" })).toHaveAttribute("aria-pressed", "true");
+  await input.fill("I've stopped the cranberry and started drinking more water");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(prev.getByRole("button", { name: "Cranberry (juice, tablets or capsules)" })).toHaveAttribute("aria-pressed", "false");
+  await expect(prev.getByRole("button", { name: "Drinking more water" })).toHaveAttribute("aria-pressed", "true");
+  await prev.getByRole("button", { name: "Next" }).click();
+  await expect(chat).toContainText("Added 1 and stopped 1.");
+  await page.getByTestId("guided-more-utis").getByRole("button", { name: "No, I'm done" }).click();
+  const after = await (await page.request.get("/portal/tracker/export?format=json")).json();
+  expect(after.preventions.find((p: { option_key: string }) => p.option_key === "cranberry").stopped_on).toBeTruthy();
+  expect(after.preventions.filter((p: { stopped_on: string | null }) => !p.stopped_on).map((p: { option_key: string }) => p.option_key).sort()).toEqual(["d_mannose", "water"]);
+
+  // Quick UTI mode asks about what they take once the UTIs are done.
+  await page.goto("/portal/tracker/setup?mode=utis");
+  await input.fill("none");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(chat).toContainText("Has anything changed in what you take");
+  await page.getByTestId("guided-changed-taking").getByRole("button", { name: "No, I'm done" }).click();
+  await expect(page.getByTestId("guided-done")).toBeVisible();
   const { data: log } = await admin().from("tracker_audit_log").select("action").eq("user_id", user.id);
   expect(log?.filter((l) => l.action === "guided_uti_saved")).toHaveLength(2);
   await ctx.close();

@@ -174,6 +174,10 @@ describe("guided setup, rule-based reading", () => {
     expect(p.keys.sort()).toEqual(["d_mannose", "vaginal_oestrogen", "water"]);
     expect(parsePrevention("nothing").keys).toEqual([]);
     expect(parsePrevention("trimethoprim every night to prevent them").antibiotic_id).toBe("trimethoprim");
+    const changed = parsePrevention("I've stopped the cranberry tablets and started D-mannose, still drinking lots of water");
+    expect(changed.stopped_keys).toEqual(["cranberry"]);
+    expect(changed.keys.sort()).toEqual(["d_mannose", "water"]);
+    expect(parsePrevention("nothing's changed").keys).toEqual([]);
   });
   it("reads one UTI with its course, without confusing course length with UTI length", () => {
     const { utis } = parseUtis("started 3 weeks ago and lasted 5 days, burning and needing to go a lot, nitrofurantoin from the GP for 3 days which helped", today);

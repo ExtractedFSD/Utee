@@ -35,7 +35,8 @@ List everything the person takes or does to help prevent UTIs, as keys from this
 ${PREVENTION_GROUPS.map((g) => `${g.label}: ${list(g.options)}`).join("\n")}
 ${PREVENTION_OTHER.key} = something not in the list (put its name in other_name).
 If they name a specific antibiotic they take to prevent UTIs, set antibiotic_id from: ${ANTIBIOTICS.map((a) => `${a.id} = ${a.name}${a.brands?.length ? ` (${a.brands.join(", ")})` : ""}`).join("; ")}.
-If they say they take or do nothing, return an empty list.`,
+Put things they say they have stopped, no longer take or gave up in stopped_keys instead of keys.
+If they say they take or do nothing, or nothing has changed, return empty lists.`,
   utis: `${RULES}
 The person is describing one or more UTIs (urinary tract infections) they have had. Return one entry per UTI, oldest first.
 - started_on / ended_on: YYYY-MM-DD or null. If they say it is still going, set ongoing true and ended_on null. If they only give a length ("lasted 5 days"), compute ended_on from started_on.
