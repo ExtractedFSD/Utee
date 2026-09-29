@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardTitle, PageHeader, StatusBadge, EmptyState, LinkButton } from "@/components/ui";
+import { Card, CardTitle, PageHeader, StatusBadge, EmptyState, LinkButton, Callout, Notice } from "@/components/ui";
 import { formatDate, formatMoney, type KitStatus } from "@/lib/status";
 
 export default async function PortalHome({
@@ -33,20 +33,19 @@ export default async function PortalHome({
   return (
     <div className="space-y-6">
       <PageHeader
+        eyebrow="Your portal"
         title="Welcome back"
         subtitle="Track your tests, orders and subscriptions in one place."
       />
 
       {kitFlag === "not-yours" && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <Notice>
           That kit isn&apos;t linked to your account. If you believe this is a mistake,
           please contact us with your order number.
-        </div>
+        </Notice>
       )}
       {kitFlag === "not-found" && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          We couldn&apos;t find that kit code. Please check the QR code or contact us.
-        </div>
+        <Notice>We couldn&apos;t find that kit code. Please check the QR code or contact us.</Notice>
       )}
 
       <Card>
@@ -139,24 +138,24 @@ export default async function PortalHome({
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="bg-brand-50 border-brand-100">
-          <h3 className="text-base font-semibold text-slate-900">Speak to a urologist</h3>
-          <p className="text-sm text-slate-600 mt-1 mb-4">
+        <Callout>
+          <h3 className="font-display text-2xl font-light">Speak to a urologist</h3>
+          <p className="text-sm text-white/85 mt-2 mb-5 leading-relaxed">
             Book a 5-minute consultation to discuss your results or symptoms with a specialist.
           </p>
-          <LinkButton href="#" variant="secondary">
+          <LinkButton href="#" variant="white">
             Coming soon
           </LinkButton>
-        </Card>
-        <Card className="bg-brand-50 border-brand-100">
-          <h3 className="text-base font-semibold text-slate-900">Preventative care</h3>
-          <p className="text-sm text-slate-600 mt-1 mb-4">
+        </Callout>
+        <Callout>
+          <h3 className="font-display text-2xl font-light">Preventative care</h3>
+          <p className="text-sm text-white/85 mt-2 mb-5 leading-relaxed">
             Our supplements support urinary tract health and help prevent recurrence.
           </p>
-          <LinkButton href={storeUrl} external>
+          <LinkButton href={storeUrl} variant="white" external>
             Shop supplements
           </LinkButton>
-        </Card>
+        </Callout>
       </div>
     </div>
   );

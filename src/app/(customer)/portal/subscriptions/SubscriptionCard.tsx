@@ -43,7 +43,7 @@ export function SubscriptionCard({ subscription }: { subscription: SubscriptionR
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold text-slate-900">
+            <h3 className="font-display text-xl font-light text-midnight">
               {subscription.product_title}
             </h3>
             <Pill tone={active ? "green" : "slate"}>{subscription.status}</Pill>
@@ -97,7 +97,7 @@ export function SubscriptionCard({ subscription }: { subscription: SubscriptionR
       </div>
 
       {panel === "delay" && (
-        <div className="mt-4 rounded-xl bg-slate-50 p-4 flex flex-wrap items-end gap-3">
+        <div className="mt-4 rounded-2xl bg-pink-25 p-4 flex flex-wrap items-end gap-3">
           <label className="block">
             <span className="block text-sm font-medium text-slate-700 mb-1">
               New delivery date
@@ -122,7 +122,7 @@ export function SubscriptionCard({ subscription }: { subscription: SubscriptionR
       )}
 
       {panel === "cancel" && (
-        <div className="mt-4 rounded-xl bg-rose-50 p-4 space-y-3">
+        <div className="mt-4 rounded-2xl bg-rose-50 p-4 space-y-3">
           <p className="text-sm text-slate-700">
             We&apos;re sorry to see you go. Mind telling us why? (optional)
           </p>

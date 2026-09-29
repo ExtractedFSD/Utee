@@ -1,0 +1,10 @@
+:root{
+--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;--space-7:48px;--space-8:64px;--space-9:96px;
+--radius-pill:999px;
+--radius-card:24px;
+--radius-device:32px;
+--radius-curve:50% 50% 0 0; /* curve holding device: dome top */
+--shadow-card:0 10px 30px rgba(29,0,58,.14);
+--shadow-sticker:inset 0 2px 6px rgba(255,255,255,.5),0 8px 20px rgba(145,25,59,.35);
+--border-hairline:1px solid rgba(255,255,255,.5); /* @kind other */
+}

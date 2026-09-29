@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, inputClass } from "@/components/ui";
+import { Button, inputClass, Wordmark } from "@/components/ui";
 import { prepareSignIn } from "./actions";
 
 /**
@@ -86,13 +86,13 @@ function LoginForm() {
 
   return (
     <div className="w-full max-w-sm">
-      <div className="text-center mb-8">
-        <span className="text-4xl font-bold tracking-tight text-brand-600">utee</span>
-        <p className="text-sm text-slate-500 mt-2">
+      <div className="text-center mb-8 text-white">
+        <Wordmark className="text-[56px]" tm />
+        <p className="text-sm text-white/85 mt-3">
           Your secure portal for orders, tests and subscriptions.
         </p>
       </div>
-      <div className="bg-white border border-slate-200 rounded-2xl p-6">
+      <div className="bg-white rounded-card shadow-card p-6">
         {step === "email" ? (
           <form onSubmit={sendCode} className="space-y-4">
             <div>
@@ -109,7 +109,7 @@ function LoginForm() {
                 placeholder="you@example.com"
                 className={inputClass}
               />
-              <p className="text-xs text-slate-400 mt-1.5">
+              <p className="text-xs text-slate-500 mt-1.5">
                 {fromKit
                   ? "Ordered from the Utee store? Use the email on your order. Bought your kit elsewhere? Enter your email and we'll set up your account. Either way we'll send you a one-time sign-in code — no password needed."
                   : "Use the email from your Utee order — we'll send you a one-time sign-in code. No password needed."}
@@ -136,7 +136,7 @@ function LoginForm() {
                 placeholder="Code from your email"
                 className={`${inputClass} text-center tracking-[0.5em] text-lg`}
               />
-              <p className="text-xs text-slate-400 mt-1.5">
+              <p className="text-xs text-slate-500 mt-1.5">
                 We sent a code to <strong>{email}</strong>.
               </p>
             </div>
@@ -147,7 +147,7 @@ function LoginForm() {
             <button
               type="button"
               onClick={() => setStep("email")}
-              className="w-full text-sm text-slate-500 hover:text-slate-900"
+              className="w-full text-sm text-slate-500 hover:text-midnight"
             >
               Use a different email
             </button>
@@ -160,7 +160,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-brand flex items-center justify-center px-4 py-12">
       <Suspense>
         <LoginForm />
       </Suspense>

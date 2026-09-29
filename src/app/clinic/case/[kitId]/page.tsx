@@ -81,7 +81,7 @@ export default async function CasePage({
               <ul className="space-y-1">
                 {(symptoms.selected ?? []).map((key) => (
                   <li key={key} className="flex gap-2">
-                    <span className="text-brand-600">✓</span>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="mt-1 shrink-0 text-maroon"><path d="M20 6 9 17l-5-5" /></svg>
                     {SYMPTOM_LABELS[key] ?? key}
                   </li>
                 ))}

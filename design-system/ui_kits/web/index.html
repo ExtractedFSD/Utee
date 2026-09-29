@@ -1,0 +1,78 @@
+<!-- @dsCard group="Web" viewport="1280x820" name="Brand site — home" subtitle="Inferred brand expression (no site source provided)" -->
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Utee — Discover</title><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;font-family:var(--font-body);color:var(--midnight)}a{color:var(--maroon)}a:hover{color:var(--midnight)}</style>
+</head><body><div id="root"></div>
+<script type="text/babel">
+const { Button, EyebrowTab, RangeTag, Sticker, Card, QuoteCard, CurveImageHolder } = window.UteeDesignSystem_35b79c;
+const PRODUCTS = {
+  'D-Mannose': { range:'lavender', title:'Utee D-Mannose+', copy:'Easy-to-mix, flavourless sachets provide concentrated support and on-demand relief when you need it most.', dose:'1 sachet every morning, up to 3 a day when required' },
+  'Probiotics': { range:'mint', title:'Utee Probiotics+', copy:'Formulated for daily use in convenient capsule form, Utee vaginal Probiotics support a healthy and balanced urinary microbiome over time.', dose:'1 capsule every evening' },
+  'NACs': { range:'peach', title:'Utee NACs', copy:'Advanced urinary resilience in daily capsule form, designed to complement your Utee routine.', dose:'1 capsule daily' },
+};
+function App(){
+  const [tab, setTab] = React.useState('D-Mannose');
+  const p = PRODUCTS[tab];
+  return (
+  <div>
+    <header style={{background:'var(--gradient-brand)',padding:'0 56px'}}>
+      <nav style={{display:'flex',alignItems:'center',gap:28,padding:'22px 0',color:'#fff'}}>
+        <div style={{fontFamily:'var(--font-display)',fontWeight:300,fontSize:34,lineHeight:1}}>Utee<sup style={{fontSize:12}}>™</sup></div>
+        <div style={{flex:1}}></div>
+        <span style={{fontWeight:600,fontSize:13,letterSpacing:'.14em',cursor:'pointer'}}>SUPPLEMENTS</span>
+        <span style={{fontWeight:600,fontSize:13,letterSpacing:'.14em',cursor:'pointer'}}>TESTING</span>
+        <span style={{fontWeight:600,fontSize:13,letterSpacing:'.14em',cursor:'pointer'}}>OUR STORY</span>
+        <Button>Shop now</Button>
+      </nav>
+      <div style={{display:'flex',alignItems:'center',gap:48,padding:'40px 0 72px'}}>
+        <div style={{flex:1,color:'#fff'}}>
+          <div style={{fontFamily:'var(--font-display)',fontWeight:300,fontSize:64,lineHeight:1.08,maxWidth:560}}>Revolutionary dual-approach UTI supplement</div>
+          <p style={{fontSize:18,lineHeight:1.55,maxWidth:480,margin:'24px 0 32px'}}>Utee offers a holistic approach to UTI management: Daily vaginal Probiotics + Cranberry Extract, and high-strength D-Mannose + Sodium Bicarbonate.</p>
+          <div style={{display:'flex',gap:16,alignItems:'center'}}><Button>Try Utee</Button><Button style={{background:'transparent',color:'#fff',boxShadow:'none',border:'1px solid rgba(255,255,255,.55)'}}>Explore</Button></div>
+        </div>
+        <div style={{display:'flex',gap:24,alignItems:'flex-end'}}>
+          <CurveImageHolder src="../../assets/imagery-studio-packshot.png" width={340} height={300} />
+          <Sticker style={{maxWidth:200}}>Created by women, for women.</Sticker>
+        </div>
+      </div>
+    </header>
+    <main style={{background:'var(--pink-25)',padding:'64px 56px'}}>
+      <EyebrowTab>Our ranges</EyebrowTab>
+      <div style={{display:'flex',gap:10,margin:'28px 0'}}>
+        {Object.keys(PRODUCTS).map(k => (
+          <span key={k} onClick={()=>setTab(k)} style={{cursor:'pointer',opacity:tab===k?1:.55}}><RangeTag range={PRODUCTS[k].range}>{k}</RangeTag></span>
+        ))}
+      </div>
+      <div style={{display:'flex',gap:32,alignItems:'stretch'}}>
+        <Card style={{flex:2}}>
+          <h3 style={{fontFamily:'var(--font-display)',fontWeight:300,fontSize:34,margin:'0 0 12px'}}>{p.title}</h3>
+          <p style={{fontSize:16,lineHeight:1.55,margin:'0 0 16px'}}>{p.copy}</p>
+          <div style={{fontWeight:600,fontSize:13,letterSpacing:'.06em',color:'var(--maroon)',marginBottom:24}}>{p.dose}</div>
+          <Button>Shop {tab}</Button>
+        </Card>
+        <div style={{flex:1,display:'flex',flexDirection:'column',gap:20,alignItems:'center',justifyContent:'center'}}>
+          <QuoteCard quote="I've battled recurrent UTIs all my life, so co-creating Utee has been truly life-changing. I'm thrilled to share it with other women who truly need it." name="Cherry Healey," role="co-creator, TV presenter & women's health advocate" />
+        </div>
+      </div>
+    </main>
+    <section style={{background:'var(--surface-maroon)',padding:'56px',display:'flex',alignItems:'center',gap:40}}>
+      <div style={{color:'#fff',flex:1}}>
+        <EyebrowTab pill={false}>The pathway</EyebrowTab>
+        <div style={{fontFamily:'var(--font-display)',fontWeight:300,fontSize:40,lineHeight:1.15,margin:'16px 0'}}>Our competitors sell products. We provide a pathway.</div>
+        <p style={{fontSize:16,lineHeight:1.55,maxWidth:520}}>Preventative &amp; proactive supplements, diagnostic testing, laboratory analysis, clinical support and personalised urinary health programmes.</p>
+      </div>
+      <img src="../../assets/icons-strip.png" style={{width:420,borderRadius:16}} alt="Utee iconography" />
+    </section>
+    <footer style={{background:'var(--midnight)',color:'#fff',padding:'28px 56px',display:'flex',alignItems:'center',gap:16}}>
+      <div style={{fontFamily:'var(--font-display)',fontWeight:300,fontSize:24}}>Utee</div>
+      <div style={{fontSize:12,opacity:.7}}>VEGAN FOOD SUPPLEMENT · UTI supplement range + UTI testing service</div>
+      <div style={{flex:1}}></div>
+      <div style={{fontSize:12,opacity:.7}}>@extracted.co.uk</div>
+    </footer>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script></body></html>
