@@ -3,26 +3,27 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Button, Card, LinkButton, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
-import { CONTRACEPTION, COURSE_DAYS, MENOPAUSE_STAGES, PREGNANT, SOURCES, SYMPTOMS, TEST_KINDS, TRIGGERS, WORKED, labelFor } from "@/lib/tracker/options";
+import { CONTRACEPTION, COURSE_DAYS, FEELINGS, MENOPAUSE_STAGES, PREGNANT, SOURCES, SYMPTOMS, TEST_KINDS, TRIGGERS, WORKED, labelFor } from "@/lib/tracker/options";
 import { antibioticName } from "@/lib/tracker/search";
 import { HELPING, PREVENTION_GROUPS, RETIRED_OPTIONS, diffPreventions } from "@/lib/tracker/prevention";
 import { redFlagFor } from "@/lib/tracker/redflags";
 import { formatDay, isoToday } from "@/lib/tracker/stats";
 import { freeTextAnswer, parseDatePhrase, workedIn } from "@/lib/tracker/guided/local";
-import { emptyUti, type AboutExtract, type FreeExtract, type PreventionExtract, type UtiExtract, type UtiSave } from "@/lib/tracker/guided/schema";
+import { emptyUti, type AboutExtract, type ExistingExtract, type FreeExtract, type PreventionExtract, type UtiExtract, type UtiSave } from "@/lib/tracker/guided/schema";
 import type { ChatMessage } from "@/lib/tracker/data";
 import { Chip, DateChips } from "../components/Chips";
 import { PreventionPicker } from "../components/PreventionPicker";
 import { AntibioticPicker } from "../components/AntibioticPicker";
 import { RedFlagBanner } from "../components/RedFlagBanner";
-import { addPreventions, extractGuided, rateTreatment, saveAboutMeValues, saveChat, saveGuidedUti, stopPreventions, updateEpisode, updatePrevention } from "../actions";
+import { addPreventions, extractGuided, rateTreatment, saveAboutMeValues, saveChat, saveGuidedUti, stopPreventions, updateEpisode, updateOpenUti, updatePrevention } from "../actions";
 
 type Msg = ChatMessage & { id: number };
 type Step = "about" | "prevention" | "utis" | "free" | "done";
 type Mode = "full" | "utis" | "prevention" | "free";
 export type Nudges = { unrated: { id: string; name: string } | null; antibioticPrevention: string | null; staleOpen?: string | null };
-export type OpenEpisode = { id: string; startedOn: string; treatments: { id: string; name: string; worked: string | null }[] };
+export type OpenEpisode = { id: string; startedOn: string; treatments: { id: string; name: string; worked: string | null }[]; symptomsToday?: string[]; feelingToday?: number | null };
 type Closing = { episode: OpenEpisode; endedOn: string | null; ratings: Record<string, string> };
+type Updating = { episode: OpenEpisode; read: ExistingExtract; feeling: number | null; symptoms: string[]; asked: Q[] };
 type About = { menopause_stage: string | null; contraception: string | null; pregnant_or_trying: string | null };
 type Draft = { uti: UtiExtract; asked: Q[]; flagged: boolean };
 type Q =
@@ -30,6 +31,7 @@ type Q =
   | "wasTaking" | "started" | "ended" | "endedOn" | "symptoms" | "triggers" | "treatment" | "days" | "worked" | "tests" | "overview" | "change"
   | "preventionOverview" | "preventionPick"
   | "openCheck" | "closeWhen" | "closeWorked" | "closeOverview"
+  | "updateFeeling" | "updateSymptoms" | "updateOverview"
   | "rate" | "another" | "changedTaking" | "moreUtis";
 
 let nextId = 1;
@@ -61,6 +63,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
   const [step, setStep] = useState<Step>(mode === "full" ? "about" : mode);
   const [q, setQ] = useState<Q | null>(mode === "full" ? "menopause" : mode === "free" && !resume && staleOpen ? "openCheck" : mode === "free" && nudges?.unrated && !resume ? "rate" : null);
   const [closing, setClosing] = useState<Closing | null>(null);
+  const [updating, setUpdating] = useState<Updating | null>(null);
   const [closed, setClosed] = useState<string[]>([]);
   // UTIs saved during this chat that are still open, so "it's gone" can find them too.
   const [addedOpen, setAddedOpen] = useState<OpenEpisode[]>([]);
@@ -206,6 +209,44 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
       afterNudge();
     });
   };
+  // ------------------------------------------ today's log on the open UTI
+  const startUpdating = (episode: OpenEpisode, read: ExistingExtract) => {
+    const u: Updating = { episode, read, feeling: read.feeling ?? episode.feelingToday ?? null, symptoms: [...new Set([...(episode.symptomsToday ?? []), ...read.symptoms_today])], asked: [] };
+    say(read.ended === false ? copy.guided.update.ack : copy.guided.update.ackCalm);
+    askUpdateNext(u);
+  };
+  const askUpdateNext = (u: Updating) => {
+    setUpdating(u);
+    if (u.feeling === null && !u.asked.includes("updateFeeling")) { setQ("updateFeeling"); say(copy.guided.update.feeling); return; }
+    if (!u.symptoms.length && !u.asked.includes("updateSymptoms")) { setQ("updateSymptoms"); say(copy.guided.update.symptoms); return; }
+    setQ("updateOverview");
+    const r = u.read;
+    const o = copy.guided.update;
+    const lines = [
+      o.line(formatDay(u.episode.startedOn)),
+      u.feeling !== null ? `${o.feelingLine}: ${labelFor(FEELINGS, String(u.feeling))}` : "",
+      `${o.noticingLine}: ${u.symptoms.length ? u.symptoms.map((k) => (k === "other" ? r.other_symptom || "Other" : labelFor(SYMPTOMS, k))).join(", ") : copy.guided.overview.nothingNoted}`,
+      r.triggers.length ? `${o.triggerLine}: ${r.triggers.map((k) => (k === "other" ? r.other_trigger || "Other" : labelFor(TRIGGERS, k))).join(", ")}` : "",
+      r.treatments.length ? `${copy.guided.overview.antibiotics}: ${r.treatments.map((t) => (t.antibiotic_id ? antibioticName(t.antibiotic_id, t.other_name) : "Antibiotic")).join(", ")}` : "",
+      r.tests.length ? `${copy.guided.overview.tests}: ${r.tests.map((t) => labelFor(TEST_KINDS, t.kind)).join(", ")}` : "",
+      r.note ? `${o.noteLine}: ${r.note}` : "",
+    ].filter(Boolean);
+    say(o.overview, "assistant", { lines });
+  };
+  const saveUpdating = () => {
+    if (!updating) return;
+    const u = updating;
+    run(() => updateOpenUti({
+      episodeId: u.episode.id, feeling: u.feeling, symptomsToday: u.symptoms, otherSymptom: u.read.other_symptom,
+      triggers: u.read.triggers, otherTrigger: u.read.other_trigger, note: u.read.note, treatments: u.read.treatments, tests: u.read.tests,
+    }), () => {
+      setUpdating(null);
+      say(copy.guided.update.saved(formatDay(u.episode.startedOn)));
+      setQ(null);
+      say(copy.guided.anythingElse);
+    });
+  };
+
   /** After the open-UTI check, any waiting rating nudge, then the usual invitation. */
   const afterNudge = () => {
     if (pendingRate && nudges?.unrated) { setPendingRate(false); setQ("rate"); say(copy.guided.nudgeHelping(nudges.unrated.name)); return; }
@@ -372,7 +413,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
     if ((step === "utis" || step === "free") && !current && /^(none|no(ne)? yet|nothing|no|skip|not yet)\b/i.test(t)) { finishUtis(); return; }
     setReading(true);
     startTransition(async () => {
-      const extractStep = step === "about" ? "about" : step === "prevention" ? "prevention" : question === "closeWhen" || question === "closeWorked" ? "free" : current ? "utis" : step === "free" ? "free" : "utis";
+      const extractStep = step === "about" ? "about" : step === "prevention" ? "prevention" : question === "closeWhen" || question === "closeWorked" || question === "updateFeeling" || question === "updateSymptoms" ? "free" : current ? "utis" : step === "free" ? "free" : "utis";
       const r = await extractGuided(extractStep, t);
       setReading(false);
       if ("error" in r) { setError(r.error); return; }
@@ -396,6 +437,16 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
         const read = (r.result as { utis: UtiExtract[] }).utis[0] ?? emptyUti();
         const { patch, asked } = applyTyped(question, t, read);
         answer(patch, asked);
+      } else if (question === "updateFeeling" && updating) {
+        const read = (r.result as FreeExtract).existing;
+        const n = read.feeling ?? Number((t.match(/[1-5]/) ?? [])[0]) ?? null;
+        if (!n) { say(copy.guided.gotNothing); return; }
+        askUpdateNext({ ...updating, feeling: n, asked: [...updating.asked, "updateFeeling"] });
+      } else if (question === "updateSymptoms" && updating) {
+        const read = (r.result as FreeExtract).existing;
+        const keys = read.symptoms_today.length ? read.symptoms_today : /^\s*(no|nothing|none|nope|not much)/.test(t.toLowerCase()) ? [] : ["other"];
+        const other = keys.includes("other") && !read.symptoms_today.length ? freeTextAnswer(t) : read.other_symptom;
+        askUpdateNext({ ...updating, symptoms: [...new Set([...updating.symptoms, ...keys])], read: { ...updating.read, other_symptom: other ?? updating.read.other_symptom }, asked: [...updating.asked, "updateSymptoms"] });
       } else if (question === "closeWhen" && closing) {
         const read = r.result as FreeExtract;
         const date = read.existing.ended_on ?? parseDatePhrase(t.toLowerCase()) ?? (/today|now|this morning/.test(t.toLowerCase()) ? isoToday() : null);
@@ -410,20 +461,24 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
         const f = r.result as FreeExtract;
         const utis = f.utis.filter((u) => u.started_on || u.symptoms.length || u.treatments.length || u.tests.length);
         const changes = f.taking.keys.length || f.taking.stopped_keys.length ? f.taking : null;
-        if (!utis.length && f.existing.ended) {
+        const ex = f.existing;
+        const aboutOpen = !utis.length && (ex.ended !== null || ex.mentioned) && (ex.ended !== null || ex.symptoms_today.length || ex.triggers.length || ex.feeling !== null || ex.note || ex.treatments.length || ex.tests.length || ex.mentioned);
+        if (aboutOpen) {
           const open = openNow()[0];
-          if (!open) { say(copy.guided.close.noOpen); return; }
-          startClosing(open, f.existing.ended_on);
+          if (!open) { say(ex.ended ? copy.guided.close.noOpen : copy.guided.update.noOpen); return; }
+          if (ex.ended) startClosing(open, ex.ended_on);
+          else startUpdating(open, ex);
+          if (changes) setPendingTaking(changes);
           return;
         }
         if (!utis.length && !changes) { say(copy.guided.gotNothing); return; }
         if (changes) setPrevention({ keys: [...new Set([...active, ...changes.keys])].filter((k) => !changes.stopped_keys.includes(k)), stopped_keys: changes.stopped_keys, other_name: changes.other_name, antibiotic_id: changes.antibiotic_id });
-        if (utis.length) { setPendingTaking(changes); say(utis.length > 1 ? copy.guided.gotSeveral(utis.length) : copy.guided.gotIt); startDrafts(utis); }
+        if (utis.length) { setPendingTaking(changes); if (utis.length > 1) say(copy.guided.gotSeveral(utis.length)); startDrafts(utis); }
         else preventionOverview({ keys: [...new Set([...active, ...changes!.keys])].filter((k) => !changes!.stopped_keys.includes(k)), stopped_keys: changes!.stopped_keys, other_name: changes!.other_name, antibiotic_id: changes!.antibiotic_id });
       } else {
         const utis = (r.result as { utis: UtiExtract[] }).utis.filter((u) => u.started_on || u.symptoms.length || u.treatments.length || u.tests.length);
         if (!utis.length) { say(copy.guided.gotNothing); startDrafts([emptyUti()]); return; }
-        say(utis.length > 1 ? copy.guided.gotSeveral(utis.length) : copy.guided.gotIt);
+        if (utis.length > 1) say(copy.guided.gotSeveral(utis.length));
         startDrafts(utis);
       }
     });
@@ -453,9 +508,9 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
   };
   const rate = (id: string, helping: string) => run(() => updatePrevention(id, { helping }), () => { setPendingRate(false); say(copy.guided.nudgeThanks); say(copy.guided.askFree); setQ(null); });
 
-  const OPTION_QS: (Q | null)[] = ["menopause", "contraception", "pregnant", "wasTaking", "started", "ended", "endedOn", "symptoms", "triggers", "treatment", "days", "worked", "tests", "rate", "closeWhen", "closeWorked", null];
+  const OPTION_QS: (Q | null)[] = ["menopause", "contraception", "pregnant", "wasTaking", "started", "ended", "endedOn", "symptoms", "triggers", "treatment", "days", "worked", "tests", "rate", "closeWhen", "closeWorked", "updateFeeling", "updateSymptoms", null];
   const busy = pending || reading;
-  const promptOnly = q === "rate" || q === "another" || q === "changedTaking" || q === "moreUtis" || q === "overview" || q === "aboutOverview" || q === "preventionOverview" || q === "change" || q === "openCheck" || q === "closeOverview";
+  const promptOnly = q === "rate" || q === "another" || q === "changedTaking" || q === "moreUtis" || q === "overview" || q === "aboutOverview" || q === "preventionOverview" || q === "change" || q === "openCheck" || q === "closeOverview" || q === "updateOverview";
   const showInput = step !== "done" && !promptOnly;
   const toggleIn = (list: string[], k: string) => (list.includes(k) ? list.filter((x) => x !== k) : [...list, k]);
 
@@ -530,6 +585,15 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
       case "closeOverview": return <>
         <Chip onClick={saveClosing} disabled={busy}>{c.save}</Chip>
         <Chip onClick={() => { if (closing) { setQ("closeWhen"); say(copy.guided.ask.endedOn); } }}>{copy.guided.close.changeDate}</Chip>
+      </>;
+      case "updateFeeling": return FEELINGS.map((f) => <Chip key={f.key} onClick={() => updating && askUpdateNext({ ...updating, feeling: Number(f.key), asked: [...updating.asked, "updateFeeling"] })}>{f.label}</Chip>);
+      case "updateSymptoms": return <>
+        {SYMPTOMS.filter((o) => o.key !== "other").map((o) => <Chip key={o.key} selected={updating?.symptoms.includes(o.key)} onClick={() => updating && setUpdating({ ...updating, symptoms: toggleIn(updating.symptoms, o.key) })}>{o.label}</Chip>)}
+        <Chip onClick={() => updating && askUpdateNext({ ...updating, asked: [...updating.asked, "updateSymptoms"] })}>{c.done}</Chip>
+      </>;
+      case "updateOverview": return <>
+        <Chip onClick={saveUpdating} disabled={busy}>{c.save}</Chip>
+        <Chip onClick={() => { if (updating) askUpdateNext({ ...updating, symptoms: [], feeling: null, asked: [] }); }}>{c.change}</Chip>
       </>;
       case "rate": return HELPING.map((h) => <Chip key={h.key} disabled={busy} onClick={() => rate(nudges!.unrated!.id, h.key)}>{h.label}</Chip>);
       case "another": return <>

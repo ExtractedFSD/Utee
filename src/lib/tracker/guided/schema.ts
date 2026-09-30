@@ -62,8 +62,20 @@ export type UtiExtract = z.infer<typeof utiSchema>;
 export const utisSchema = z.object({ utis: z.array(utiSchema) });
 export type UtisExtract = z.infer<typeof utisSchema>;
 
-/** Something said about the UTI already on the record, such as "it's gone". */
-export const existingSchema = z.object({ ended: z.boolean().nullable(), ended_on: z.string().nullable() });
+/** Something said about the UTI already on the record: it has gone, or how today is going. */
+export const existingSchema = z.object({
+  mentioned: z.boolean(),
+  ended: z.boolean().nullable(),
+  ended_on: z.string().nullable(),
+  feeling: z.number().int().nullable(),
+  symptoms_today: z.array(z.enum(keys(SYMPTOMS))),
+  other_symptom: z.string().nullable(),
+  triggers: z.array(z.enum(keys(TRIGGERS))),
+  other_trigger: z.string().nullable(),
+  treatments: z.array(treatmentSchema),
+  tests: z.array(testSchema),
+  note: z.string().nullable(),
+});
 export type ExistingExtract = z.infer<typeof existingSchema>;
 
 /** Free-form: one message may hold new UTIs, changes to what they take, news about the open UTI, or a mix. */
@@ -83,6 +95,10 @@ export const utiSaveSchema = z.object({
   notes: z.string().max(4000).nullable(),
 });
 export type UtiSave = z.infer<typeof utiSaveSchema>;
+
+export const emptyExisting = (): ExistingExtract => ({
+  mentioned: false, ended: null, ended_on: null, feeling: null, symptoms_today: [], other_symptom: null, triggers: [], other_trigger: null, treatments: [], tests: [], note: null,
+});
 
 export const emptyUti = (): UtiExtract => ({
   started_on: null, ended_on: null, ongoing: null, symptoms: [], other_symptom: null, triggers: [], other_trigger: null, treatments: [], tests: [], notes: null,

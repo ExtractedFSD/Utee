@@ -519,6 +519,27 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await pchips.getByRole("button", { name: "Save", exact: true }).click();
   await expect(panel).toContainText("Stopped 1.");
   await expect(panel).toContainText("Anything else?");
+  // News about the ongoing UTI: still here, a suspected cause, a plan. Una notes it and logs today.
+  await panel.getByPlaceholder("Type here...").fill("My uti is still here i think maybe shower gel causes it - i will go to the doctor today");
+  await panel.getByRole("button", { name: "Send" }).click();
+  await expect(panel).toContainText("Sorry it's still hanging around. Let's get today logged.");
+  await expect(panel).toContainText("How are you feeling today?");
+  await ppick("OK", true);
+  await expect(panel).toContainText("What are you noticing today?");
+  await ppick("Burning or stinging when peeing");
+  await pchips.getByRole("button", { name: "Done" }).click();
+  await expect(poverview()).toContainText("Feeling: OK");
+  await expect(poverview()).toContainText("Noticing: Burning or stinging when peeing");
+  await expect(poverview()).toContainText("Possible trigger added: Shower gel");
+  await expect(poverview()).toContainText("Note: I will go to the doctor today");
+  await pchips.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(panel).toContainText("Saved to your UTI from");
+  const logged = await (await page.request.get("/portal/tracker/export?format=json")).json();
+  const openNow = logged.episodes.find((e: { ended_on: string | null }) => e.ended_on === null);
+  expect(openNow.notes).toContain("I will go to the doctor today");
+  expect(logged.checkins.find((c: { episode_id: string }) => c.episode_id === openNow.id)?.feeling).toBe(3);
+  expect(logged.triggers.filter((t: { episode_id: string; trigger: string; other_text: string | null }) => t.episode_id === openNow.id && t.trigger === "other" && t.other_text === "Shower gel")).toHaveLength(1);
+
   // "My UTI has gone" closes the one that is still open, in chat.
   await panel.getByPlaceholder("Type here...").fill("My UTI has gone");
   await panel.getByRole("button", { name: "Send" }).click();

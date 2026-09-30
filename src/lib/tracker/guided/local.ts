@@ -1,7 +1,7 @@
 import { ANTIBIOTICS } from "../search";
 import { isoDaysAgo, isoToday } from "../stats";
 import type { AboutExtract, ExistingExtract, FreeExtract, PreventionExtract, TestExtract, TreatmentExtract, UtiExtract, UtisExtract } from "./schema";
-import { emptyUti } from "./schema";
+import { emptyExisting, emptyUti } from "./schema";
 
 /*
  * Rule-based reading of a typed answer. It runs when there is no AI key, when
@@ -282,14 +282,39 @@ export function parsePrevention(text: string): PreventionExtract {
 }
 
 const UTI_CUES = /\buti\b|infection|cystitis|flare|episode|kicked off|came on|started|had one|got one|another one/;
+const NEW_CUES = /\b(?:started|began|kicked off|came on|had (?:one|a uti|an infection|another)|got (?:one|a uti|an infection|another)|another one|first one|last one|previous one)\b/;
 
 const GONE = /(?:uti|infection|it|symptoms|everything)(?:'s| has| is| have|s)? (?:all )?(?:gone|cleared(?: up)?|better|over|finished|passed|stopped|disappeared)|(?:i'?m|i am|i feel|feeling|i'?ve been) (?:all |much |a lot )?better|all clear|back to normal|no (?:more )?symptoms|it'?s cleared/;
+const STILL = /(?:uti|infection|it)(?:'s| is|s)? still (?:here|there|going|around|hanging|bad|the same|not (?:gone|better))|still (?:have|got|having) (?:it|the uti|symptoms|my uti)|hasn'?t (?:gone|cleared|shifted|improved)|not (?:gone|cleared|better) yet|no better/;
+const ABOUT_CURRENT = /\b(?:my|the|this) (?:uti|infection)\b|\btoday\b|this morning|tonight|right now|at the moment|currently/;
+const FEELING_WORDS: [number, RegExp][] = [
+  [1, /awful|terrible|dreadful|horrendous|worst|in agony/],
+  [2, /\bbad\b|rough|poorly|not great|pretty grim|grim|miserable|sore/],
+  [3, /\bok\b|okay|so-so|meh|not too bad|fine\b|alright/],
+  [4, /\bgood\b|\bbetter\b|improving|on the mend/],
+  [5, /\bgreat\b|brilliant|fantastic|really good|much better/],
+];
 
-/** News about the UTI already on the record: has it cleared, and when. */
+/** News about the UTI already on the record: gone, still going, how today is, and anything worth noting. */
 export function parseExisting(text: string, today = isoToday()): ExistingExtract {
   const t = text.toLowerCase();
-  if (!GONE.test(t)) return { ended: null, ended_on: null };
-  return { ended: true, ended_on: parseDatePhrase(t, today) };
+  const out = emptyExisting();
+  const gone = GONE.test(t);
+  const still = STILL.test(t);
+  out.mentioned = gone || still || ABOUT_CURRENT.test(t);
+  if (gone && !still) { out.ended = true; out.ended_on = parseDatePhrase(t, today); return out; }
+  if (still) out.ended = false;
+  out.symptoms_today = matchAll(SYMPTOM_RULES, t);
+  out.triggers = matchAll(TRIGGER_RULES, t);
+  const guess = t.match(/(?:i think|i reckon|maybe|perhaps|probably|possibly|i wonder if|could be|might be)\s+(?:it'?s |it was |it'?s the |the |my |a |some )?([a-z][a-z' -]{2,40}?)\s+(?:causes?|caused|causing|set(?:s)? it off|triggers?|triggered|is (?:the|to) (?:cause|blame)|brought it on|started it|did it)/);
+  if (guess && !out.triggers.length) { out.triggers = ["other"]; out.other_trigger = freeTextAnswer(guess[1]); }
+  for (const [n, re] of FEELING_WORDS) if (re.test(t.replace(/no better|not better/g, ""))) { out.feeling = out.feeling ?? n; }
+  if (/\bbetter\b/.test(t) && still) out.feeling = null;
+  const noteSentence = t.split(/[.!?]|\s[-]\s|\n/).map((x) => x.trim()).find((x) => /doctor|\bgp\b|appointment|111|a&e|hospital|pharmac|nurse|clinic|sample|test/.test(x));
+  if (noteSentence) out.note = freeTextAnswer(noteSentence.replace(/^(?:and |so |but )/, ""));
+  out.treatments = parseTreatments(t);
+  out.tests = parseTests(t, today);
+  return out;
 }
 
 /** Free-form: decide what the message is about and read each part. */
@@ -298,14 +323,16 @@ export function parseFree(text: string, today = isoToday()): FreeExtract {
   const symptomatic = SYMPTOM_RULES.some(([, re]) => re.test(t));
   const treated = antibioticsIn(t).length > 0 && /course|days?\b|gp|doctor|pharmac|prescri|took|gave me|put me on/.test(t);
   const existing = parseExisting(text, today);
-  const looksLikeUti = symptomatic || treated || (UTI_CUES.test(t) && parseDatePhrase(t, today) !== null && !existing.ended);
+  const newWithDate = NEW_CUES.test(t) && parseDatePhrase(t, today) !== null;
+  const aboutCurrent = (existing.ended !== null || existing.mentioned) && !newWithDate;
+  const looksLikeUti = !aboutCurrent && (symptomatic || treated || newWithDate);
   const utis = looksLikeUti ? parseUtis(text, today).utis.filter((u) => u.started_on || u.symptoms.length || u.treatments.length || u.tests.length) : [];
   const taking = parsePrevention(text);
   if (utis.length && !/low[- ]dose|daily|every (day|night|morning)|prophyla|to prevent/.test(t)) {
     taking.keys = taking.keys.filter((k) => k !== "low_dose_antibiotic");
     taking.antibiotic_id = null;
   }
-  return { utis, taking, existing: utis.length ? { ended: null, ended_on: null } : existing };
+  return { utis, taking, existing: utis.length ? emptyExisting() : existing };
 }
 
 /** A typed answer that is not in any list, tidied for storing as "Other": lead-ins dropped, first letter capitalised. */

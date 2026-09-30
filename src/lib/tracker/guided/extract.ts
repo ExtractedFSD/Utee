@@ -55,7 +55,7 @@ UTIs (utis): ${PROMPTS.utis.slice(RULES.length).trim().replace(/^The person is d
 What they take (taking): ${PROMPTS.prevention.slice(RULES.length).trim()}
 An antibiotic taken as a course for a UTI belongs in that UTI's treatments, not in taking.
 
-The open UTI (existing): if the person says the UTI they already have has cleared up, gone, or they are better, set existing.ended true and existing.ended_on to the date if they give one. Leave utis empty in that case unless they clearly describe a different, new UTI.`;
+The UTI they already have (existing): if they talk about their current UTI ("my UTI is still here", "it's gone", "today I..."), set existing.mentioned true and leave utis empty unless they clearly describe a different, past UTI. If it has cleared up: ended true and ended_on if given. If it is still going: ended false. Read how they feel today into feeling (1 awful, 2 bad, 3 ok, 4 good, 5 great), what they notice today into symptoms_today, any cause they suspect into triggers (or "other" plus other_trigger, e.g. "Shower gel"), any antibiotic started into treatments, any test into tests, and anything else worth keeping, such as a plan to see a doctor, into note in a few words ("Going to the doctor today").`;
 
 const SCHEMAS = { about: aboutSchema, prevention: preventionSchema, utis: utisSchema, free: freeSchema } as const;
 
