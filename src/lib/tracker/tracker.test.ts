@@ -209,6 +209,15 @@ describe("guided setup, rule-based reading", () => {
     expect(parseFree("started taking cranberry tablets", today).utis).toHaveLength(0);
     expect(parseFree("started taking cranberry tablets", today).taking.keys).toEqual(["cranberry"]);
   });
+  it("hears that the current UTI has cleared, with or without a date", () => {
+    const gone = parseFree("My UTI has gone", today);
+    expect(gone.utis).toHaveLength(0);
+    expect(gone.existing).toEqual({ ended: true, ended_on: null });
+    expect(parseFree("it cleared up yesterday, feeling much better", today).existing).toEqual({ ended: true, ended_on: "2026-09-28" });
+    const fresh = parseFree("had one 2 weeks ago, burning, it's gone now", today);
+    expect(fresh.utis).toHaveLength(1);
+    expect(fresh.existing.ended).toBeNull();
+  });
   it("keeps an answer that is not in any list as Other, tidied", () => {
     expect(freeTextAnswer("I think it might have been my shower gel")).toBe("Shower gel");
     expect(freeTextAnswer("maybe the new washing powder.")).toBe("New washing powder");

@@ -62,8 +62,12 @@ export type UtiExtract = z.infer<typeof utiSchema>;
 export const utisSchema = z.object({ utis: z.array(utiSchema) });
 export type UtisExtract = z.infer<typeof utisSchema>;
 
-/** Free-form: one message may hold UTIs, changes to what they take, or both. */
-export const freeSchema = z.object({ utis: z.array(utiSchema), taking: preventionSchema });
+/** Something said about the UTI already on the record, such as "it's gone". */
+export const existingSchema = z.object({ ended: z.boolean().nullable(), ended_on: z.string().nullable() });
+export type ExistingExtract = z.infer<typeof existingSchema>;
+
+/** Free-form: one message may hold new UTIs, changes to what they take, news about the open UTI, or a mix. */
+export const freeSchema = z.object({ utis: z.array(utiSchema), taking: preventionSchema, existing: existingSchema });
 export type FreeExtract = z.infer<typeof freeSchema>;
 
 /** The shape the review card saves. Dates must be real by then. */

@@ -490,6 +490,17 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
     await panel.getByTestId("let-me-pick").click();
     await pchips.getByRole("button", { name, exact }).click();
   };
+  // The UTI from 10 days ago is still open, so Una checks on it first, closes it, and asks how the antibiotic went.
+  await expect(panel).toContainText("is still open on your record. Has it cleared up?");
+  await pchips.getByRole("button", { name: "It's over" }).click();
+  await expect(panel).toContainText("Glad it's cleared. When did it clear up?");
+  await ppick("Yesterday");
+  await expect(panel).toContainText("Did the Trimethoprim help?");
+  await ppick("Yes", true);
+  await expect(poverview()).toContainText("Trimethoprim: helped yes");
+  await pchips.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(panel).toContainText("is closed.");
+  // Then the waiting rating nudge.
   await expect(panel).toContainText("Probiotics on your list for a few weeks. Is it helping?");
   await ppick("Yes", true);
   await expect(panel).toContainText("Thanks, noted.");
@@ -508,8 +519,18 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await pchips.getByRole("button", { name: "Save", exact: true }).click();
   await expect(panel).toContainText("Stopped 1.");
   await expect(panel).toContainText("Anything else?");
+  // "My UTI has gone" closes the one that is still open, in chat.
+  await panel.getByPlaceholder("Type here...").fill("My UTI has gone");
+  await panel.getByRole("button", { name: "Send" }).click();
+  await expect(panel.getByTestId("guided-chat")).toHaveAttribute("data-question", "closeWhen");
+  await ppick("Today");
+  await expect(poverview()).toContainText("ended");
+  await pchips.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(panel).toContainText("is closed.");
   const final = await (await page.request.get("/portal/tracker/export?format=json")).json();
   expect(final.episodes).toHaveLength(3);
+  expect(final.episodes.filter((e: { ended_on: string | null }) => e.ended_on === null)).toHaveLength(0);
+  expect(final.treatments.find((t: { antibiotic_id: string }) => t.antibiotic_id === "trimethoprim").worked).toBe("yes");
   expect(final.preventions.find((p: { option_key: string }) => p.option_key === "d_mannose").stopped_on).toBeTruthy();
   expect(final.preventions.find((p: { option_key: string }) => p.option_key === "probiotics").helping).toBe("yes");
 

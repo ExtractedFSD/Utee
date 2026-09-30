@@ -228,14 +228,22 @@ export async function saveGuidedUti(input: UtiSave) {
       source: t.source,
       worked: t.worked,
     }));
-  if (treatments.length) await supabase.from("tracker_treatments").insert(treatments);
+  const { data: savedTreatments } = treatments.length
+    ? await supabase.from("tracker_treatments").insert(treatments).select("id, antibiotic_id, other_name, worked")
+    : { data: [] };
   const tests = d.tests.map((t) => ({ user_id: user.id, episode_id: episode.id, kind: t.kind, tested_on: t.tested_on && isoDate.safeParse(t.tested_on).success ? t.tested_on : d.started_on, result: t.result, notes: null, kit_id: null }));
   if (tests.length) await supabase.from("tracker_tests").insert(tests);
   const lastSource = treatments.find((t) => t.source)?.source;
   if (lastSource) await supabase.from("tracker_profiles").update({ last_treatment_source: lastSource }).eq("user_id", user.id);
   await audit(supabase, user.id, "guided_uti_saved", { episode_id: episode.id, treatments: treatments.length, tests: tests.length });
   revalidate(episode.id);
-  return { ok: true, id: episode.id as string };
+  return {
+    ok: true,
+    id: episode.id as string,
+    ended: !!d.ended_on,
+    startedOn: d.started_on,
+    treatments: (savedTreatments ?? []).map((t) => ({ id: t.id as string, antibiotic_id: t.antibiotic_id as string, other_name: t.other_name as string | null, worked: t.worked as string | null })),
+  };
 }
 
 // ----------------------------------------------------------------- episodes
