@@ -149,11 +149,11 @@ export default async function PortalHome({
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 md:items-start">
         <Callout>
           <div className="flex flex-col gap-5 sm:flex-row">
-            <div className="relative aspect-square w-44 shrink-0 overflow-hidden rounded-2xl">
-              <Image src="/images/urologist.jpg" alt="Consultant urologist" fill sizes="176px" className="object-cover object-[50%_25%]" />
+            <div className="relative h-44 w-44 shrink-0 self-start overflow-hidden rounded-2xl">
+              <Image src="/images/urologist.jpg" alt="Consultant urologist" fill unoptimized className="object-cover object-[50%_25%]" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -174,7 +174,7 @@ export default async function PortalHome({
         <Callout>
           <div className="flex flex-col gap-5 sm:flex-row">
             {/* Placeholder until the product image is ready. */}
-            <div className="flex aspect-square w-44 shrink-0 items-center justify-center rounded-2xl bg-white/15" aria-hidden>
+            <div className="flex h-44 w-44 shrink-0 items-center justify-center self-start rounded-2xl bg-white/15" aria-hidden>
               <Image src="/logo-white.png" alt="" width={96} height={40} className="opacity-70" />
             </div>
             <div className="min-w-0">
