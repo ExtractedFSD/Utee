@@ -5,6 +5,7 @@ import { Card, Button, inputClass } from "@/components/ui";
 import { AntibioticPicker } from "@/app/(customer)/portal/tracker/components/AntibioticPicker";
 import { antibioticName } from "@/lib/tracker/search";
 import {
+  ANTIBIOTIC_UNKNOWN,
   ANTIBIOTICS_QUESTION,
   CHANGE_MAX,
   CHANGE_MIN,
@@ -147,7 +148,6 @@ export function TriageForm({ code }: { code: string }) {
   const [pending, startTransition] = useTransition();
 
   const [safety, setSafety] = useState<Partial<Record<SafetyKey, YesNo>>>({});
-  const [continuous, setContinuous] = useState<YesNo | undefined>();
   const [previousUti, setPreviousUti] = useState<PreviousUti | undefined>();
   const [episodes6m, setEpisodes6m] = useState("");
   const [episodes12m, setEpisodes12m] = useState("");
@@ -169,9 +169,9 @@ export function TriageForm({ code }: { code: string }) {
   const hadUti = previousUti === "yes";
   const safetyComplete = SAFETY_QUESTIONS.every((q) => safety[q.key] !== undefined);
   const safetyFlagged = SAFETY_QUESTIONS.some((q) => safety[q.key] === "yes");
-  const antibioticsComplete = antibiotics.every((a) => a.worked !== undefined);
+  const unknownAntibiotics = antibiotics.some((a) => a.id === ANTIBIOTIC_UNKNOWN);
+  const antibioticsComplete = antibiotics.every((a) => a.id === ANTIBIOTIC_UNKNOWN || a.worked !== undefined);
   const historyComplete =
-    continuous !== undefined &&
     previousUti !== undefined &&
     (!hadUti || (countOk(episodes6m) && countOk(episodes12m) && antibioticsComplete));
   const symptomsAnswered = selected.size > 0 || noneOfThese;
@@ -215,6 +215,8 @@ export function TriageForm({ code }: { code: string }) {
 
   function addAntibiotic(id: string | null, other?: string) {
     if (!id) return;
+    // "I don't know" stands alone: nothing to ask about it, nothing to add to it.
+    if (id === ANTIBIOTIC_UNKNOWN) return setAntibiotics([{ id, name: antibioticName(id), worked: "unknown" }]);
     setAntibiotics((list) => [...list, { id, name: id === "other" ? other ?? "" : antibioticName(id) }]);
   }
 
@@ -225,7 +227,6 @@ export function TriageForm({ code }: { code: string }) {
     const input: TriageInput = {
       safety: safety as Record<SafetyKey, YesNo>,
       history: {
-        continuous: continuous!,
         previousUti: previousUti!,
         episodes6m: hadUti ? Number(episodes6m) : null,
         episodes12m: hadUti ? Number(episodes12m) : null,
@@ -332,20 +333,11 @@ export function TriageForm({ code }: { code: string }) {
           <p className="text-sm font-medium text-slate-700">{HISTORY_INTRO}</p>
           <div>
             <p className="text-sm text-slate-700 mb-2">
-              {HISTORY.continuous}
-              {missing(continuous !== undefined)}
+              Have you had a UTI before?
+              {missing(previousUti !== undefined)}
             </p>
-            <RadioRow name="continuous" value={continuous} options={YES_NO} onChange={setContinuous} />
+            <RadioRow name="previousUti" value={previousUti} options={PREVIOUS} onChange={setPreviousUti} />
           </div>
-          {continuous !== undefined && (
-            <div>
-              <p className="text-sm text-slate-700 mb-2">
-                Have you had a UTI before?
-                {missing(previousUti !== undefined)}
-              </p>
-              <RadioRow name="previousUti" value={previousUti} options={PREVIOUS} onChange={setPreviousUti} />
-            </div>
-          )}
           {hadUti && (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -409,24 +401,32 @@ export function TriageForm({ code }: { code: string }) {
                             Remove
                           </button>
                         </div>
-                        <p className="mt-2 text-xs text-slate-500">
-                          Did it work?
-                          {missing(a.worked !== undefined)}
-                        </p>
-                        <div className="mt-1.5">
-                          <RadioRow
-                            name={`worked-${i}`}
-                            value={a.worked}
-                            options={WORKED_OPTIONS}
-                            onChange={(v) => setAntibiotics((l) => l.map((x, j) => (j === i ? { ...x, worked: v } : x)))}
-                          />
-                        </div>
+                        {a.id !== ANTIBIOTIC_UNKNOWN && (
+                          <>
+                            <p className="mt-2 text-xs text-slate-500">
+                              Did it work?
+                              {missing(a.worked !== undefined)}
+                            </p>
+                            <div className="mt-1.5">
+                              <RadioRow
+                                name={`worked-${i}`}
+                                value={a.worked}
+                                options={WORKED_OPTIONS}
+                                onChange={(v) => setAntibiotics((l) => l.map((x, j) => (j === i ? { ...x, worked: v } : x)))}
+                              />
+                            </div>
+                          </>
+                        )}
                       </li>
                     ))}
                   </ul>
                 )}
-                <AntibioticPicker value={null} exclude={antibiotics.map((a) => a.id).filter((id) => id !== "other")} onChange={addAntibiotic} />
-                <p className="text-xs text-slate-500">Leave this empty if you have not had antibiotics for a UTI.</p>
+                {!unknownAntibiotics && (
+                  <>
+                    <AntibioticPicker value={null} exclude={antibiotics.map((a) => a.id).filter((id) => id !== "other")} onChange={addAntibiotic} />
+                    <p className="text-xs text-slate-500">Leave this empty if you have not had antibiotics for a UTI.</p>
+                  </>
+                )}
               </div>
             </>
           )}

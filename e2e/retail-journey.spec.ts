@@ -120,7 +120,6 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
     // Answers yes to "visible blood": the urgent-care screen appears first.
     await completeTriage(buyerPage, {
       flag: "d7",
-      continuous: "yes",
       previousUti: "yes",
       antibiotics: [
         { search: "nitrofur", worked: "no" },

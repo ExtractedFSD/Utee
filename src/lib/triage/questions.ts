@@ -53,7 +53,6 @@ export const HISTORY_INTRO =
   "The following questions are about how often you experience UTI symptoms. Please consider UTIs that may or may not have been medically diagnosed.";
 
 export const HISTORY = {
-  continuous: "Have you had UTI symptoms that feel continuous and do not fully subside for at least the past 3 months?",
   episodes6m: "Approximately how many episodes of UTI symptoms have you had in the past 6 months?",
   episodes12m: "Approximately how many episodes of UTI symptoms have you had in the past 12 months?",
 } as const;
@@ -78,7 +77,7 @@ export const SAFETY_LABELS: Record<string, string> = Object.fromEntries(
 
 export type YesNo = "yes" | "no";
 export type PreviousUti = "yes" | "no" | "unsure";
-export type Worked = "yes" | "no" | "partly" | "taking";
+export type Worked = "yes" | "no" | "partly" | "taking" | "unknown";
 
 export const WORKED_OPTIONS: { key: Worked; label: string }[] = [
   { key: "yes", label: "Yes, it cleared it" },
@@ -87,9 +86,15 @@ export const WORKED_OPTIONS: { key: Worked; label: string }[] = [
   { key: "taking", label: "Still taking it" },
 ];
 
-export const WORKED_LABELS: Record<string, string> = Object.fromEntries(WORKED_OPTIONS.map((o) => [o.key, o.label]));
+export const WORKED_LABELS: Record<string, string> = {
+  ...Object.fromEntries(WORKED_OPTIONS.map((o) => [o.key, o.label])),
+  unknown: "",
+};
 
 export const ANTIBIOTICS_QUESTION = "Which antibiotics have you had for a UTI before, and did they work?";
+
+/** The picker's "I don't know / can't remember" entry: no outcome to ask for. */
+export const ANTIBIOTIC_UNKNOWN = "dont_know";
 
 export type PastAntibiotic = { id: string; name: string; worked: Worked };
 
@@ -100,7 +105,8 @@ export type TriageAnswers = {
   /** Safety questions answered "yes", in question order. Empty when none. */
   safetyFlags: SafetyKey[];
   history: {
-    continuous: YesNo;
+    /** Asked in the first version 3 forms only; dropped since. */
+    continuous?: YesNo;
     previousUti: PreviousUti;
     episodes6m: number | null;
     episodes12m: number | null;

@@ -143,7 +143,7 @@ export function TriageSummary({ answers, audience }: { answers: StoredTriage; au
       <section>
         <Heading>UTI history</Heading>
         <dl className="space-y-1">
-          <Row label="Continuous for 3+ months" value={VALUE_LABELS[history.continuous]} />
+          {history.continuous && <Row label="Continuous for 3+ months" value={VALUE_LABELS[history.continuous]} />}
           <Row label="Had a UTI before" value={VALUE_LABELS[history.previousUti] ?? history.previousUti} />
           {history.previousUti === "yes" && (
             <>

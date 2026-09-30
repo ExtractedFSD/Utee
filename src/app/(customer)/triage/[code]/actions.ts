@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logKitEvent } from "@/lib/events";
 import { antibioticName } from "@/lib/tracker/search";
 import {
+  ANTIBIOTIC_UNKNOWN,
   CHANGE_MAX,
   CHANGE_MIN,
   RESEARCH,
@@ -31,7 +32,6 @@ const triageSchema = z
       Object.fromEntries(SAFETY_QUESTIONS.map((q) => [q.key, yesNo])) as Record<SafetyKey, typeof yesNo>
     ),
     history: z.object({
-      continuous: yesNo,
       previousUti: z.enum(["yes", "no", "unsure"]),
       episodes6m: count,
       episodes12m: count,
@@ -41,7 +41,7 @@ const triageSchema = z
         z.object({
           id: z.string().min(1).max(80),
           name: z.string().max(120),
-          worked: z.enum(["yes", "no", "partly", "taking"]),
+          worked: z.enum(["yes", "no", "partly", "taking", "unknown"]),
         })
       )
       .max(30),
@@ -95,7 +95,6 @@ export async function submitTriage(code: string, input: TriageInput) {
     safety: answers.safety,
     safetyFlags: safetyFlagsIn(answers.safety),
     history: {
-      continuous: answers.history.continuous,
       previousUti: answers.history.previousUti,
       episodes6m: hadUti ? answers.history.episodes6m : null,
       episodes12m: hadUti ? answers.history.episodes12m : null,
@@ -106,7 +105,7 @@ export async function submitTriage(code: string, input: TriageInput) {
       ? answers.antibiotics.map((a) => ({
           id: a.id,
           name: a.id === "other" ? a.name.trim().slice(0, 120) || "Other antibiotic" : antibioticName(a.id),
-          worked: a.worked,
+          worked: a.id === ANTIBIOTIC_UNKNOWN ? "unknown" : a.worked,
         }))
       : [],
     selected: orderedSymptoms(answers.selected),
