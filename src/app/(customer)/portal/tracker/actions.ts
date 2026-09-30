@@ -188,12 +188,22 @@ export async function saveAboutMeValues(input: { menopause_stage: string; contra
 
 // ------------------------------------------------------------ guided setup
 
-/** Read one typed answer into form fields. Nothing is saved here. */
-export async function extractGuided(step: GuidedStep, text: string) {
-  await session();
+/** Read one typed answer into form fields. Nothing is saved here. The AI reader is skipped when switched off in Settings. */
+export async function extractGuided(step: GuidedStep, text: string, context?: string) {
+  const { user, supabase } = await session();
   const clean = text.trim().slice(0, 2000);
   if (!clean) return { error: "Type something first." };
-  return extract(step, clean, isoToday());
+  const { data: profile } = await supabase.from("tracker_profiles").select("una_ai").eq("user_id", user.id).maybeSingle();
+  return extract(step, clean, isoToday(), profile?.una_ai !== false, context?.slice(0, 600));
+}
+
+export async function setUnaAi(on: boolean) {
+  const { user, supabase } = await session();
+  await supabase.from("tracker_profiles").update({ una_ai: on, updated_at: new Date().toISOString() }).eq("user_id", user.id);
+  await audit(supabase, user.id, on ? "una_ai_on" : "una_ai_off");
+  revalidatePath("/portal/tracker/settings");
+  revalidatePath("/portal/tracker");
+  return { ok: true };
 }
 
 /** Save one reviewed UTI from the guided setup in a single go. */

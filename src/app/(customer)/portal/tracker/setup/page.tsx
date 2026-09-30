@@ -27,7 +27,7 @@ export default async function GuidedSetupPage({ searchParams }: { searchParams: 
       />
       <GuidedChat
         mode={quick ? (mode === "prevention" ? "prevention" : "utis") : "full"}
-        aiAvailable={aiAvailable()}
+        aiAvailable={aiAvailable() && ctx.profile?.una_ai !== false}
         pregnantOrTrying={ctx.profile?.pregnant_or_trying ?? "no"}
         activePreventions={active}
         initialAbout={ctx.profile ? { menopause_stage: ctx.profile.menopause_stage ?? "prefer_not", contraception: ctx.profile.contraception ?? "prefer_not", pregnant_or_trying: ctx.profile.pregnant_or_trying } : null}

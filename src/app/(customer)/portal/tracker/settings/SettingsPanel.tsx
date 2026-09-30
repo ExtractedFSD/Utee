@@ -3,9 +3,9 @@
 import { useState, useTransition } from "react";
 import { Button, Card, CardTitle, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
-import { deleteAllTrackerData, setConsent, setReminders } from "../actions";
+import { deleteAllTrackerData, setConsent, setReminders, setUnaAi } from "../actions";
 
-export function SettingsPanel({ consents, reminderDaily, reminderMonthly }: { consents: { tracker: boolean; research: boolean }; reminderDaily: boolean; reminderMonthly: boolean }) {
+export function SettingsPanel({ consents, reminderDaily, reminderMonthly, unaAi }: { consents: { tracker: boolean; research: boolean }; reminderDaily: boolean; reminderMonthly: boolean; unaAi: boolean }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState("");
@@ -26,6 +26,11 @@ export function SettingsPanel({ consents, reminderDaily, reminderMonthly }: { co
         <p className="text-sm text-slate-600 mb-2">{copy.settings.remindersBody}</p>
         <Toggle label={copy.settings.reminderDaily} checked={reminderDaily} onChange={(v) => run(() => setReminders(v, reminderMonthly))} />
         <Toggle label={copy.settings.reminderMonthly} checked={reminderMonthly} onChange={(v) => run(() => setReminders(reminderDaily, v))} />
+      </Card>
+      <Card>
+        <CardTitle>{copy.settings.una}</CardTitle>
+        <p className="text-sm text-slate-600 mb-2">{copy.settings.unaBody}</p>
+        <Toggle label={copy.settings.unaAi} checked={unaAi} onChange={(v) => run(() => setUnaAi(v))} />
       </Card>
       <Card>
         <CardTitle>{copy.settings.consents}</CardTitle>

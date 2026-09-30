@@ -27,6 +27,13 @@ export function parseDatePhrase(text: string, today = isoToday()): string | null
   const now = new Date(`${today}T12:00:00Z`);
   const daysAgo = (n: number) => isoDaysAgo(n, now);
   if (/\btoday\b|this morning|tonight/.test(t)) return today;
+  const wd = t.match(/\b(?:last |on |this )?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+  if (wd) {
+    const want = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].indexOf(wd[1]);
+    let back = (now.getUTCDay() - want + 7) % 7;
+    if (back === 0) back = 7;
+    return daysAgo(back);
+  }
   if (/\byesterday\b/.test(t)) return daysAgo(1);
   if (/day before yesterday/.test(t)) return daysAgo(2);
   let m = t.match(new RegExp(`\\b${NUM} days? ago`));
@@ -137,10 +144,11 @@ function antibioticsIn(t: string): { id: string; index: number }[] {
 }
 
 export function workedIn(t: string): string | null {
-  if (/didn'?t (work|help|do anything)|did not (work|help)|no (better|help|good)|made no difference|not work|no difference|useless|still had it/.test(t)) return "no";
+  if (/didn'?t (work|help|do anything)|did not (work|help)|no (better|help|good)|made no difference|not work|no difference|useless|still had it|^\s*(no|nope|not really|it didn'?t|nah)\b/.test(t)) return "no";
+  if (/^\s*(sort of|kind of|a bit|partly|partially|somewhat)\b/.test(t)) return "partly";
   if (/partly|a bit better|somewhat|little better|helped a bit|half/.test(t)) return "partly";
   if (/too early|still taking|just started|only started/.test(t)) return "too_early";
-  if (/worked|helped|cleared|better|sorted|fixed|gone|did the (trick|job)/.test(t)) return "yes";
+  if (/worked|helped|cleared|better|sorted|fixed|gone|did the (trick|job)|^\s*(yes|yeah|yep|yup|it did|definitely|absolutely)\b/.test(t)) return "yes";
   return null;
 }
 
@@ -334,6 +342,29 @@ export function parseFree(text: string, today = isoToday()): FreeExtract {
     taking.antibiotic_id = null;
   }
   return { utis, taking, existing: utis.length ? emptyExisting() : existing };
+}
+
+/**
+ * A date given relative to when the UTI started: "5 days later", "after
+ * about a week", "lasted 4 days". Counts from `startedOn`, never from today.
+ */
+export function relativeToStart(text: string, startedOn: string | null): string | null {
+  if (!startedOn) return null;
+  const t = text.toLowerCase();
+  const m =
+    t.match(new RegExp(`\\b${NUM} (days?|weeks?) (?:later|after(?:wards)?|on)\\b`)) ??
+    t.match(new RegExp(`\\bafter (?:about |around |roughly |only )?${NUM} (days?|weeks?)`)) ??
+    t.match(new RegExp(`\\b(?:lasted|went on for|took|had it for|for about|for around|for roughly|within) (?:about |around |roughly )?${NUM} (days?|weeks?)`)) ??
+    t.match(/\b(a|one) (week|fortnight) (?:later|after|on)\b/);
+  if (!m) return null;
+  const n = num(m[1]);
+  if (n === null) return null;
+  const unit = m[2] ?? "days";
+  const days = unit.startsWith("fortnight") ? 14 : unit.startsWith("week") ? n * 7 : n;
+  const lasted = /lasted|went on for|took|had it for|for about|for around|for roughly|within/.test(m[0]);
+  const d = new Date(`${startedOn}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + Math.max(0, lasted ? days - 1 : days));
+  return iso(d);
 }
 
 /** A typed answer that is not in any list, tidied for storing as "Other": lead-ins dropped, first letter capitalised. */

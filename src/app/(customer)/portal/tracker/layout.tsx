@@ -44,7 +44,7 @@ export default async function TrackerLayout({ children }: { children: React.Reac
       <div className={ready ? "pb-24" : ""}>{children}</div>
       <ChatBubble
         enabled={ready}
-        aiAvailable={aiAvailable()}
+        aiAvailable={aiAvailable() && ctx.profile?.una_ai !== false}
         pregnantOrTrying={ctx.profile?.pregnant_or_trying ?? "no"}
         activePreventions={active.map((p) => p.option_key)}
         nudges={{

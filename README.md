@@ -218,8 +218,12 @@ prevention is active, whether they were still taking it when a new UTI started.
 The monthly reminder email links to "Update by chat". Every conversation is
 kept in `tracker_chats` (migration `0006_chats.sql`, owner-only RLS) so it can
 be reopened from the bubble's History view and continued. The chat is
-chat-first: Una asks one question at a time with tappable chips, shows a short
-overview, and saves on "Save". There is no form or card to scroll.
+plain language: Una asks one question at a time and the person answers in
+words (dates like "last Tuesday", symptoms, antibiotic names, "yes" or "save"
+for decisions). A few decision chips (Save, Change something, yes/no) remain.
+AI reading can be switched off per person in tracker Settings
+(`tracker_profiles.una_ai`, migration `0007_una_ai.sql`); the chat shows a
+one-line caveat either way. Entry points are labelled "Talk to Una".
 
 **Prevention.** "What I'm taking" (`/portal/tracker/prevention`, table
 `tracker_preventions`, migration `0005_prevention.sql`) records everything a

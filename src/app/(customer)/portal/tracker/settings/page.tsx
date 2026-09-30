@@ -27,6 +27,7 @@ export default async function TrackerSettingsPage() {
         consents={ctx.consents}
         reminderDaily={ctx.profile?.reminder_daily ?? false}
         reminderMonthly={ctx.profile?.reminder_monthly ?? false}
+        unaAi={ctx.profile?.una_ai ?? true}
       />
     </div>
   );
