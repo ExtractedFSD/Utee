@@ -407,8 +407,14 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await expect(overview()).toContainText("Possible triggers: Shower gel");
   await expect(overview()).toContainText("Nitrofurantoin · 3 days · GP · helped: yes");
   await expect(overview()).toContainText("Noticed: Burning or stinging when peeing, Needing to pee more often");
+  // A typed correction at the overview just applies; the "lasted 5 days" from the first message moves with the start.
+  await type("actually it started on 8 September");
+  await expect(overview()).toContainText("Started: 8 Sept 2026");
+  await expect(overview()).toContainText("Ended: 12 Sept 2026");
+  await type("and I also had cloudy urine");
+  await expect(overview()).toContainText("Cloudy urine");
   await chips.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(chat).toContainText("Saved the UTI from");
+  await expect(chat).toContainText("Saved the UTI from 8 Sept 2026");
   // Second one: no antibiotic yet, so she asks; a typed answer fills it, then how it went, then tests.
   await expect(chat).toContainText("Anything that might have set it off?");
   await type("not sure");
@@ -436,7 +442,7 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   expect(body.treatments.find((t: { antibiotic_id: string }) => t.antibiotic_id === "trimethoprim")).toMatchObject({ days: 3, source: "pharmacy", worked: "too_early" });
   expect(body.tests).toHaveLength(1);
   expect(body.tests[0].kind).toBe("dipstick_gp_pharmacy");
-  expect(body.symptoms.map((s: { symptom: string }) => s.symptom).sort()).toEqual(["burning", "cloudy", "frequency", "urgency"]);
+  expect(body.symptoms.map((s: { symptom: string }) => s.symptom).sort()).toEqual(["burning", "cloudy", "cloudy", "frequency", "urgency"]);
   expect(body.triggers).toHaveLength(1);
   expect(body.triggers[0]).toMatchObject({ trigger: "other", other_text: "Shower gel" });
 

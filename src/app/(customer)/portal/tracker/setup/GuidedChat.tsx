@@ -8,7 +8,7 @@ import { antibioticName } from "@/lib/tracker/search";
 import { HELPING, PREVENTION_GROUPS, RETIRED_OPTIONS, diffPreventions } from "@/lib/tracker/prevention";
 import { redFlagFor } from "@/lib/tracker/redflags";
 import { formatDay, isoToday } from "@/lib/tracker/stats";
-import { freeTextAnswer, parseDatePhrase, workedIn } from "@/lib/tracker/guided/local";
+import { freeTextAnswer, parseDatePhrase, relativeToStart, workedIn } from "@/lib/tracker/guided/local";
 import { emptyUti, type AboutExtract, type ExistingExtract, type FreeExtract, type PreventionExtract, type UtiExtract, type UtiSave } from "@/lib/tracker/guided/schema";
 import type { ChatMessage } from "@/lib/tracker/data";
 import { Chip } from "../components/Chips";
@@ -23,7 +23,7 @@ export type OpenEpisode = { id: string; startedOn: string; treatments: { id: str
 type Closing = { episode: OpenEpisode; endedOn: string | null; ratings: Record<string, string> };
 type Updating = { episode: OpenEpisode; read: ExistingExtract; feeling: number | null; symptoms: string[]; asked: Q[] };
 type About = { menopause_stage: string | null; contraception: string | null; pregnant_or_trying: string | null };
-type Draft = { uti: UtiExtract; asked: Q[]; flagged: boolean };
+type Draft = { uti: UtiExtract; asked: Q[]; flagged: boolean; source?: string };
 type Q =
   | "menopause" | "contraception" | "pregnant" | "aboutOverview"
   | "wasTaking" | "started" | "ended" | "endedOn" | "symptoms" | "triggers" | "treatment" | "days" | "worked" | "tests" | "overview" | "change"
@@ -302,10 +302,12 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
     if (patch.symptoms) d = flagIfNeeded(d);
     ask(d);
   };
-  const startDrafts = (utis: UtiExtract[]) => {
+  const sourceRef = useRef<string>("");
+  const startDrafts = (utis: UtiExtract[], source = "") => {
     const [first, ...rest] = utis;
+    sourceRef.current = source;
     setQueue(rest);
-    const d = flagIfNeeded({ uti: first, asked: [], flagged: false });
+    const d = flagIfNeeded({ uti: first, asked: [], flagged: false, source });
     ask(d);
   };
   const wasTakingNote = (answerText: string) => {
@@ -329,7 +331,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
   };
   const afterDraft = () => {
     setDraft(null);
-    if (queue.length) { const [next, ...rest] = queue; setQueue(rest); ask(flagIfNeeded({ uti: next, asked: [], flagged: false })); return; }
+    if (queue.length) { const [next, ...rest] = queue; setQueue(rest); ask(flagIfNeeded({ uti: next, asked: [], flagged: false, source: sourceRef.current })); return; }
     setQ("another");
     say(copy.guided.anotherQ);
   };
@@ -354,6 +356,32 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
     ask({ ...current, uti: { ...current.uti, ...cleared }, asked: current.asked.filter((x) => x !== target && !(target === "treatment" && (x === "days" || x === "worked"))) });
   };
 
+  /** An end date the reader returned is only used if it sits between the start and today. */
+  const plausibleEnd = (d: string | null, start: string | null) => (d && (!start || d >= start) && d <= isoToday() ? d : null);
+  /** What Una tells the reader about the question being answered, so relative answers land right. */
+  const contextFor = (question: Q | null): string | undefined => {
+    const startLine = current?.uti.started_on ? ` The UTI started on ${current.uti.started_on}; phrases like "5 days later" count from that date.` : "";
+    const a = copy.guided.ask;
+    switch (question) {
+      case "started": return `The question was "${a.started}".`;
+      case "ended": case "endedOn": return `The question was "${a.endedOn}".${startLine}`;
+      case "symptoms": return `The question was "${a.symptoms}". Put the answer in symptoms.`;
+      case "triggers": return `The question was "${a.triggers}". Put the answer in triggers, or other_trigger.`;
+      case "treatment": return `The question was "${a.treatment}". Put the answer in treatments.`;
+      case "days": return `The question was "${a.days}". Put the number in treatments[0].days.`;
+      case "worked": return `The question was "did the antibiotic help?". Put the answer in treatments[0].worked.`;
+      case "tests": return `The question was "${a.tests}". Put the answer in tests.`;
+      case "overview": return `The person is correcting this UTI's overview.${startLine} Return only what they changed.`;
+      case "closeWhen": return `The question was "when did your current UTI clear up?".${closing ? ` It started on ${closing.episode.startedOn}; phrases like "5 days later" count from that date.` : ""} Put the date in existing.ended_on.`;
+      case "closeWorked": return "The question was \"did the antibiotic help?\".";
+      case "updateFeeling": return "The question was \"how are you feeling today?\". Put it in existing.feeling.";
+      case "updateSymptoms": return "The question was \"what are you noticing today?\". Put it in existing.symptoms_today.";
+      case "updateOverview": return "The person is correcting today's log for their current UTI. Return only what they changed, in existing.";
+      case "preventionOverview": return "The person is correcting the list of what they take. Return only what they changed.";
+      default: return undefined;
+    }
+  };
+
   /** A typed answer to the open question, using what was read from it. */
   const applyTyped = (question: Q, t: string, read: UtiExtract): { patch: Partial<UtiExtract>; asked?: Q } => {
     const lower = t.toLowerCase();
@@ -361,11 +389,17 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
     const u = current!.uti;
     switch (question) {
       case "wasTaking": return { patch: wasTakingNote(no ? "No" : /^\s*(yes|yeah|yep|i was|still)/.test(lower) ? "Yes" : copy.guided.followUp.notSure), asked: "wasTaking" };
-      case "started": return { patch: { started_on: read.started_on ?? parseDatePhrase(lower) ?? u.started_on } };
-      case "ended":
+      case "started": {
+        const started = read.started_on ?? parseDatePhrase(lower) ?? u.started_on;
+        // The first message may have said how long it lasted; count that from the start date now known.
+        const fromSource = started && !u.ended_on && u.ongoing !== true && current?.source ? relativeToStart(current.source, started) : null;
+        return { patch: { started_on: started, ...(fromSource ? { ended_on: fromSource, ongoing: false } : {}) } };
+      }
+      case "ended": {
         if (read.ongoing || /still|ongoing|not yet|hasn'?t/.test(lower)) return { patch: { ongoing: true, ended_on: null }, asked: "ended" };
-        return { patch: { ongoing: false, ended_on: read.ended_on ?? parseDatePhrase(lower) }, asked: "ended" };
-      case "endedOn": return { patch: { ended_on: read.ended_on ?? parseDatePhrase(lower) ?? read.started_on }, asked: "endedOn" };
+        return { patch: { ongoing: false, ended_on: relativeToStart(lower, u.started_on) ?? plausibleEnd(read.ended_on, u.started_on) ?? parseDatePhrase(lower) }, asked: "ended" };
+      }
+      case "endedOn": return { patch: { ended_on: relativeToStart(lower, u.started_on) ?? plausibleEnd(read.ended_on, u.started_on) ?? parseDatePhrase(lower) ?? u.ended_on }, asked: "endedOn" };
       case "symptoms": {
         if (!read.symptoms.length && !no) {
           const other = read.other_symptom ?? freeTextAnswer(t);
@@ -406,16 +440,25 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
     const yes = /^\s*(yes|yeah|yep|yup|ok|okay|sure|save|looks (right|good)|that'?s right|correct|fine|go ahead|please do)\b/.test(lower);
     const no = /^\s*(no|nope|nah|not (yet|really)|none|nothing|that'?s (all|it)|i'?m done|done|stop)\b/.test(lower);
     // Decisions can be typed as well as tapped.
-    if (question === "aboutOverview") { if (yes) { saveAbout(); return; } if (/change|wrong|not right|edit/.test(lower)) { setAbout({ menopause_stage: null, contraception: null, pregnant_or_trying: null }); askAbout({ menopause_stage: null, contraception: null, pregnant_or_trying: null }); return; } }
-    if (question === "overview") { if (yes) { saveDraft(); return; } if (/don'?t save|discard|forget it|scrap/.test(lower)) { afterDraft(); return; } if (/change|wrong|not right|edit/.test(lower)) { setQ("change"); say(copy.guided.ask.change); return; } }
+    if (question === "aboutOverview") { if (yes) { saveAbout(); return; } if (/^\s*(change|edit)( something)?\s*$/.test(lower)) { setAbout({ menopause_stage: null, contraception: null, pregnant_or_trying: null }); askAbout({ menopause_stage: null, contraception: null, pregnant_or_trying: null }); return; } }
+    if (question === "overview") { if (yes) { saveDraft(); return; } if (/don'?t save|discard|forget it|scrap/.test(lower)) { afterDraft(); return; } if (/^\s*(change|edit)( something)?\s*$/.test(lower)) { setQ("change"); say(copy.guided.ask.change); return; } }
     if (question === "change") {
       const target: Q | null = /start|began|when/.test(lower) ? "started" : /end|clear|over|still/.test(lower) ? "ended" : /symptom|notic/.test(lower) ? "symptoms" : /trigger|cause|set it off/.test(lower) ? "triggers" : /antibiotic|treat|medic|tablet/.test(lower) ? "treatment" : /test|dipstick|sample/.test(lower) ? "tests" : null;
       if (target) { reask(target); return; }
       say(copy.guided.gotNothing); return;
     }
     if (question === "preventionOverview") { if (yes) { savePrevention(); return; } }
-    if (question === "closeOverview") { if (yes) { saveClosing(); return; } if (/change|wrong|date/.test(lower) && closing) { setQ("closeWhen"); say(copy.guided.ask.endedOn); return; } }
-    if (question === "updateOverview") { if (yes) { saveUpdating(); return; } if (/change|wrong|not right|edit/.test(lower) && updating) { askUpdateNext({ ...updating, symptoms: [], feeling: null, asked: [] }); return; } }
+    if (question === "aboutOverview" && !yes) { /* falls through to the about reader below */ }
+    if (question === "closeOverview" && closing) {
+      if (yes) { saveClosing(); return; }
+      const d = relativeToStart(lower, closing.episode.startedOn) ?? parseDatePhrase(lower);
+      if (d) { askCloseNext({ ...closing, endedOn: d }); return; }
+      const w = workedIn(lower);
+      const target = closing.episode.treatments.find((x) => (!x.worked || x.worked === "too_early"));
+      if (w && target) { askCloseNext({ ...closing, ratings: { ...closing.ratings, [target.id]: w } }); return; }
+      setQ("closeWhen"); say(copy.guided.ask.endedOn); return;
+    }
+    if (question === "updateOverview") { if (yes) { saveUpdating(); return; } if (/^\s*(change|edit)( something)?\s*$/.test(lower) && updating) { askUpdateNext({ ...updating, symptoms: [], feeling: null, asked: [] }); return; } }
     if (question === "another") { if (yes || /another|one more|more/.test(lower)) { setQ(null); say(copy.guided.askUtisQuick); return; } if (no) { finishUtis(); return; } }
     if (question === "changedTaking") { if (no) { finish(); return; } if (yes || /change|start|stop/.test(lower)) { goTo("prevention"); return; } }
     if (question === "moreUtis") { if (no) { finish(); return; } if (yes) { goTo("utis"); return; } }
@@ -424,8 +467,8 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
     if ((step === "utis" || step === "free") && !current && !question && /^(none|no(ne)? yet|nothing|no|skip|not yet)\b/i.test(t)) { finishUtis(); return; }
     setReading(true);
     startTransition(async () => {
-      const extractStep = step === "about" ? "about" : step === "prevention" ? "prevention" : question === "closeWhen" || question === "closeWorked" || question === "updateFeeling" || question === "updateSymptoms" ? "free" : current ? "utis" : step === "free" ? "free" : "utis";
-      const r = await extractGuided(extractStep, t);
+      const extractStep = step === "about" ? "about" : step === "prevention" || question === "preventionOverview" ? "prevention" : question === "closeWhen" || question === "closeWorked" || question === "updateFeeling" || question === "updateSymptoms" || question === "updateOverview" ? "free" : current ? "utis" : step === "free" ? "free" : "utis";
+      const r = await extractGuided(extractStep, t, contextFor(question));
       setReading(false);
       if ("error" in r) { setError(r.error); return; }
       if (step === "about") {
@@ -441,6 +484,57 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
         if (!answered && question !== "aboutOverview") { say(copy.guided.gotNothing); return; }
         setAbout(merged);
         askAbout(merged);
+      } else if (question === "preventionOverview") {
+        const p = r.result as PreventionExtract;
+        if (!p.keys.length && !p.stopped_keys.length) { say(copy.guided.gotNothing); return; }
+        const next = { keys: [...new Set([...prevention.keys, ...p.keys])].filter((k) => !p.stopped_keys.includes(k)), stopped_keys: [...new Set([...prevention.stopped_keys, ...p.stopped_keys])], other_name: p.other_name ?? prevention.other_name, antibiotic_id: p.antibiotic_id ?? prevention.antibiotic_id };
+        setPrevention(next);
+        preventionOverview(next);
+      } else if (question === "updateOverview" && updating) {
+        const ex = (r.result as FreeExtract).existing;
+        const u2: Updating = {
+          ...updating,
+          feeling: ex.feeling ?? updating.feeling,
+          symptoms: [...new Set([...updating.symptoms, ...ex.symptoms_today])],
+          read: { ...updating.read, triggers: [...new Set([...updating.read.triggers, ...ex.triggers])], other_trigger: ex.other_trigger ?? updating.read.other_trigger, note: ex.note ?? updating.read.note, treatments: [...updating.read.treatments, ...ex.treatments], tests: [...updating.read.tests, ...ex.tests], other_symptom: ex.other_symptom ?? updating.read.other_symptom },
+          asked: ["updateFeeling", "updateSymptoms"],
+        };
+        askUpdateNext(u2);
+      } else if (question === "overview" && current) {
+        // A typed correction: whatever the reader found replaces or adds to the draft.
+        const read = (r.result as { utis: UtiExtract[] }).utis[0] ?? emptyUti();
+        const u = current.uti;
+        const lower2 = t.toLowerCase();
+        const started = read.started_on ?? u.started_on;
+        const patch: Partial<UtiExtract> = { started_on: started };
+        const rel = relativeToStart(lower2, started);
+        if (read.ongoing === true || /still (going|have|got)|ongoing/.test(lower2)) { patch.ongoing = true; patch.ended_on = null; }
+        else if (rel || plausibleEnd(read.ended_on, started)) { patch.ended_on = rel ?? plausibleEnd(read.ended_on, started); patch.ongoing = false; }
+        else if (started !== u.started_on && u.ended_on && current.source) { const again = relativeToStart(current.source, started); if (again) { patch.ended_on = again; patch.ongoing = false; } }
+        if (read.symptoms.length) patch.symptoms = [...new Set([...u.symptoms, ...read.symptoms])];
+        if (read.other_symptom) { patch.symptoms = [...new Set([...(patch.symptoms ?? u.symptoms), "other"])]; patch.other_symptom = read.other_symptom; }
+        if (read.triggers.length) patch.triggers = [...new Set([...u.triggers, ...read.triggers])];
+        if (read.other_trigger) { patch.triggers = [...new Set([...(patch.triggers ?? u.triggers), "other"])]; patch.other_trigger = read.other_trigger; }
+        if (/no antibiotic|didn'?t take anything|nothing for it|no treatment/.test(lower2)) patch.treatments = [];
+        else if (read.treatments.length) {
+          const merged = [...u.treatments];
+          for (const tr of read.treatments) {
+            const i = merged.findIndex((x) => x.antibiotic_id === tr.antibiotic_id);
+            if (i >= 0) merged[i] = { ...merged[i], days: tr.days ?? merged[i].days, source: tr.source ?? merged[i].source, worked: tr.worked ?? merged[i].worked, course_type: tr.course_type ?? merged[i].course_type };
+            else merged.push(tr);
+          }
+          patch.treatments = merged;
+        } else if (u.treatments.length) {
+          const w = workedIn(lower2);
+          const days = Number((lower2.match(/\b(\d+)[ -]?days?\b/) ?? [])[1]);
+          if (w || days) patch.treatments = u.treatments.map((x) => ({ ...x, worked: w ?? x.worked, days: days || x.days }));
+        }
+        if (/no test|didn'?t (have|do) a test|wasn'?t tested/.test(lower2)) patch.tests = [];
+        else if (read.tests.length) patch.tests = [...u.tests, ...read.tests];
+        if (read.notes) patch.notes = read.notes;
+        const changed = JSON.stringify({ ...u, ...patch }) !== JSON.stringify(u);
+        if (!changed) { say(copy.guided.gotNothing); return; }
+        ask({ ...current, uti: { ...u, ...patch }, asked: [...new Set([...current.asked, "ended", "symptoms", "triggers", "treatment", "tests"])] as Q[] });
       } else if (step === "prevention") {
         const p = r.result as PreventionExtract;
         if (!p.keys.length && !p.stopped_keys.length && !/^\s*(no|nothing|none|nope|nothing'?s changed|no change|same)\b/.test(t.toLowerCase())) { say(copy.guided.gotNothing); return; }
@@ -490,13 +584,13 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
         }
         if (!utis.length && !changes) { say(copy.guided.gotNothing); return; }
         if (changes) setPrevention({ keys: [...new Set([...active, ...changes.keys])].filter((k) => !changes.stopped_keys.includes(k)), stopped_keys: changes.stopped_keys, other_name: changes.other_name, antibiotic_id: changes.antibiotic_id });
-        if (utis.length) { setPendingTaking(changes); if (utis.length > 1) say(copy.guided.gotSeveral(utis.length)); startDrafts(utis); }
+        if (utis.length) { setPendingTaking(changes); if (utis.length > 1) say(copy.guided.gotSeveral(utis.length)); startDrafts(utis, t); }
         else preventionOverview({ keys: [...new Set([...active, ...changes!.keys])].filter((k) => !changes!.stopped_keys.includes(k)), stopped_keys: changes!.stopped_keys, other_name: changes!.other_name, antibiotic_id: changes!.antibiotic_id });
       } else {
         const utis = (r.result as { utis: UtiExtract[] }).utis.filter((u) => u.started_on || u.symptoms.length || u.treatments.length || u.tests.length);
-        if (!utis.length) { say(copy.guided.gotNothing); startDrafts([emptyUti()]); return; }
+        if (!utis.length) { say(copy.guided.gotNothing); startDrafts([emptyUti()], t); return; }
         if (utis.length > 1) say(copy.guided.gotSeveral(utis.length));
-        startDrafts(utis);
+        startDrafts(utis, t);
       }
     });
   };

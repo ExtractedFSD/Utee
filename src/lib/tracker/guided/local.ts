@@ -344,6 +344,29 @@ export function parseFree(text: string, today = isoToday()): FreeExtract {
   return { utis, taking, existing: utis.length ? emptyExisting() : existing };
 }
 
+/**
+ * A date given relative to when the UTI started: "5 days later", "after
+ * about a week", "lasted 4 days". Counts from `startedOn`, never from today.
+ */
+export function relativeToStart(text: string, startedOn: string | null): string | null {
+  if (!startedOn) return null;
+  const t = text.toLowerCase();
+  const m =
+    t.match(new RegExp(`\\b${NUM} (days?|weeks?) (?:later|after(?:wards)?|on)\\b`)) ??
+    t.match(new RegExp(`\\bafter (?:about |around |roughly |only )?${NUM} (days?|weeks?)`)) ??
+    t.match(new RegExp(`\\b(?:lasted|went on for|took|had it for|for about|for around|for roughly|within) (?:about |around |roughly )?${NUM} (days?|weeks?)`)) ??
+    t.match(/\b(a|one) (week|fortnight) (?:later|after|on)\b/);
+  if (!m) return null;
+  const n = num(m[1]);
+  if (n === null) return null;
+  const unit = m[2] ?? "days";
+  const days = unit.startsWith("fortnight") ? 14 : unit.startsWith("week") ? n * 7 : n;
+  const lasted = /lasted|went on for|took|had it for|for about|for around|for roughly|within/.test(m[0]);
+  const d = new Date(`${startedOn}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + Math.max(0, lasted ? days - 1 : days));
+  return iso(d);
+}
+
 /** A typed answer that is not in any list, tidied for storing as "Other": lead-ins dropped, first letter capitalised. */
 export function freeTextAnswer(text: string): string | null {
   const t = text.trim()

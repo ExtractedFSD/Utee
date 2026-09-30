@@ -6,7 +6,7 @@ import { copy } from "./copy";
 import { SYMPTOMS, TRIGGERS } from "./options";
 import { diffPreventions, preventionName, searchPreventions } from "./prevention";
 import { tipsFor } from "./tips";
-import { freeTextAnswer, parseAbout, parseDatePhrase, parseFree, parsePrevention, parseUtis, workedIn } from "./guided/local";
+import { freeTextAnswer, parseAbout, parseDatePhrase, parseFree, parsePrevention, parseUtis, relativeToStart, workedIn } from "./guided/local";
 
 describe("red flags", () => {
   it("shows for each listed symptom and not otherwise", () => {
@@ -240,6 +240,14 @@ describe("guided setup, rule-based reading", () => {
     expect(course.utis).toHaveLength(0);
     expect(course.existing.mentioned).toBe(true);
     expect(course.existing.treatments[0]?.antibiotic_id).toBe("trimethoprim");
+  });
+  it("counts relative dates from the start date, never from today", () => {
+    expect(relativeToStart("5 days later", "2025-08-26")).toBe("2025-08-31");
+    expect(relativeToStart("after about a week", "2025-08-26")).toBe("2025-09-02");
+    expect(relativeToStart("it lasted 4 days", "2025-08-26")).toBe("2025-08-29");
+    expect(relativeToStart("went after around 5 days", "2025-08-26")).toBe("2025-08-31");
+    expect(relativeToStart("yesterday", "2025-08-26")).toBeNull();
+    expect(parseDatePhrase("last tuesday", "2026-09-30")).toBe("2026-09-29");
   });
   it("reads plain yes and no as answers to did it help", () => {
     expect(workedIn("yes it did")).toBe("yes");

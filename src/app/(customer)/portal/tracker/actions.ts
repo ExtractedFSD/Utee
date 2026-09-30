@@ -189,12 +189,12 @@ export async function saveAboutMeValues(input: { menopause_stage: string; contra
 // ------------------------------------------------------------ guided setup
 
 /** Read one typed answer into form fields. Nothing is saved here. The AI reader is skipped when switched off in Settings. */
-export async function extractGuided(step: GuidedStep, text: string) {
+export async function extractGuided(step: GuidedStep, text: string, context?: string) {
   const { user, supabase } = await session();
   const clean = text.trim().slice(0, 2000);
   if (!clean) return { error: "Type something first." };
   const { data: profile } = await supabase.from("tracker_profiles").select("una_ai").eq("user_id", user.id).maybeSingle();
-  return extract(step, clean, isoToday(), profile?.una_ai !== false);
+  return extract(step, clean, isoToday(), profile?.una_ai !== false, context?.slice(0, 600));
 }
 
 export async function setUnaAi(on: boolean) {

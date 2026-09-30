@@ -22,7 +22,7 @@ export function aiAvailable(): boolean {
 
 const list = (opts: { key: string; label: string }[]) => opts.map((o) => `${o.key} = ${o.label}`).join("; ");
 
-const RULES = `You fill in a UTI diary form from what a person typed. You are not a clinician and you never add advice, diagnoses, suggestions or commentary. Only record what the person actually said. Leave a field null or empty when it was not said. Never guess a value the text does not support. Dates are in UK order (day before month). Resolve relative dates against the date given in the message. Free text you may keep: an "other" name, an "other" symptom in a few words, and short notes only if the person wrote something that does not fit a field.`;
+const RULES = `You fill in a UTI diary form from what a person typed. You are not a clinician and you never add advice, diagnoses, suggestions or commentary. Only record what the person actually said. Leave a field null or empty when it was not said. Never guess a value the text does not support. Dates are in UK order (day before month). Resolve relative dates against the date given in the message, except phrases like "5 days later" or "after a week" when the context gives the UTI's start date: count those from the start date. Free text you may keep: an "other" name, an "other" symptom in a few words, and short notes only if the person wrote something that does not fit a field.`;
 
 const PROMPTS: Record<GuidedStep, string> = {
   about: `${RULES}
@@ -75,7 +75,7 @@ function parseJsonText(text: string): unknown {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
-export async function extract<S extends GuidedStep>(step: S, text: string, today: string, allowAi = true): Promise<{ result: Extracted<S>; source: "ai" | "local" }> {
+export async function extract<S extends GuidedStep>(step: S, text: string, today: string, allowAi = true, context?: string): Promise<{ result: Extracted<S>; source: "ai" | "local" }> {
   const local = () => ({
     result: (step === "about" ? parseAbout(text) : step === "prevention" ? parsePrevention(text) : step === "free" ? parseFree(text, today) : parseUtis(text, today)) as Extracted<S>,
     source: "local" as const,
@@ -88,7 +88,7 @@ export async function extract<S extends GuidedStep>(step: S, text: string, today
         model: "claude-opus-5-5",
         max_tokens: 4000,
         system: [{ type: "text", text: `${PROMPTS.free}\n\n${FREE_SHAPE}`, cache_control: { type: "ephemeral" } }],
-        messages: [{ role: "user", content: `Today is ${today}.\n\nThe person wrote:\n${text}` }],
+        messages: [{ role: "user", content: `Today is ${today}.${context ? `\nContext: ${context}` : ""}\n\nThe person wrote:\n${text}` }],
         output_config: { effort: "low" },
       });
       if (response.stop_reason === "refusal") return local();
@@ -101,7 +101,7 @@ export async function extract<S extends GuidedStep>(step: S, text: string, today
       model: "claude-opus-5-5",
       max_tokens: 4000,
       system: [{ type: "text", text: PROMPTS[step], cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: `Today is ${today}.\n\nThe person wrote:\n${text}` }],
+      messages: [{ role: "user", content: `Today is ${today}.${context ? `\nContext: ${context}` : ""}\n\nThe person wrote:\n${text}` }],
       output_config: { effort: "low", format: zodOutputFormat(SCHEMAS[step]) },
     });
     if (response.stop_reason === "refusal" || !response.parsed_output) return local();
