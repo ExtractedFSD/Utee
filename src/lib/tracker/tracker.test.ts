@@ -6,7 +6,7 @@ import { copy } from "./copy";
 import { SYMPTOMS, TRIGGERS } from "./options";
 import { diffPreventions, preventionName, searchPreventions } from "./prevention";
 import { tipsFor } from "./tips";
-import { freeTextAnswer, parseAbout, parseDatePhrase, parseFree, parsePrevention, parseUtis } from "./guided/local";
+import { freeTextAnswer, parseAbout, parseDatePhrase, parseFree, parsePrevention, parseUtis, workedIn } from "./guided/local";
 
 describe("red flags", () => {
   it("shows for each listed symptom and not otherwise", () => {
@@ -240,6 +240,12 @@ describe("guided setup, rule-based reading", () => {
     expect(course.utis).toHaveLength(0);
     expect(course.existing.mentioned).toBe(true);
     expect(course.existing.treatments[0]?.antibiotic_id).toBe("trimethoprim");
+  });
+  it("reads plain yes and no as answers to did it help", () => {
+    expect(workedIn("yes it did")).toBe("yes");
+    expect(workedIn("nope")).toBe("no");
+    expect(workedIn("sort of")).toBe("partly");
+    expect(workedIn("too early to say")).toBe("too_early");
   });
   it("keeps an answer that is not in any list as Other, tidied", () => {
     expect(freeTextAnswer("I think it might have been my shower gel")).toBe("Shower gel");

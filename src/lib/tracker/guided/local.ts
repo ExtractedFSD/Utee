@@ -27,6 +27,13 @@ export function parseDatePhrase(text: string, today = isoToday()): string | null
   const now = new Date(`${today}T12:00:00Z`);
   const daysAgo = (n: number) => isoDaysAgo(n, now);
   if (/\btoday\b|this morning|tonight/.test(t)) return today;
+  const wd = t.match(/\b(?:last |on |this )?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+  if (wd) {
+    const want = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].indexOf(wd[1]);
+    let back = (now.getUTCDay() - want + 7) % 7;
+    if (back === 0) back = 7;
+    return daysAgo(back);
+  }
   if (/\byesterday\b/.test(t)) return daysAgo(1);
   if (/day before yesterday/.test(t)) return daysAgo(2);
   let m = t.match(new RegExp(`\\b${NUM} days? ago`));
@@ -137,10 +144,11 @@ function antibioticsIn(t: string): { id: string; index: number }[] {
 }
 
 export function workedIn(t: string): string | null {
-  if (/didn'?t (work|help|do anything)|did not (work|help)|no (better|help|good)|made no difference|not work|no difference|useless|still had it/.test(t)) return "no";
+  if (/didn'?t (work|help|do anything)|did not (work|help)|no (better|help|good)|made no difference|not work|no difference|useless|still had it|^\s*(no|nope|not really|it didn'?t|nah)\b/.test(t)) return "no";
+  if (/^\s*(sort of|kind of|a bit|partly|partially|somewhat)\b/.test(t)) return "partly";
   if (/partly|a bit better|somewhat|little better|helped a bit|half/.test(t)) return "partly";
   if (/too early|still taking|just started|only started/.test(t)) return "too_early";
-  if (/worked|helped|cleared|better|sorted|fixed|gone|did the (trick|job)/.test(t)) return "yes";
+  if (/worked|helped|cleared|better|sorted|fixed|gone|did the (trick|job)|^\s*(yes|yeah|yep|yup|it did|definitely|absolutely)\b/.test(t)) return "yes";
   return null;
 }
 

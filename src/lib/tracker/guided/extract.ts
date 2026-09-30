@@ -75,12 +75,12 @@ function parseJsonText(text: string): unknown {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
-export async function extract<S extends GuidedStep>(step: S, text: string, today: string): Promise<{ result: Extracted<S>; source: "ai" | "local" }> {
+export async function extract<S extends GuidedStep>(step: S, text: string, today: string, allowAi = true): Promise<{ result: Extracted<S>; source: "ai" | "local" }> {
   const local = () => ({
     result: (step === "about" ? parseAbout(text) : step === "prevention" ? parsePrevention(text) : step === "free" ? parseFree(text, today) : parseUtis(text, today)) as Extracted<S>,
     source: "local" as const,
   });
-  if (!aiAvailable()) return local();
+  if (!aiAvailable() || !allowAi) return local();
   try {
     const client = new Anthropic({ timeout: 25_000, maxRetries: 1 });
     if (step === "free") {

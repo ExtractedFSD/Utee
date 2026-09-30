@@ -22,6 +22,7 @@ export type TrackerProfile = {
   reminder_daily: boolean;
   reminder_monthly: boolean;
   last_treatment_source: string | null;
+  una_ai: boolean;
 };
 
 export type Consents = { tracker: boolean; research: boolean };

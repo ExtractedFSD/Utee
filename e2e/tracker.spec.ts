@@ -372,23 +372,25 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   const chips = page.getByTestId("chat-chips");
   const input = page.getByPlaceholder("Type here...");
   const overview = () => page.getByTestId("chat-overview").last();
-  // Option chips sit behind "Let me pick" so the chat stays clean.
-  const pick = async (name: string | RegExp, exact = false) => {
-    await page.getByTestId("let-me-pick").click();
-    await chips.getByRole("button", { name, exact }).click();
+  // Everything in plain words: no option lists anywhere.
+  const type = async (text: string) => {
+    await input.fill(text);
+    await page.getByRole("button", { name: "Send" }).click();
   };
   await expect(chat).toHaveAttribute("data-hydrated", "true");
+  await expect(page.getByTestId("let-me-pick")).toHaveCount(0);
 
-  // About you, one question at a time by tapping.
-  await pick("Prefer not to say");
+  // About you, one question at a time, typed.
+  await type("rather not say");
   await expect(chat).toContainText("Do you use contraception?");
-  await pick("Prefer not to say");
+  await type("none");
   await expect(chat).toContainText("pregnant or trying?");
-  await pick("Prefer not to say");
+  await type("no");
   await expect(overview()).toContainText("Menopause: Prefer not to say");
-  await chips.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(overview()).toContainText("Contraception: None");
+  await type("yes");
   await expect(chat).toContainText("Saved. Thank you.");
-  await pick("Nothing", true);
+  await type("nothing");
   await expect(overview()).toContainText("No changes");
   await chips.getByRole("button", { name: "Save", exact: true }).click();
   await expect(chat).toContainText("Now your UTIs");
@@ -399,10 +401,9 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await expect(chat).toContainText("I picked up 2 UTIs");
   await expect(chat).toContainText("Anything that might have set it off?");
   await expect(page.getByTestId("chat-chips")).toHaveCount(0);
-  await input.fill("I think it might have been my shower gel");
-  await page.getByRole("button", { name: "Send" }).click();
+  await type("I think it might have been my shower gel");
   await expect(chat).toContainText("Did you have a test for it?");
-  await pick("No test");
+  await type("no");
   await expect(overview()).toContainText("Possible triggers: Shower gel");
   await expect(overview()).toContainText("Nitrofurantoin · 3 days · GP · helped: yes");
   await expect(overview()).toContainText("Noticed: Burning or stinging when peeing, Needing to pee more often");
@@ -410,20 +411,19 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await expect(chat).toContainText("Saved the UTI from");
   // Second one: no antibiotic yet, so she asks; a typed answer fills it, then how it went, then tests.
   await expect(chat).toContainText("Anything that might have set it off?");
-  await pick("Skip");
+  await type("not sure");
   await expect(chat).toContainText("Did you take anything for it");
-  await input.fill("trimethoprim for 3 days from the pharmacy");
-  await page.getByRole("button", { name: "Send" }).click();
+  await type("trimethoprim for 3 days from the pharmacy");
   await expect(chat).toContainText("Did the Trimethoprim help?");
-  await pick("Too early to say");
+  await type("too early to say");
   await expect(chat).toContainText("Did you have a test for it?");
-  await pick("Dipstick at GP or pharmacy");
+  await type("a dipstick at the pharmacy");
   await expect(overview()).toContainText("Still going");
   await expect(overview()).toContainText("Trimethoprim · 3 days · Pharmacy · helped: too early to say");
   await expect(overview()).toContainText("Tests: Dipstick at GP or pharmacy");
-  await chips.getByRole("button", { name: "Save", exact: true }).click();
+  await type("save it");
   await expect(chat).toContainText("Another UTI to add?");
-  await chips.getByRole("button", { name: "That's all" }).click();
+  await type("that's all");
   await expect(chat).toContainText("All set. Your tracker is ready.");
   await page.getByTestId("guided-done").getByRole("link", { name: "See my history" }).click();
   await expect(page).toHaveURL(/\/portal\/tracker\/history/);
@@ -442,7 +442,7 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
 
   // Updating what they take by chat: add two, then stop one and start another.
   await page.goto("/portal/tracker/prevention");
-  await page.getByRole("link", { name: "Update by chat" }).click();
+  await page.getByRole("link", { name: "Talk to Una" }).click();
   await expect(chat).toHaveAttribute("data-hydrated", "true");
   await expect(chat).toContainText("has anything stopped?");
   await input.fill("I've started D-mannose and cranberry");
@@ -486,31 +486,31 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   const pchips = panel.getByTestId("chat-chips");
   const poverview = () => panel.getByTestId("chat-overview").last();
   await expect(panel.getByTestId("guided-chat")).toHaveAttribute("data-hydrated", "true");
-  const ppick = async (name: string, exact = false) => {
-    await panel.getByTestId("let-me-pick").click();
-    await pchips.getByRole("button", { name, exact }).click();
+  const ptype = async (text: string) => {
+    await panel.getByPlaceholder("Type here...").fill(text);
+    await panel.getByRole("button", { name: "Send" }).click();
   };
   // The UTI from 10 days ago is still open, so Una checks on it first, closes it, and asks how the antibiotic went.
   await expect(panel).toContainText("is still open on your record. Has it cleared up?");
-  await pchips.getByRole("button", { name: "It's over" }).click();
+  await ptype("it's over");
   await expect(panel).toContainText("Glad it's cleared. When did it clear up?");
-  await ppick("Yesterday");
+  await ptype("yesterday");
   await expect(panel).toContainText("Did the Trimethoprim help?");
-  await ppick("Yes", true);
+  await ptype("yes it did");
   await expect(poverview()).toContainText("Trimethoprim: helped yes");
   await pchips.getByRole("button", { name: "Save", exact: true }).click();
   await expect(panel).toContainText("is closed.");
   // Then the waiting rating nudge.
   await expect(panel).toContainText("Probiotics on your list for a few weeks. Is it helping?");
-  await ppick("Yes", true);
+  await ptype("yes");
   await expect(panel).toContainText("Thanks, noted.");
   await panel.getByPlaceholder("Type here...").fill("Had another one 2 days ago, burning, still got it. Also I've stopped the D-mannose");
   await panel.getByRole("button", { name: "Send" }).click();
   await expect(panel).toContainText("Anything that might have set it off?");
-  await ppick("Skip");
+  await ptype("no idea");
   await expect(panel).toContainText("Did you take anything for it");
-  await ppick("No antibiotics");
-  await ppick("No test");
+  await ptype("nothing");
+  await ptype("no test");
   await expect(poverview()).toContainText("Still going");
   await pchips.getByRole("button", { name: "Save", exact: true }).click();
   await expect(panel).toContainText("Saved the UTI from");
@@ -524,10 +524,9 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await panel.getByRole("button", { name: "Send" }).click();
   await expect(panel).toContainText("Sorry it's still hanging around. Let's get today logged.");
   await expect(panel).toContainText("How are you feeling today?");
-  await ppick("OK", true);
+  await ptype("ok I suppose");
   await expect(panel).toContainText("What are you noticing today?");
-  await ppick("Burning or stinging when peeing");
-  await pchips.getByRole("button", { name: "Done" }).click();
+  await ptype("burning when I pee");
   await expect(poverview()).toContainText("Feeling: OK");
   await expect(poverview()).toContainText("Noticing: Burning or stinging when peeing");
   await expect(poverview()).toContainText("Possible trigger added: Shower gel");
@@ -544,7 +543,7 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await panel.getByPlaceholder("Type here...").fill("My UTI has gone");
   await panel.getByRole("button", { name: "Send" }).click();
   await expect(panel.getByTestId("guided-chat")).toHaveAttribute("data-question", "closeWhen");
-  await ppick("Today");
+  await ptype("today");
   await expect(poverview()).toContainText("ended");
   await pchips.getByRole("button", { name: "Save", exact: true }).click();
   await expect(panel).toContainText("is closed.");
@@ -559,8 +558,8 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await expect.poll(async () => (await admin().from("tracker_chats").select("id").eq("user_id", user.id)).data?.length, { timeout: 10_000 }).toBeGreaterThan(0);
   await panel.getByTestId("chat-history").click();
   const list = panel.getByTestId("chat-history-list");
-  await expect(list).toContainText("Had another one 2 days ago");
-  await list.getByRole("button", { name: /Had another one 2 days ago/ }).click();
+  await expect(list).toContainText("it's over");
+  await list.getByRole("button", { name: /^it's over/ }).click();
   await expect(panel).toContainText("Picking up where we left off");
   await expect(panel.getByTestId("guided-chat")).toHaveAttribute("data-hydrated", "true");
   await panel.getByPlaceholder("Type here...").fill("started cranberry again");
