@@ -41,7 +41,7 @@ If they say they take or do nothing, or nothing has changed, return empty lists.
 The person is describing one or more UTIs (urinary tract infections) they have had. Return one entry per UTI, oldest first.
 - started_on / ended_on: YYYY-MM-DD or null. If they say it is still going, set ongoing true and ended_on null. If they only give a length ("lasted 5 days"), compute ended_on from started_on.
 - symptoms keys: ${list(SYMPTOMS)} (use "other" plus other_symptom for anything else)
-- triggers keys (only if they suggest a cause): ${list(TRIGGERS)}
+- triggers keys (only if they suggest a cause): ${list(TRIGGERS)} (use "other" plus other_trigger, a few words, for a cause not in the list, such as a shower gel)
 - treatments: one per antibiotic course. antibiotic_id from: ${ANTIBIOTICS.map((a) => `${a.id} = ${a.name}${a.brands?.length ? ` (${a.brands.join(", ")})` : ""}`).join("; ")}. days = course length if said. course_type: ${list(COURSE_TYPES)}. source (who gave it): ${list(SOURCES)}. worked (only if they said how it went): ${list(WORKED)}.
 - tests: kind: ${list(TEST_KINDS)}; result: ${list(TEST_RESULTS)}; tested_on YYYY-MM-DD or null.
 - notes: null unless something important does not fit.`,

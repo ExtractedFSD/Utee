@@ -5,7 +5,7 @@ import { summarise, patterns, episodeLength, orderByUsage, daysBetween, ageBandF
 import { copy } from "./copy";
 import { SYMPTOMS, TRIGGERS } from "./options";
 import { diffPreventions, preventionName, searchPreventions } from "./prevention";
-import { parseAbout, parseDatePhrase, parseFree, parsePrevention, parseUtis } from "./guided/local";
+import { freeTextAnswer, parseAbout, parseDatePhrase, parseFree, parsePrevention, parseUtis } from "./guided/local";
 
 describe("red flags", () => {
   it("shows for each listed symptom and not otherwise", () => {
@@ -208,6 +208,11 @@ describe("guided setup, rule-based reading", () => {
     expect(course.taking.keys).toEqual([]);
     expect(parseFree("started taking cranberry tablets", today).utis).toHaveLength(0);
     expect(parseFree("started taking cranberry tablets", today).taking.keys).toEqual(["cranberry"]);
+  });
+  it("keeps an answer that is not in any list as Other, tidied", () => {
+    expect(freeTextAnswer("I think it might have been my shower gel")).toBe("Shower gel");
+    expect(freeTextAnswer("maybe the new washing powder.")).toBe("New washing powder");
+    expect(freeTextAnswer("   ")).toBeNull();
   });
   it("splits several UTIs and spots an ongoing one", () => {
     const { utis } = parseUtis("One started 3 weeks ago and lasted 5 days, burning. Another one 10 days ago, urgency and cloudy, still going", today);

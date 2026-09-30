@@ -297,3 +297,14 @@ export function parseFree(text: string, today = isoToday()): FreeExtract {
   }
   return { utis, taking };
 }
+
+/** A typed answer that is not in any list, tidied for storing as "Other": lead-ins dropped, first letter capitalised. */
+export function freeTextAnswer(text: string): string | null {
+  const t = text.trim()
+    .replace(/^(?:(?:i think|i reckon|i guess|maybe|possibly|probably|perhaps|it (?:might|could|may) (?:have been|be)|might (?:have been|be)|could (?:have been|be)|it was|it's|its|just)\s+)+/i, "")
+    .replace(/^(?:my|the|a|an|some)\s+/i, "")
+    .replace(/[.!]+$/, "")
+    .trim();
+  if (!t) return null;
+  return (t.charAt(0).toUpperCase() + t.slice(1)).slice(0, 200);
+}
