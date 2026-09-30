@@ -52,6 +52,7 @@ export const utiSchema = z.object({
   symptoms: z.array(z.enum(keys(SYMPTOMS))),
   other_symptom: z.string().nullable(),
   triggers: z.array(z.enum(keys(TRIGGERS))),
+  other_trigger: z.string().nullable(),
   treatments: z.array(treatmentSchema),
   tests: z.array(testSchema),
   notes: z.string().nullable(),
@@ -72,6 +73,7 @@ export const utiSaveSchema = z.object({
   symptoms: z.array(z.enum(keys(SYMPTOMS))).max(20),
   other_symptom: z.string().max(200).nullable(),
   triggers: z.array(z.enum(keys(TRIGGERS))).max(20),
+  other_trigger: z.string().max(200).nullable(),
   treatments: z.array(treatmentSchema.extend({ days: z.number().int().positive().max(365).nullable() })).max(10),
   tests: z.array(testSchema).max(10),
   notes: z.string().max(4000).nullable(),
@@ -79,7 +81,7 @@ export const utiSaveSchema = z.object({
 export type UtiSave = z.infer<typeof utiSaveSchema>;
 
 export const emptyUti = (): UtiExtract => ({
-  started_on: null, ended_on: null, ongoing: null, symptoms: [], other_symptom: null, triggers: [], treatments: [], tests: [], notes: null,
+  started_on: null, ended_on: null, ongoing: null, symptoms: [], other_symptom: null, triggers: [], other_trigger: null, treatments: [], tests: [], notes: null,
 });
 
 export type GuidedStep = "about" | "prevention" | "utis" | "free";

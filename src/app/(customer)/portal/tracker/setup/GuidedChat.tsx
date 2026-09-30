@@ -8,7 +8,7 @@ import { antibioticName } from "@/lib/tracker/search";
 import { HELPING, PREVENTION_GROUPS, RETIRED_OPTIONS, diffPreventions } from "@/lib/tracker/prevention";
 import { redFlagFor } from "@/lib/tracker/redflags";
 import { formatDay, isoToday } from "@/lib/tracker/stats";
-import { parseDatePhrase, workedIn } from "@/lib/tracker/guided/local";
+import { freeTextAnswer, parseDatePhrase, workedIn } from "@/lib/tracker/guided/local";
 import { emptyUti, type AboutExtract, type FreeExtract, type PreventionExtract, type UtiExtract, type UtiSave } from "@/lib/tracker/guided/schema";
 import type { ChatMessage } from "@/lib/tracker/data";
 import { Chip, DateChips } from "../components/Chips";
@@ -72,6 +72,9 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
   const [visited, setVisited] = useState<Set<Step>>(new Set([mode === "full" ? "about" : mode]));
   const [pregnant, setPregnant] = useState(pregnantOrTrying);
   const [pickingAb, setPickingAb] = useState(false);
+  // Option chips stay hidden behind "Let me pick" so the chat stays clean.
+  const [picking, setPicking] = useState(false);
+  useEffect(() => { setPicking(false); }, [q]);
   const endRef = useRef<HTMLDivElement | null>(null);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
@@ -182,7 +185,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
       u.ongoing === true || (!u.ended_on && u.ongoing !== false) ? o.stillGoing : `${o.ended}: ${u.ended_on ? formatDay(u.ended_on) : formatDay(isoToday())}`,
       `${o.noticed}: ${u.symptoms.length ? u.symptoms.map((k) => (k === "other" ? u.other_symptom || "Other" : labelFor(SYMPTOMS, k))).join(", ") : o.nothingNoted}`,
     ];
-    if (u.triggers.length) lines.push(`${o.triggers}: ${u.triggers.map((k) => labelFor(TRIGGERS, k)).join(", ")}`);
+    if (u.triggers.length) lines.push(`${o.triggers}: ${u.triggers.map((k) => (k === "other" ? u.other_trigger || "Other" : labelFor(TRIGGERS, k))).join(", ")}`);
     lines.push(`${o.antibiotics}: ${u.treatments.length ? u.treatments.map((t) => [t.antibiotic_id ? antibioticName(t.antibiotic_id, t.other_name) : "Antibiotic", t.days && `${t.days} ${copy.guided.fields.days}`, t.source && labelFor(SOURCES, t.source), t.worked && `${o.helped}: ${labelFor(WORKED, t.worked).toLowerCase()}`].filter(Boolean).join(" · ")).join("; ") : o.none}`);
     lines.push(`${o.tests}: ${u.tests.length ? u.tests.map((t) => labelFor(TEST_KINDS, t.kind)).join(", ") : o.none}`);
     if (u.notes) lines.push(`${o.notes}: ${u.notes}`);
@@ -233,6 +236,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
       symptoms: u.symptoms,
       other_symptom: u.other_symptom || null,
       triggers: u.triggers,
+      other_trigger: u.other_trigger || null,
       treatments: u.treatments.filter((t) => t.antibiotic_id).map((t) => ({ ...t, days: t.days && t.days > 0 ? Math.min(t.days, 365) : null })),
       tests: u.tests,
       notes: u.notes || null,
@@ -273,8 +277,21 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
         if (read.ongoing || /still|ongoing|not yet|hasn'?t/.test(lower)) return { patch: { ongoing: true, ended_on: null }, asked: "ended" };
         return { patch: { ongoing: false, ended_on: read.ended_on ?? parseDatePhrase(lower) }, asked: "ended" };
       case "endedOn": return { patch: { ended_on: read.ended_on ?? parseDatePhrase(lower) ?? read.started_on }, asked: "endedOn" };
-      case "symptoms": return { patch: { symptoms: [...new Set([...u.symptoms, ...read.symptoms])], other_symptom: read.other_symptom ?? u.other_symptom }, asked: "symptoms" };
-      case "triggers": return { patch: { triggers: [...new Set([...u.triggers, ...read.triggers])] }, asked: "triggers" };
+      case "symptoms": {
+        if (!read.symptoms.length && !no) {
+          const other = read.other_symptom ?? freeTextAnswer(t);
+          return { patch: { symptoms: [...new Set([...u.symptoms, "other"])], other_symptom: other }, asked: "symptoms" };
+        }
+        return { patch: { symptoms: [...new Set([...u.symptoms, ...read.symptoms])], other_symptom: read.other_symptom ?? u.other_symptom }, asked: "symptoms" };
+      }
+      case "triggers": {
+        // Something not in the list is kept as "Other" with their words.
+        if (!read.triggers.length && !no) {
+          const other = read.other_trigger ?? freeTextAnswer(t);
+          return { patch: { triggers: [...new Set([...u.triggers, "other"])], other_trigger: other }, asked: "triggers" };
+        }
+        return { patch: { triggers: [...new Set([...u.triggers, ...read.triggers])], other_trigger: read.other_trigger ?? u.other_trigger }, asked: "triggers" };
+      }
       case "treatment": return { patch: no && !read.treatments.length ? {} : { treatments: [...u.treatments, ...read.treatments] }, asked: "treatment" };
       case "days": {
         const n = read.treatments.find((x) => x.days)?.days ?? Number((lower.match(/\d+/) ?? [])[0]);
@@ -364,6 +381,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
   };
   const rate = (id: string, helping: string) => run(() => updatePrevention(id, { helping }), () => { say(copy.guided.nudgeThanks); say(copy.guided.askFree); setQ(null); });
 
+  const OPTION_QS: (Q | null)[] = ["menopause", "contraception", "pregnant", "wasTaking", "started", "ended", "endedOn", "symptoms", "triggers", "treatment", "days", "worked", "tests", "rate", null];
   const busy = pending || reading;
   const promptOnly = q === "rate" || q === "another" || q === "changedTaking" || q === "moreUtis" || q === "overview" || q === "aboutOverview" || q === "preventionOverview" || q === "change";
   const showInput = step !== "done" && !promptOnly;
@@ -481,7 +499,11 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
       </div>
 
       {chipNodes && step !== "done" && (
-        <div className="flex flex-wrap gap-2" data-testid="chat-chips">{chipNodes}</div>
+        OPTION_QS.includes(q) && !picking ? (
+          <button type="button" onClick={() => setPicking(true)} className="-mt-1 min-h-[44px] text-sm font-semibold text-maroon" data-testid="let-me-pick">{copy.guided.letMePick}</button>
+        ) : (
+          <div className="flex flex-wrap gap-2" data-testid="chat-chips">{chipNodes}</div>
+        )
       )}
 
       {q === "preventionPick" && (

@@ -348,7 +348,7 @@ function TreatmentSection({ episodeId, today, treatments, previous, onThisUti, l
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-midnight">{antibioticName(t.antibiotic_id, t.other_name)}</p>
                   <p className="text-xs text-slate-600">
-                    {[t.days && `${t.days} day${t.days === 1 ? "" : "s"}`, t.started_on && `from ${formatDay(t.started_on)}`, labelFor(COURSE_TYPES, t.course_type), labelFor(SOURCES, t.source)].filter(Boolean).join(" · ")}
+                    {[t.days && `${t.days} day${t.days === 1 ? "" : "s"}`, t.started_on && `from ${formatDay(t.started_on)}`, t.course_type && t.course_type !== "treatment" ? labelFor(COURSE_TYPES, t.course_type) : "", labelFor(SOURCES, t.source)].filter(Boolean).join(" · ")}
                   </p>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {t.worked ? `${copy.log.didItWork} ${labelFor(WORKED, t.worked)}` : ask && ask > today ? copy.episode.willAskOn(formatDayShort(ask)) : ask ? copy.episode.askToday : copy.episode.willAskOnClose}
@@ -374,7 +374,8 @@ function TreatmentForm({ initial, previous, exclude, lastSource, pending, onCanc
   const [startedOn, setStartedOn] = useState(initial?.started_on ?? isoToday());
   const [days, setDays] = useState<number | null>(initial?.days ?? null);
   const [customDays, setCustomDays] = useState(initial?.days && !COURSE_DAYS.includes(initial.days) ? String(initial.days) : "");
-  const [courseType, setCourseType] = useState(initial?.course_type ?? "");
+  // Course type is no longer asked; an existing value is kept, new courses are treatment courses.
+  const courseType = initial?.course_type ?? "treatment";
   const [source, setSource] = useState(initial?.source ?? lastSource ?? "");
   return (
     <div className="space-y-4">
@@ -390,10 +391,6 @@ function TreatmentForm({ initial, previous, exclude, lastSource, pending, onCanc
               <Chip selected={!!customDays} onClick={() => { setCustomDays("10"); setDays(10); }}>Other</Chip>
               {customDays && <input type="number" min={1} max={365} value={customDays} onChange={(e) => { setCustomDays(e.target.value); setDays(Number(e.target.value) || null); }} className={`${inputClass} w-24`} aria-label="Number of days" />}
             </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-700 mb-2">Type of course</p>
-            <div className="flex flex-wrap gap-2">{COURSE_TYPES.map((c) => <Chip key={c.key} selected={courseType === c.key} onClick={() => setCourseType(c.key)}>{c.label}</Chip>)}</div>
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-700 mb-2">Where it came from</p>

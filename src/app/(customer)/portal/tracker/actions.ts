@@ -213,7 +213,7 @@ export async function saveGuidedUti(input: UtiSave) {
   if (error || !episode) return { error: "Could not save. Please try again." };
   const symptoms = d.symptoms.map((symptom) => ({ user_id: user.id, episode_id: episode.id, symptom, other_text: symptom === "other" ? d.other_symptom?.trim() || null : null, logged_on: d.started_on }));
   if (symptoms.length) await supabase.from("tracker_symptoms").insert(symptoms);
-  const triggers = d.triggers.map((trigger) => ({ user_id: user.id, episode_id: episode.id, trigger, other_text: null, logged_on: d.started_on }));
+  const triggers = d.triggers.map((trigger) => ({ user_id: user.id, episode_id: episode.id, trigger, other_text: trigger === "other" ? d.other_trigger?.trim() || null : null, logged_on: d.started_on }));
   if (triggers.length) await supabase.from("tracker_triggers").insert(triggers);
   const treatments = d.treatments
     .filter((t) => t.antibiotic_id)
