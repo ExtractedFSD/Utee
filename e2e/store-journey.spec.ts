@@ -124,8 +124,12 @@ test("store kit: order to report", async ({ browser, request }) => {
       duration: "1–3 days",
       pregnant: "not_applicable",
       notes: "E2E test submission",
+      research: true,
     });
     await expect(customerPage).toHaveURL(new RegExp(`/portal/tests/${kitId}`));
+    const { data: saved } = await admin().from("triage_submissions").select("research_consent, research_consent_text").eq("kit_id", kitId).single();
+    expect(saved?.research_consent).toBe(true);
+    expect(saved?.research_consent_text).toContain("anonymised");
     await expect(customerPage.getByText("Symptoms submitted").first()).toBeVisible();
     await expect(customerPage.getByText("Pain or burning sensation when you are urinating.")).toBeVisible();
     await expect(customerPage.getByText("(7/10)")).toBeVisible();
@@ -202,6 +206,7 @@ test("store kit: order to report", async ({ browser, request }) => {
     await expect(clinicPage.getByText(customerName).first()).toBeVisible();
     await expect(clinicPage.getByText("Escherichia coli").first()).toBeVisible();
     await expect(clinicPage.getByText("No warning signs reported.")).toBeVisible();
+    await expect(clinicPage.getByText("Research use agreed")).toBeVisible();
     await expect(clinicPage.getByText("Episodes, past 6 months:")).toBeVisible();
     await expect(clinicPage.locator("tr", { hasText: "Pain or burning sensation when you are urinating." })).toContainText("7");
     await clinicPage.getByRole("button", { name: "Mark case as received" }).click();

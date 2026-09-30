@@ -128,6 +128,8 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
     });
     await expect(buyerPage).toHaveURL(new RegExp(`/portal/tests/${kitId}`));
     await expect(buyerPage.getByTestId("triage-flags")).toContainText("Can you see visible blood or blood clots in your urine?");
+    const { data: saved } = await admin().from("triage_submissions").select("research_consent").eq("kit_id", kitId).single();
+    expect(saved?.research_consent).toBe(false);
     await expectKitStatus(code, "activated");
   });
 

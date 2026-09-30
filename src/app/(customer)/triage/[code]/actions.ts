@@ -8,6 +8,7 @@ import { logKitEvent } from "@/lib/events";
 import {
   CHANGE_MAX,
   CHANGE_MIN,
+  RESEARCH,
   SAFETY_QUESTIONS,
   SEVERITY_MAX,
   SEVERITY_MIN,
@@ -47,6 +48,7 @@ const triageSchema = z
     currentAntibiotics: z.string().max(500),
     notes: z.string().max(2000),
     consent: z.literal(true, { errorMap: () => ({ message: "Consent is required" }) }),
+    research: z.boolean(),
   })
   .superRefine((value, ctx) => {
     if (value.history.continuous === "no") {
@@ -82,7 +84,7 @@ export async function submitTriage(code: string, input: TriageInput) {
     return { error: parsed.error.errors[0]?.message ?? "Please check the form" };
   }
 
-  const { consent: _consent, ...answers } = parsed.data;
+  const { consent: _consent, research, ...answers } = parsed.data;
   void _consent;
   const symptoms: TriageAnswers = {
     version: 2,
@@ -107,6 +109,8 @@ export async function submitTriage(code: string, input: TriageInput) {
       symptoms,
       consent_given: true,
       consent_text: CONSENT_TEXT,
+      research_consent: research,
+      research_consent_text: research ? `${RESEARCH.text} ${RESEARCH.label}` : null,
       submitted_at: new Date().toISOString(),
     },
     { onConflict: "kit_id" }

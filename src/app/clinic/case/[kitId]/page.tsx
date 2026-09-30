@@ -24,7 +24,7 @@ export default async function CasePage({
   if (!kit) notFound();
 
   const [{ data: triage }, { data: labResult }, { data: report }] = await Promise.all([
-    admin.from("triage_submissions").select("symptoms, consent_given, submitted_at").eq("kit_id", kitId).maybeSingle(),
+    admin.from("triage_submissions").select("symptoms, consent_given, research_consent, submitted_at").eq("kit_id", kitId).maybeSingle(),
     admin
       .from("lab_results")
       .select("outcome, organism, colony_count, sensitivities, comments, report_path, uploaded_at")
@@ -63,8 +63,8 @@ export default async function CasePage({
             <div className="space-y-3">
               <TriageSummary answers={symptoms} audience="clinic" />
               <p className="text-xs text-slate-400">
-                Consent {triage?.consent_given ? "given" : "NOT given"} ·{" "}
-                {formatDateTime(triage?.submitted_at)}
+                Consent {triage?.consent_given ? "given" : "NOT given"} · Research use{" "}
+                {triage?.research_consent ? "agreed" : "not agreed"} · {formatDateTime(triage?.submitted_at)}
               </p>
             </div>
           ) : (

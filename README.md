@@ -314,4 +314,7 @@ Symptoms + lab results are special-category health data under UK GDPR: host the
 Supabase project in a UK/EU region, sign DPAs with Supabase/Resend/Recharge,
 add a privacy notice + retention policy, and keep the consent text
 (`triage_submissions.consent_text`) versioned if it changes. The portal records
-consent with a timestamp at triage time.
+consent with a timestamp at triage time. The questionnaire also offers an
+optional research consent (`research_consent`, with the wording shown saved
+in `research_consent_text`), separate from the consent needed to run the
+test; the clinic case page shows whether it was given.

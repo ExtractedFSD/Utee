@@ -374,6 +374,7 @@ export async function completeTriage(
     previousUti?: "yes" | "no" | "unsure";
     pregnant?: "yes" | "no" | "not_applicable";
     notes?: string;
+    research?: boolean;
   } = {}
 ) {
   const form = page.locator("form[data-step]");
@@ -413,5 +414,6 @@ export async function completeTriage(
   await page.locator(`input[name="pregnant"][value="${opts.pregnant ?? "no"}"]`).check();
   if (opts.notes) await page.locator('textarea[name="notes"]').fill(opts.notes);
   await page.locator('input[name="consent"]').check();
+  if (opts.research) await page.locator('input[name="research"]').check();
   await page.getByRole("button", { name: "Submit & take my sample" }).click();
 }

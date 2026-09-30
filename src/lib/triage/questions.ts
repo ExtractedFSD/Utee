@@ -132,3 +132,10 @@ export function changeLabel(value: number): string {
   if (value < 4) return "Better";
   return "Very much better";
 }
+
+/** Optional research consent on the questionnaire, worded like the tracker's. */
+export const RESEARCH = {
+  title: "Optional: help other women with UTIs",
+  text: "I also consent to Utee using my answers and my test result, with anything that could identify me removed, in combined figures for research and reporting. Recurrent UTIs are under-researched, and most of what is known comes from a handful of small studies. Real records of symptoms matched to real test results are what change that. Combined with others', mine could help improve testing, treatment and care for women like me. This is optional and does not affect my test.",
+  label: "Yes, use my anonymised answers and result to help research that could improve care for women with UTIs (optional)",
+} as const;

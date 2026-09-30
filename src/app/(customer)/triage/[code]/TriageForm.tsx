@@ -9,6 +9,7 @@ import {
   HISTORY,
   HISTORY_INTRO,
   INTRO,
+  RESEARCH,
   SAFETY_QUESTIONS,
   SEVERITY_MAX,
   SEVERITY_MIN,
@@ -130,6 +131,7 @@ export function TriageForm({ code }: { code: string }) {
   const [currentAntibiotics, setCurrentAntibiotics] = useState("");
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
+  const [research, setResearch] = useState(false);
 
   useEffect(() => {
     if (step > 0 || urgent) window.scrollTo({ top: 0, behavior: "smooth" });
@@ -188,6 +190,7 @@ export function TriageForm({ code }: { code: string }) {
       currentAntibiotics,
       notes,
       consent: true,
+      research,
     };
     startTransition(async () => {
       const result = await submitTriage(code, input);
@@ -489,6 +492,21 @@ export function TriageForm({ code }: { code: string }) {
                 I consent to my urine sample being tested by Utee&apos;s partner laboratory, and to my symptoms and results
                 being reviewed by Utee&apos;s clinical team to produce my report.
               </span>
+            </label>
+          </Card>
+
+          <Card className="bg-pink-25/60">
+            <p className="text-sm font-semibold text-midnight">{RESEARCH.title}</p>
+            <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">{RESEARCH.text}</p>
+            <label className="mt-3 flex items-start gap-3 text-sm font-medium text-slate-700">
+              <input
+                type="checkbox"
+                name="research"
+                checked={research}
+                onChange={(e) => setResearch(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              />
+              <span>{RESEARCH.label}</span>
             </label>
           </Card>
         </>
