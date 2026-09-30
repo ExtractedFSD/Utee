@@ -5,18 +5,16 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logKitEvent } from "@/lib/events";
+import { antibioticName } from "@/lib/tracker/search";
 import {
   CHANGE_MAX,
   CHANGE_MIN,
   RESEARCH,
   SAFETY_QUESTIONS,
-  SEVERITY_MAX,
-  SEVERITY_MIN,
   SYMPTOM_QUESTIONS,
+  orderedSymptoms,
   safetyFlagsIn,
-  selectedFrom,
   type SafetyKey,
-  type SymptomKey,
   type TriageAnswers,
 } from "@/lib/triage/questions";
 
@@ -25,6 +23,7 @@ const CONSENT_TEXT =
 
 const yesNo = z.enum(["yes", "no"]);
 const count = z.number().int().min(0).max(999).nullable();
+const symptomKeys = SYMPTOM_QUESTIONS.map((q) => q.key) as [string, ...string[]];
 
 const triageSchema = z
   .object({
@@ -33,25 +32,29 @@ const triageSchema = z
     ),
     history: z.object({
       continuous: yesNo,
+      previousUti: z.enum(["yes", "no", "unsure"]),
       episodes6m: count,
       episodes12m: count,
     }),
-    severity: z.object(
-      Object.fromEntries(
-        SYMPTOM_QUESTIONS.map((q) => [q.key, z.number().int().min(SEVERITY_MIN).max(SEVERITY_MAX)])
-      ) as Record<SymptomKey, z.ZodNumber>
-    ),
+    antibiotics: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(80),
+          name: z.string().max(120),
+          worked: z.enum(["yes", "no", "partly", "taking"]),
+        })
+      )
+      .max(30),
+    selected: z.array(z.enum(symptomKeys)).max(SYMPTOM_QUESTIONS.length),
     change24h: z.number().int().min(CHANGE_MIN).max(CHANGE_MAX),
-    duration: z.string().min(1, "Tell us how long you've had symptoms"),
-    previousUti: z.enum(["yes", "no", "unsure"]),
+    duration: z.string().min(1, "Tell us how long you've had these symptoms"),
     pregnant: z.enum(["yes", "no", "not_applicable"]),
-    currentAntibiotics: z.string().max(500),
     notes: z.string().max(2000),
     consent: z.literal(true, { errorMap: () => ({ message: "Consent is required" }) }),
     research: z.boolean(),
   })
   .superRefine((value, ctx) => {
-    if (value.history.continuous === "no") {
+    if (value.history.previousUti === "yes") {
       if (value.history.episodes6m === null) {
         ctx.addIssue({ code: "custom", message: "Tell us roughly how many episodes in the past 6 months" });
       }
@@ -86,16 +89,31 @@ export async function submitTriage(code: string, input: TriageInput) {
 
   const { consent: _consent, research, ...answers } = parsed.data;
   void _consent;
+  const hadUti = answers.history.previousUti === "yes";
   const symptoms: TriageAnswers = {
-    version: 2,
-    ...answers,
+    version: 3,
+    safety: answers.safety,
+    safetyFlags: safetyFlagsIn(answers.safety),
     history: {
       continuous: answers.history.continuous,
-      episodes6m: answers.history.continuous === "yes" ? null : answers.history.episodes6m,
-      episodes12m: answers.history.continuous === "yes" ? null : answers.history.episodes12m,
+      previousUti: answers.history.previousUti,
+      episodes6m: hadUti ? answers.history.episodes6m : null,
+      episodes12m: hadUti ? answers.history.episodes12m : null,
     },
-    safetyFlags: safetyFlagsIn(answers.safety),
-    selected: selectedFrom(answers.severity),
+    // Names resolve server-side from the id, so a stored name is never
+    // whatever the browser sent, except for free-text "other".
+    antibiotics: hadUti
+      ? answers.antibiotics.map((a) => ({
+          id: a.id,
+          name: a.id === "other" ? a.name.trim().slice(0, 120) || "Other antibiotic" : antibioticName(a.id),
+          worked: a.worked,
+        }))
+      : [],
+    selected: orderedSymptoms(answers.selected),
+    change24h: answers.change24h,
+    duration: answers.duration,
+    pregnant: answers.pregnant,
+    notes: answers.notes,
   };
 
   // Upsert, not insert: kit_id is unique, and the status gate above only lets

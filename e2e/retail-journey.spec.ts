@@ -121,15 +121,26 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
     await completeTriage(buyerPage, {
       flag: "d7",
       continuous: "yes",
-      scores: { cloudy: 3 },
+      previousUti: "yes",
+      antibiotics: [
+        { search: "nitrofur", worked: "no" },
+        { search: "trimeth", worked: "taking" },
+      ],
+      symptoms: ["cloudy"],
       change: 1,
       duration: "Less than 24 hours",
-      previousUti: "yes",
     });
     await expect(buyerPage).toHaveURL(new RegExp(`/portal/tests/${kitId}`));
     await expect(buyerPage.getByTestId("triage-flags")).toContainText("Can you see visible blood or blood clots in your urine?");
-    const { data: saved } = await admin().from("triage_submissions").select("research_consent").eq("kit_id", kitId).single();
+    const { data: saved } = await admin().from("triage_submissions").select("research_consent, symptoms").eq("kit_id", kitId).single();
     expect(saved?.research_consent).toBe(false);
+    const answers = saved?.symptoms as { version: number; antibiotics: { name: string; worked: string }[]; history: { episodes6m: number } };
+    expect(answers.version).toBe(3);
+    expect(answers.history.episodes6m).toBe(2);
+    expect(answers.antibiotics.map((a) => [a.name, a.worked])).toEqual([
+      ["Nitrofurantoin", "no"],
+      ["Trimethoprim", "taking"],
+    ]);
     await expectKitStatus(code, "activated");
   });
 

@@ -368,10 +368,11 @@ export async function completeTriage(
   opts: {
     flag?: string;
     continuous?: "yes" | "no";
-    scores?: Record<string, number>;
+    previousUti?: "yes" | "no" | "unsure";
+    antibiotics?: { search: string; worked: "yes" | "no" | "partly" | "taking" }[];
+    symptoms?: string[];
     change?: number;
     duration?: string;
-    previousUti?: "yes" | "no" | "unsure";
     pregnant?: "yes" | "no" | "not_applicable";
     notes?: string;
     research?: boolean;
@@ -391,27 +392,30 @@ export async function completeTriage(
   }
   await expect(form).toHaveAttribute("data-step", "1");
 
-  const continuous = opts.continuous ?? "no";
-  await page.locator(`input[name="continuous"][value="${continuous}"]`).check();
-  if (continuous === "no") {
+  await page.locator(`input[name="continuous"][value="${opts.continuous ?? "no"}"]`).check();
+  const previousUti = opts.previousUti ?? "no";
+  await page.locator(`input[name="previousUti"][value="${previousUti}"]`).check();
+  if (previousUti === "yes") {
     await page.locator('input[name="episodes6m"]').fill("2");
     await page.locator('input[name="episodes12m"]').fill("3");
+    for (const [i, a] of (opts.antibiotics ?? []).entries()) {
+      await page.getByRole("combobox", { name: "Search by name or brand" }).fill(a.search);
+      await page.getByRole("option").first().click();
+      await page.locator(`input[name="worked-${i}"][value="${a.worked}"]`).check();
+    }
   }
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(form).toHaveAttribute("data-step", "2");
 
-  const keys = ["frequency", "urgency", "urge_after", "smell", "cloudy", "debris", "burning", "burning_after", "lower_back", "flank", "legs"];
-  for (const key of keys) {
-    const v = opts.scores?.[key] ?? 0;
-    await page.locator(`input[name="${key}"][value="${v}"]`).check({ force: true });
-  }
+  const symptoms = opts.symptoms ?? [];
+  if (symptoms.length === 0) await page.locator('input[name="symptom"][value="none"]').check();
+  for (const key of symptoms) await page.locator(`input[name="symptom"][value="${key}"]`).check();
   await page.locator(`input[name="change24h"][value="${opts.change ?? 0}"]`).check({ force: true });
+  await page.locator('select[name="duration"]').selectOption(opts.duration ?? "1–3 days");
+  await page.locator(`input[name="pregnant"][value="${opts.pregnant ?? "no"}"]`).check();
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(form).toHaveAttribute("data-step", "3");
 
-  await page.locator('select[name="duration"]').selectOption(opts.duration ?? "1–3 days");
-  await page.locator(`input[name="previousUti"][value="${opts.previousUti ?? "no"}"]`).check();
-  await page.locator(`input[name="pregnant"][value="${opts.pregnant ?? "no"}"]`).check();
   if (opts.notes) await page.locator('textarea[name="notes"]').fill(opts.notes);
   await page.locator('input[name="consent"]').check();
   if (opts.research) await page.locator('input[name="research"]').check();

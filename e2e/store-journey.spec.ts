@@ -119,7 +119,7 @@ test("store kit: order to report", async ({ browser, request }) => {
 
   await test.step("Customer submits symptoms and consent", async () => {
     await completeTriage(customerPage, {
-      scores: { burning: 7, frequency: 4 },
+      symptoms: ["burning", "frequency"],
       change: -2,
       duration: "1–3 days",
       pregnant: "not_applicable",
@@ -132,7 +132,7 @@ test("store kit: order to report", async ({ browser, request }) => {
     expect(saved?.research_consent_text).toContain("anonymised");
     await expect(customerPage.getByText("Symptoms submitted").first()).toBeVisible();
     await expect(customerPage.getByText("Pain or burning sensation when you are urinating.")).toBeVisible();
-    await expect(customerPage.getByText("(7/10)")).toBeVisible();
+    await expect(customerPage.getByText("Needing to urinate more frequently than normal.")).toBeVisible();
     await expect(customerPage.getByText("Worse (-2)")).toBeVisible();
     await expectKitStatus(code, "activated");
     // Scanning again after activation lands on the timeline, not the form.
@@ -207,8 +207,8 @@ test("store kit: order to report", async ({ browser, request }) => {
     await expect(clinicPage.getByText("Escherichia coli").first()).toBeVisible();
     await expect(clinicPage.getByText("No warning signs reported.")).toBeVisible();
     await expect(clinicPage.getByText("Research use agreed")).toBeVisible();
-    await expect(clinicPage.getByText("Episodes, past 6 months:")).toBeVisible();
-    await expect(clinicPage.locator("tr", { hasText: "Pain or burning sensation when you are urinating." })).toContainText("7");
+    await expect(clinicPage.getByText("Had a UTI before:")).toBeVisible();
+    await expect(clinicPage.getByText("Pain or burning sensation when you are urinating.")).toBeVisible();
     await clinicPage.getByRole("button", { name: "Mark case as received" }).click();
     await expectKitStatus(code, "clinic_received");
     await clinicPage.locator('textarea[name="summary"]').fill("Uncomplicated UTI. See report.");
