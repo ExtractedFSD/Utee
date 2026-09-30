@@ -304,7 +304,7 @@ function LoginForm() {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="Code from your email"
-                className={`${inputClass} text-center tracking-[0.5em] text-lg`}
+                className={`${inputClass} text-center text-lg tracking-widest placeholder:text-base placeholder:tracking-normal`}
               />
               <p className="text-xs text-slate-500 mt-1.5">
                 We sent a code to <strong>{email}</strong>. Check your spam folder if it hasn't arrived. Only the newest code works.
@@ -315,7 +315,7 @@ function LoginForm() {
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "Checking…" : "Sign in"}
             </Button>
-            <div className="flex items-center justify-between text-sm text-slate-500">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-slate-500">
               <button
                 type="button"
                 onClick={resendCode}

@@ -16,7 +16,14 @@ tracking.
    reiterating: *scan the QR before taking your sample*.
 3. **Activation** — The patient scans the QR (`/k/{code}`), signs in, completes
    the symptom (triage) form and ticks consent, then takes the sample and posts
-   it in the freepost return box.
+   it in the freepost return box. The form is four steps, defined in
+   `src/lib/triage/questions.ts`: a safety check (eight yes/no warning signs;
+   any "yes" shows an urgent-care screen with a call-111 button before the
+   patient can continue), how often UTI symptoms happen, eleven symptoms each
+   scored 0 to 10 plus the change over the past 24 hours (-5 to +5), then
+   duration, pregnancy, antibiotics, notes and consent. Answers are saved as
+   one JSON document (`triage_submissions.symptoms`, `version: 2`); the
+   clinic case page shows every score and any safety flags.
 4. **Transit** — Royal Mail tracking events arrive at `/api/webhooks/tracking`
    and appear on the customer's timeline for both directions.
 5. **Lab** — The lab scans the QR on the pot → sees the *specimen number only*
@@ -307,4 +314,7 @@ Symptoms + lab results are special-category health data under UK GDPR: host the
 Supabase project in a UK/EU region, sign DPAs with Supabase/Resend/Recharge,
 add a privacy notice + retention policy, and keep the consent text
 (`triage_submissions.consent_text`) versioned if it changes. The portal records
-consent with a timestamp at triage time.
+consent with a timestamp at triage time. The questionnaire also offers an
+optional research consent (`research_consent`, with the wording shown saved
+in `research_consent_text`), separate from the consent needed to run the
+test; the clinic case page shows whether it was given.
