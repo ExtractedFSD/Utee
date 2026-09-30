@@ -77,6 +77,25 @@ service role behind explicit role checks (`src/lib/auth.ts`).
    schema, RLS, storage buckets, the auth→profile trigger; later files are
    incremental). In Auth settings, enable the **Email** provider and
    turn OFF "Confirm email" double opt-in for OTP logins to work smoothly.
+   Then edit the **Magic Link** email template so it carries both the code
+   and a link that works from any browser (the link goes through
+   `/auth/confirm`, which verifies the token hash server-side and sets the
+   session cookies, so it does not depend on the browser that asked for it):
+
+   ```html
+   <p>Your Utee sign-in code is <strong>{{ .Token }}</strong></p>
+   <p>Or tap to sign in:
+     <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&redirect_to={{ .RedirectTo }}">
+       Sign in to Utee
+     </a>
+   </p>
+   ```
+
+   Set the Site URL to the portal's public URL and add
+   `https://<portal-domain>/**` to the redirect allow list so `redirect_to`
+   can carry the page the patient was heading for. The login page keeps the
+   code step through a reload and offers "Send a new code", so a patient who
+   comes back from their mail app is never asked to start again.
 2. **Env** — copy `.env.example` to `.env.local` and fill everything in.
 3. **Install & run** — `npm install && npm run dev`.
 4. **Staff users** —

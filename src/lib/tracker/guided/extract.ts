@@ -91,6 +91,7 @@ export async function extract<S extends GuidedStep>(step: S, text: string, today
         messages: [{ role: "user", content: `Today is ${today}.${context ? `\nContext: ${context}` : ""}\n\nThe person wrote:\n${text}` }],
         output_config: { effort: "low" },
       });
+      if (process.env.UNA_LOG_USAGE) console.error(`[guided] usage free ${JSON.stringify(response.usage)}`);
       if (response.stop_reason === "refusal") return local();
       const reply = response.content.filter((b) => b.type === "text").map((b) => b.text).join("");
       const loose = looseFreeSchema.safeParse(parseJsonText(reply));
@@ -104,6 +105,7 @@ export async function extract<S extends GuidedStep>(step: S, text: string, today
       messages: [{ role: "user", content: `Today is ${today}.${context ? `\nContext: ${context}` : ""}\n\nThe person wrote:\n${text}` }],
       output_config: { effort: "low", format: zodOutputFormat(SCHEMAS[step]) },
     });
+    if (process.env.UNA_LOG_USAGE) console.error(`[guided] usage ${step} ${JSON.stringify(response.usage)}`);
     if (response.stop_reason === "refusal" || !response.parsed_output) return local();
     const parsed = step === "free" ? normaliseFree(response.parsed_output as z.infer<typeof looseFreeSchema>) : response.parsed_output;
     return { result: parsed as Extracted<S>, source: "ai" };
