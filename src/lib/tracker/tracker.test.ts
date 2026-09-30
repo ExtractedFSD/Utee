@@ -236,6 +236,10 @@ describe("guided setup, rule-based reading", () => {
     const day = parseFree("still got it, feeling rough today, burning and going all the time", today);
     expect(day.existing).toMatchObject({ ended: false, feeling: 2 });
     expect(day.existing.symptoms_today).toEqual(["burning", "frequency"]);
+    const course = parseFree("Feeling rough today, still burning and going all the time. Started the trimethoprim the GP gave me", today);
+    expect(course.utis).toHaveLength(0);
+    expect(course.existing.mentioned).toBe(true);
+    expect(course.existing.treatments[0]?.antibiotic_id).toBe("trimethoprim");
   });
   it("keeps an answer that is not in any list as Other, tidied", () => {
     expect(freeTextAnswer("I think it might have been my shower gel")).toBe("Shower gel");

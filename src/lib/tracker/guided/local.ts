@@ -282,7 +282,8 @@ export function parsePrevention(text: string): PreventionExtract {
 }
 
 const UTI_CUES = /\buti\b|infection|cystitis|flare|episode|kicked off|came on|started|had one|got one|another one/;
-const NEW_CUES = /\b(?:started|began|kicked off|came on|had (?:one|a uti|an infection|another)|got (?:one|a uti|an infection|another)|another one|first one|last one|previous one)\b/;
+const NEW_NOUN = /\b(?:had (?:one|a uti|an infection|another)|got (?:one|a uti|an infection|another)|another one|first one|last one|previous one)\b/;
+const NEW_START = /\b(?:started|began|kicked off|came on)\b(?! (?:the |taking |on |my |a |some |with |her |his )?(?:antibiotic|[a-z]+(?:cillin|mycin|floxacin|prim|furantoin|fosfomycin|cef|hiprex|methenamine)))/;
 
 const GONE = /(?:uti|infection|it|symptoms|everything)(?:'s| has| is| have|s)? (?:all )?(?:gone|cleared(?: up)?|better|over|finished|passed|stopped|disappeared)|(?:i'?m|i am|i feel|feeling|i'?ve been) (?:all |much |a lot )?better|all clear|back to normal|no (?:more )?symptoms|it'?s cleared/;
 const STILL = /(?:uti|infection|it)(?:'s| is|s)? still (?:here|there|going|around|hanging|bad|the same|not (?:gone|better))|still (?:have|got|having) (?:it|the uti|symptoms|my uti)|hasn'?t (?:gone|cleared|shifted|improved)|not (?:gone|cleared|better) yet|no better/;
@@ -323,12 +324,12 @@ export function parseFree(text: string, today = isoToday()): FreeExtract {
   const symptomatic = SYMPTOM_RULES.some(([, re]) => re.test(t));
   const treated = antibioticsIn(t).length > 0 && /course|days?\b|gp|doctor|pharmac|prescri|took|gave me|put me on/.test(t);
   const existing = parseExisting(text, today);
-  const newWithDate = NEW_CUES.test(t) && parseDatePhrase(t, today) !== null;
+  const newWithDate = (NEW_NOUN.test(t) || (NEW_START.test(t) && !STILL.test(t))) && parseDatePhrase(t, today) !== null;
   const aboutCurrent = (existing.ended !== null || existing.mentioned) && !newWithDate;
   const looksLikeUti = !aboutCurrent && (symptomatic || treated || newWithDate);
   const utis = looksLikeUti ? parseUtis(text, today).utis.filter((u) => u.started_on || u.symptoms.length || u.treatments.length || u.tests.length) : [];
   const taking = parsePrevention(text);
-  if (utis.length && !/low[- ]dose|daily|every (day|night|morning)|prophyla|to prevent/.test(t)) {
+  if ((utis.length || existing.treatments.length) && !/low[- ]dose|daily|every (day|night|morning)|prophyla|to prevent/.test(t)) {
     taking.keys = taking.keys.filter((k) => k !== "low_dose_antibiotic");
     taking.antibiotic_id = null;
   }
