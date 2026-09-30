@@ -265,6 +265,15 @@ export const copy = {
     antibiotic: (name: string, worked: number, rated: number) =>
       `${name}: you said it worked ${worked} of ${rated} time${rated === 1 ? "" : "s"}`,
     symptom: (label: string, times: number, of: number) => `${label}: ${times} of ${of} UTIs`,
+    ofUtis: (of: number) => `of ${of} UTIs`,
+    triggersTitle: "What you noted before a UTI",
+    symptomsTitle: "What you noticed most",
+    antibioticsTitle: "How you rated each antibiotic",
+    helpedOf: (worked: number, rated: number) => `helped ${worked} of ${rated}`,
+    tipsTitle: "Ideas that fit your patterns",
+    tipsTitleGeneral: "A few ideas people find useful",
+    tipsNote: "General information in plain words, not advice for you. Talk to your GP or pharmacist before changing anything.",
+    readMore: (name: string) => `Read more at ${name}`,
   },
 
   log: {

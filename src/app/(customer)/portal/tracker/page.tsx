@@ -9,6 +9,7 @@ import { RedFlagBanner } from "./components/RedFlagBanner";
 import { MonthStrip } from "./components/MonthStrip";
 import { QuickCheckin } from "./QuickCheckin";
 import { PreventionPills } from "./components/PreventionPills";
+import { PatternsCard } from "./components/PatternsCard";
 
 export default async function TrackerHome() {
   const { supabase, user, profile } = await requireTracker();
@@ -106,16 +107,7 @@ export default async function TrackerHome() {
             </div>
           </Card>
 
-          <Card>
-            <CardTitle>{copy.dashboard.patterns}</CardTitle>
-            {p.enough && (p.triggers.length || p.antibiotics.length || p.symptoms.length) ? (
-              <ul className="space-y-2 text-sm text-slate-700">
-                {[...p.triggers, ...p.antibiotics, ...p.symptoms].map((line) => <li key={line}>{line}</li>)}
-              </ul>
-            ) : (
-              <p className="text-sm text-slate-600">{copy.dashboard.patternsEmpty}</p>
-            )}
-          </Card>
+          <PatternsCard p={p} />
         </div>
 
         <div className="space-y-6">
