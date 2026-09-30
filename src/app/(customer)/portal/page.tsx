@@ -30,6 +30,8 @@ export default async function PortalHome({
   ]);
 
   const storeUrl = process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL ?? "#";
+  // The urologist appointment is for people who have a Utee test on their account.
+  const hasTest = (kits ?? []).length > 0;
 
   return (
     <div className="space-y-6">
@@ -165,9 +167,23 @@ export default async function PortalHome({
                 During your telephone appointment, they’ll review your result alongside your symptoms, previous UTIs, antibiotic history and other relevant medical information to help determine the most appropriate next steps for you.
               </p>
               <p className="text-sm text-white/85 mt-2 mb-5 leading-relaxed">Where clinically appropriate, this may include a treatment plan and prescription.</p>
-              <LinkButton href="#" variant="white">
-                Coming soon
-              </LinkButton>
+              {hasTest ? (
+                <LinkButton href="#" variant="white">
+                  Coming soon
+                </LinkButton>
+              ) : (
+                <div data-testid="urologist-locked">
+                  <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                    Unlocked once you have a Utee test on your account
+                  </p>
+                  <div>
+                    <LinkButton href={storeUrl} variant="white" external>
+                      Order a Utee test
+                    </LinkButton>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </Callout>
