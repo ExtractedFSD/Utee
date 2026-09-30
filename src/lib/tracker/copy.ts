@@ -5,7 +5,7 @@
  * claims, no treatment advice.
  */
 
-export const CONSENT_VERSION = "2026-09-29.2";
+export const CONSENT_VERSION = "2026-09-30.1";
 
 export const copy = {
   consent: {
@@ -13,7 +13,7 @@ export const copy = {
     intro:
       "The tracker keeps a private record of your UTIs so you can see your own history and share it with a GP or clinic if you choose. It records what you tell it and nothing more.",
     trackerText:
-      "I consent to Utee storing the symptoms, triggers, treatments, tests and notes I log in the tracker. This is health information. It is stored in the UK, only I can see it, and I can export or delete it at any time from the tracker settings. If I use the guided setup, what I type there is sent to Utee's AI provider only to fill in the form, and I can turn that off and tap the options instead.",
+      "I consent to Utee storing the symptoms, triggers, treatments, tests and notes I log in the tracker. This is health information. It is stored in the UK, only I can see it, and I can export or delete it at any time from the tracker settings. My chats with Una, the tracker helper, are kept with my record so I can reopen them. What I type to Una is sent to Utee's AI provider only to fill in the form, and I can turn that off and tap the options instead.",
     trackerLabel: "I agree to Utee storing my tracker entries",
     researchTitle: "Optional: help research",
     researchText:
@@ -108,6 +108,64 @@ export const copy = {
     askMoreUtis: "Any UTIs to add?",
     yes: "Yes",
     noDone: "No, I'm done",
+    resume: "Picking up where we left off. Anything to add?",
+    history: "History",
+    historyEmpty: "No chats yet.",
+    newChat: "New chat",
+    backToChat: "Back",
+    openChat: "Open",
+    untitledChat: "Chat with Una",
+    ask: {
+      menopause: "Are you before, around or after the menopause?",
+      contraception: "Do you use contraception?",
+      pregnant: "Are you currently pregnant or trying?",
+      aboutOverview: "Here's what I have. Save it, or change something.",
+      started: "When did it start?",
+      ended: "Has it cleared up, or is it still going?",
+      endedOn: "When did it end?",
+      symptoms: "What did you notice? Tap all that apply, then Done.",
+      triggers: "Anything that might have set it off? Tap any, or skip.",
+      treatment: "Did you take anything for it, like an antibiotic? Type the name, or choose from the list.",
+      days: "How many days was the course?",
+      worked: (name: string) => `Did the ${name} help?`,
+      tests: "Did you have a test for it?",
+      overview: "Here's the overview. Save it, or change something.",
+      change: "What would you like to change?",
+      preventionOverview: "Here's what I'll update. Save it, or change something.",
+      preventionPick: "Choose from the list below, then press Done.",
+    },
+    chips: {
+      done: "Done",
+      skip: "Skip",
+      nothing: "Nothing",
+      nothingChanged: "Nothing's changed",
+      chooseFromList: "Choose from the list",
+      noAntibiotics: "No antibiotics",
+      noTest: "No test",
+      dontKnow: "Don't know",
+      save: "Save",
+      change: "Change something",
+      remove: (name: string) => `Remove ${name}`,
+    },
+    overview: {
+      started: "Started",
+      ended: "Ended",
+      stillGoing: "Still going",
+      noticed: "Noticed",
+      triggers: "Possible triggers",
+      antibiotics: "Antibiotics",
+      tests: "Tests",
+      notes: "Notes",
+      none: "None",
+      nothingNoted: "Nothing noted",
+      helped: "helped",
+      adding: "Adding",
+      stopping: "Stopping",
+      unchanged: "No changes",
+      menopause: "Menopause",
+      contraception: "Contraception",
+      pregnant: "Pregnant or trying",
+    },
     followUp: {
       wasTaking: (name: string) => `Were you still taking your ${name} when it started?`,
       wasTakingNote: (name: string, answer: string) => `Still taking ${name} when it started: ${answer}`,
