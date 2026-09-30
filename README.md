@@ -19,10 +19,10 @@ tracking.
    it in the freepost return box. The form is four steps, defined in
    `src/lib/triage/questions.ts`: a safety check (eight yes/no warning signs;
    any "yes" shows an urgent-care screen with a call-111 button before the
-   patient can continue); UTI history (continuous symptoms for 3+ months,
-   had a UTI before, and if so episode counts for 6 and 12 months plus past
-   antibiotics from the tracker's searchable list, each with whether it
-   worked); symptoms as tick-all-that-apply with the change over the past
+   patient can continue); UTI history (had a UTI before, and if so episode
+   counts for 6 and 12 months plus past antibiotics from the tracker's
+   searchable list, each with whether it worked, or "I don't know" on its
+   own); symptoms as tick-all-that-apply with the change over the past
    24 hours (-5 to +5), duration and pregnancy; then notes, consent and the
    optional research consent. Answers are saved as one JSON document
    (`triage_submissions.symptoms`, `version: 3`; the summary component still

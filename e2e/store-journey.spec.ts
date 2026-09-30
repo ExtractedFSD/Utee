@@ -119,6 +119,8 @@ test("store kit: order to report", async ({ browser, request }) => {
 
   await test.step("Customer submits symptoms and consent", async () => {
     await completeTriage(customerPage, {
+      previousUti: "yes",
+      antibioticsUnknown: true,
       symptoms: ["burning", "frequency"],
       change: -2,
       duration: "1–3 days",
@@ -127,9 +129,12 @@ test("store kit: order to report", async ({ browser, request }) => {
       research: true,
     });
     await expect(customerPage).toHaveURL(new RegExp(`/portal/tests/${kitId}`));
-    const { data: saved } = await admin().from("triage_submissions").select("research_consent, research_consent_text").eq("kit_id", kitId).single();
+    const { data: saved } = await admin().from("triage_submissions").select("research_consent, research_consent_text, symptoms").eq("kit_id", kitId).single();
     expect(saved?.research_consent).toBe(true);
     expect(saved?.research_consent_text).toContain("anonymised");
+    expect((saved?.symptoms as { antibiotics: unknown[] }).antibiotics).toEqual([
+      { id: "dont_know", name: "I don't know / can't remember", worked: "unknown" },
+    ]);
     await expect(customerPage.getByText("Symptoms submitted").first()).toBeVisible();
     await expect(customerPage.getByText("Pain or burning sensation when you are urinating.")).toBeVisible();
     await expect(customerPage.getByText("Needing to urinate more frequently than normal.")).toBeVisible();
@@ -208,6 +213,7 @@ test("store kit: order to report", async ({ browser, request }) => {
     await expect(clinicPage.getByText("No warning signs reported.")).toBeVisible();
     await expect(clinicPage.getByText("Research use agreed")).toBeVisible();
     await expect(clinicPage.getByText("Had a UTI before:")).toBeVisible();
+    await expect(clinicPage.getByTestId("triage-antibiotics")).toContainText("I don't know / can't remember");
     await expect(clinicPage.getByText("Pain or burning sensation when you are urinating.")).toBeVisible();
     await clinicPage.getByRole("button", { name: "Mark case as received" }).click();
     await expectKitStatus(code, "clinic_received");

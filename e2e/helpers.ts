@@ -367,9 +367,10 @@ export async function completeTriage(
   page: Page,
   opts: {
     flag?: string;
-    continuous?: "yes" | "no";
     previousUti?: "yes" | "no" | "unsure";
-    antibiotics?: { search: string; worked: "yes" | "no" | "partly" | "taking" }[];
+    antibiotics?: { search: string; worked?: "yes" | "no" | "partly" | "taking" }[];
+    /** Picks "I don't know / can't remember" instead of naming antibiotics. */
+    antibioticsUnknown?: boolean;
     symptoms?: string[];
     change?: number;
     duration?: string;
@@ -392,16 +393,20 @@ export async function completeTriage(
   }
   await expect(form).toHaveAttribute("data-step", "1");
 
-  await page.locator(`input[name="continuous"][value="${opts.continuous ?? "no"}"]`).check();
   const previousUti = opts.previousUti ?? "no";
   await page.locator(`input[name="previousUti"][value="${previousUti}"]`).check();
   if (previousUti === "yes") {
     await page.locator('input[name="episodes6m"]').fill("2");
     await page.locator('input[name="episodes12m"]').fill("3");
+    if (opts.antibioticsUnknown) {
+      await page.getByRole("button", { name: "I don't know / can't remember" }).click();
+      await expect(page.getByRole("combobox", { name: "Search by name or brand" })).toHaveCount(0);
+      await expect(page.getByText("Did it work?")).toHaveCount(0);
+    }
     for (const [i, a] of (opts.antibiotics ?? []).entries()) {
       await page.getByRole("combobox", { name: "Search by name or brand" }).fill(a.search);
       await page.getByRole("option").first().click();
-      await page.locator(`input[name="worked-${i}"][value="${a.worked}"]`).check();
+      if (a.worked) await page.locator(`input[name="worked-${i}"][value="${a.worked}"]`).check();
     }
   }
   await page.getByRole("button", { name: "Continue" }).click();
