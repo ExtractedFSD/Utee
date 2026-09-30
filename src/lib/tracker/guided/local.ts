@@ -1,6 +1,6 @@
 import { ANTIBIOTICS } from "../search";
 import { isoDaysAgo, isoToday } from "../stats";
-import type { AboutExtract, PreventionExtract, TestExtract, TreatmentExtract, UtiExtract, UtisExtract } from "./schema";
+import type { AboutExtract, FreeExtract, PreventionExtract, TestExtract, TreatmentExtract, UtiExtract, UtisExtract } from "./schema";
 import { emptyUti } from "./schema";
 
 /*
@@ -101,7 +101,6 @@ const TRIGGER_RULES: [string, RegExp][] = [
   ["new_contraception", /new (pill|coil|contracept)|started (the|a new) pill|changed (my )?(pill|coil)/],
   ["menopause", /menopaus/],
   ["swimming_hot_bath", /swim|hot bath|jacuzzi|hot tub|pool|spa\b/],
-  ["constipation", /constipat/],
   ["recent_antibiotics", /antibiotics for (something|a|my) (else|chest|throat|tooth|ear|skin)/],
 ];
 
@@ -256,17 +255,6 @@ const PREVENTION_RULES: [string, RegExp][] = [
   ["lubricant", /lubricant|\blube\b/],
   ["barrier_cream", /barrier cream|sudocrem|bepanthen/],
   ["intimate_wash", /intimate wash|femfresh|ph[- ]balanced|ph wash/],
-  ["water", /\bwater\b|hydrat|drink(ing)? (more|lots|plenty)|fluids/],
-  ["pee_after_sex", /(pee|wee|urinat|go to the (loo|toilet)|empty(ing)? (my )?bladder) (straight )?after sex/],
-  ["front_to_back", /front to back|wipe/],
-  ["no_holding", /not hold|don'?t hold|never hold/],
-  ["double_void", /double void|empty(ing)? (it )?(fully|properly|completely)/],
-  ["showers", /shower/],
-  ["cotton_underwear", /cotton/],
-  ["no_perfumed", /perfum|unscented|fragrance|scented/],
-  ["constipation", /constipat/],
-  ["pelvic_physio", /pelvic floor|physio/],
-  ["bladder_training", /bladder training|bladder retraining/],
 ];
 
 const STOP_WORDS = /stopp?ed|no longer|not (taking|using|doing) .* any ?more|gave up|quit|came off|ran out|finished with|don'?t (take|use|do) .* any ?more|used to/;
@@ -291,4 +279,21 @@ export function parsePrevention(text: string): PreventionExtract {
   const keys = tidy(taking).filter((k) => !stopped.includes(k));
   if (ab && !keys.some((k) => k.endsWith("_antibiotic")) && !STOP_WORDS.test(t)) keys.push("low_dose_antibiotic");
   return { keys, stopped_keys: tidy(stopped), other_name: null, antibiotic_id: ab };
+}
+
+const UTI_CUES = /\buti\b|infection|cystitis|flare|episode|kicked off|came on|started|had one|got one|another one/;
+
+/** Free-form: decide what the message is about and read each part. */
+export function parseFree(text: string, today = isoToday()): FreeExtract {
+  const t = text.toLowerCase();
+  const symptomatic = SYMPTOM_RULES.some(([, re]) => re.test(t));
+  const treated = antibioticsIn(t).length > 0 && /course|days?\b|gp|doctor|pharmac|prescri|took|gave me|put me on/.test(t);
+  const looksLikeUti = symptomatic || treated || (UTI_CUES.test(t) && parseDatePhrase(t, today) !== null);
+  const utis = looksLikeUti ? parseUtis(text, today).utis.filter((u) => u.started_on || u.symptoms.length || u.treatments.length || u.tests.length) : [];
+  const taking = parsePrevention(text);
+  if (utis.length && !/low[- ]dose|daily|every (day|night|morning)|prophyla|to prevent/.test(t)) {
+    taking.keys = taking.keys.filter((k) => k !== "low_dose_antibiotic");
+    taking.antibiotic_id = null;
+  }
+  return { utis, taking };
 }

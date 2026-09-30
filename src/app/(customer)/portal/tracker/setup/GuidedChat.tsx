@@ -9,20 +9,22 @@ import { diffPreventions } from "@/lib/tracker/prevention";
 import { redFlagFor } from "@/lib/tracker/redflags";
 import { formatDay, isoToday } from "@/lib/tracker/stats";
 import { parseDatePhrase, workedIn } from "@/lib/tracker/guided/local";
-import { emptyUti, type AboutExtract, type PreventionExtract, type TestExtract, type TreatmentExtract, type UtiExtract, type UtiSave } from "@/lib/tracker/guided/schema";
+import { HELPING } from "@/lib/tracker/prevention";
+import { emptyUti, type AboutExtract, type FreeExtract, type PreventionExtract, type TestExtract, type TreatmentExtract, type UtiExtract, type UtiSave } from "@/lib/tracker/guided/schema";
 import { Chip, ChipGroup, DateChips } from "../components/Chips";
 import { PreventionPicker } from "../components/PreventionPicker";
 import { AntibioticPicker } from "../components/AntibioticPicker";
 import { RedFlagBanner } from "../components/RedFlagBanner";
-import { addPreventions, extractGuided, saveAboutMeValues, saveGuidedUti, stopPreventions } from "../actions";
+import { addPreventions, extractGuided, saveAboutMeValues, saveGuidedUti, stopPreventions, updatePrevention } from "../actions";
 
 type Msg = { id: number; role: "assistant" | "user"; text: string };
-type Step = "about" | "prevention" | "utis" | "done";
-type Mode = "full" | "utis" | "prevention";
+type Step = "about" | "prevention" | "utis" | "free" | "done";
+type Mode = "full" | "utis" | "prevention" | "free";
+export type Nudges = { unrated: { id: string; name: string } | null; antibioticPrevention: string | null };
 type About = { menopause_stage: string; contraception: string; pregnant_or_trying: string };
 type Draft = { id: number; uti: UtiExtract; asked: FollowUp[] };
-type FollowUp = "ended" | "treatment" | "worked" | "tests";
-type Prompt = { kind: "another" } | { kind: "changedTaking" } | { kind: "moreUtis" } | null;
+type FollowUp = "wasTaking" | "ended" | "treatment" | "worked" | "tests";
+type Prompt = { kind: "another" } | { kind: "changedTaking" } | { kind: "moreUtis" } | { kind: "rate"; id: string; name: string } | null;
 
 let nextId = 1;
 const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
@@ -34,12 +36,13 @@ const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
  * for what is still missing: has it ended, any antibiotic, did it help, any
  * test.
  */
-export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventions, initialAbout }: {
-  mode: Mode; aiAvailable: boolean; pregnantOrTrying: string; activePreventions: string[]; initialAbout: About | null;
+export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventions, initialAbout, nudges, compact = false }: {
+  mode: Mode; aiAvailable: boolean; pregnantOrTrying: string; activePreventions: string[]; initialAbout: About | null; nudges?: Nudges; compact?: boolean;
 }) {
   const [messages, setMessages] = useState<Msg[]>(() =>
     mode === "utis" ? [{ id: nextId++, role: "assistant", text: copy.guided.introQuick }, { id: nextId++, role: "assistant", text: copy.guided.askUtisQuick }]
     : mode === "prevention" ? [{ id: nextId++, role: "assistant", text: copy.guided.askPreventionUpdate }]
+    : mode === "free" ? [{ id: nextId++, role: "assistant", text: copy.guided.introFree }, ...(nudges?.unrated ? [{ id: nextId++, role: "assistant" as const, text: copy.guided.nudgeHelping(nudges.unrated.name) }] : [])]
     : [{ id: nextId++, role: "assistant", text: copy.guided.intro }, { id: nextId++, role: "assistant", text: copy.guided.askAbout }]
   );
   const [step, setStep] = useState<Step>(mode === "full" ? "about" : mode);
@@ -54,11 +57,15 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
   const [antibioticOther, setAntibioticOther] = useState("");
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [followUp, setFollowUp] = useState<FollowUp | null>(null);
-  const [prompt, setPrompt] = useState<Prompt>(null);
+  const [prompt, setPrompt] = useState<Prompt>(mode === "free" && nudges?.unrated ? { kind: "rate", ...nudges.unrated } : null);
+  const [pendingTaking, setPendingTaking] = useState<PreventionExtract | null>(null);
   const [savedCount, setSavedCount] = useState(0);
   const [visited, setVisited] = useState<Set<Step>>(new Set([mode === "full" ? "about" : mode]));
   const [pregnant, setPregnant] = useState(pregnantOrTrying);
   const endRef = useRef<HTMLDivElement | null>(null);
+  // Lets tests (and anything else) tell when taps will be handled.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
 
   const say = (t: string, role: Msg["role"] = "assistant") => setMessages((m) => [...m, { id: nextId++, role, text: t }]);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [messages, drafts, step, prompt, followUp]);
@@ -77,6 +84,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
   const current = drafts[0] ?? null;
   const nextFollowUp = (d: Draft): FollowUp | null => {
     const u = d.uti;
+    if (nudges?.antibioticPrevention && !d.asked.includes("wasTaking")) return "wasTaking";
     if (u.ongoing === null && !u.ended_on && !d.asked.includes("ended")) return "ended";
     if (!u.treatments.length && !d.asked.includes("treatment")) return "treatment";
     if (u.treatments.some((t) => !t.worked) && !d.asked.includes("worked")) return "worked";
@@ -90,7 +98,12 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
     if (q === "worked") {
       const t = d.uti.treatments.find((x) => !x.worked)!;
       say(copy.guided.followUp.worked(t.antibiotic_id ? antibioticName(t.antibiotic_id, t.other_name) : "antibiotic"));
-    } else say(copy.guided.followUp[q]);
+    } else if (q === "wasTaking") say(copy.guided.followUp.wasTaking(nudges!.antibioticPrevention!));
+    else say(copy.guided.followUp[q]);
+  };
+  const wasTakingNote = (answer: string) => {
+    const line = copy.guided.followUp.wasTakingNote(nudges?.antibioticPrevention ?? "", answer);
+    return { notes: [current?.uti.notes, line].filter(Boolean).join("\n") };
   };
   const updateDraft = (id: number, patch: Partial<UtiExtract>, asked?: FollowUp) =>
     setDrafts((list) => list.map((d) => (d.id === id ? { id, uti: { ...d.uti, ...patch }, asked: asked && !d.asked.includes(asked) ? [...d.asked, asked] : d.asked } : d)));
@@ -104,6 +117,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
   const applyTyped = (q: FollowUp, t: string, read: UtiExtract) => {
     const lower = t.toLowerCase();
     const no = /^\s*(no|nope|nothing|none|didn'?t|not really|no,? )/.test(lower);
+    if (q === "wasTaking") return wasTakingNote(no ? "No" : /^\s*(yes|yeah|yep|i was|still)/.test(lower) ? "Yes" : copy.guided.followUp.notSure);
     if (q === "ended") {
       if (read.ongoing || /still|ongoing|not yet|hasn'?t/.test(lower)) return { ongoing: true, ended_on: null };
       const date = read.ended_on ?? parseDatePhrase(lower);
@@ -124,7 +138,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
     say(t, "user");
     setText("");
     const q = followUp;
-    if (step === "utis" && !q && /^(none|no(ne)? yet|nothing|no|skip|not yet)\b/i.test(t)) { finishUtis(); return; }
+    if (utiStep && !q && /^(none|no(ne)? yet|nothing|no|skip|not yet)\b/i.test(t)) { finishUtis(); return; }
     setReading(true);
     startTransition(async () => {
       const r = await extractGuided(step, t);
@@ -151,6 +165,29 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
         const read = (r.result as { utis: UtiExtract[] }).utis[0] ?? emptyUti();
         say(copy.guided.addedToCard);
         answerFollowUp(applyTyped(q, t, read));
+      } else if (step === "free") {
+        const f = r.result as FreeExtract;
+        const utis = f.utis.filter((u) => u.started_on || u.symptoms.length || u.treatments.length || u.tests.length);
+        const changes = f.taking.keys.length || f.taking.stopped_keys.length ? f.taking : null;
+        if (!utis.length && !changes) { say(copy.guided.gotNothing); return; }
+        if (changes) {
+          setPrevention((prev) => ({
+            keys: [...new Set([...active, ...changes.keys])].filter((k) => !changes.stopped_keys.includes(k)),
+            stopped_keys: changes.stopped_keys,
+            other_name: changes.other_name ?? prev.other_name,
+            antibiotic_id: changes.antibiotic_id ?? prev.antibiotic_id,
+          }));
+        }
+        if (utis.length) {
+          const list: Draft[] = utis.map((uti) => ({ id: nextId++, uti, asked: [] }));
+          setDrafts(list);
+          setPendingTaking(changes);
+          say(utis.length > 1 ? copy.guided.gotSeveral(utis.length) : copy.guided.gotIt);
+          askNext(list[0]);
+        } else {
+          say(copy.guided.gotIt);
+          goTo("prevention");
+        }
       } else {
         const utis = (r.result as { utis: UtiExtract[] }).utis.filter((u) => u.started_on || u.symptoms.length || u.treatments.length || u.tests.length);
         const list: Draft[] = (utis.length ? utis : [emptyUti()]).map((uti) => ({ id: nextId++, uti, asked: [] }));
@@ -166,7 +203,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
     setVisited((v) => new Set(v).add(next));
     setStep(next);
     setPrompt(null);
-    if (next === "prevention") say(visited.has("about") || mode === "full" ? copy.guided.askPrevention : copy.guided.askPreventionUpdate);
+    if (next === "prevention" && mode !== "free") say(visited.has("about") || mode === "full" ? copy.guided.askPrevention : copy.guided.askPreventionUpdate);
     if (next === "utis") say(mode === "full" && !visited.has("utis") ? copy.guided.askUtis : copy.guided.askUtisQuick);
   };
 
@@ -182,7 +219,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
       say(mode === "full" ? copy.guided.savedPrevention(add.length) : copy.guided.savedPreventionUpdate(add.length, stop.length));
       setActive(prevention.keys);
       if (mode === "full") goTo("utis");
-      else if (visited.has("utis")) finish();
+      else if (mode === "free" || visited.has("utis")) finish();
       else { setPrompt({ kind: "moreUtis" }); say(copy.guided.askMoreUtis); }
     };
     if (!add.length && !stop.length) { done(); return; }
@@ -209,20 +246,24 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
 
   const finishUtis = () => {
     setDrafts([]); setFollowUp(null); setPrompt(null);
-    if (mode === "full" || visited.has("prevention")) finish();
+    if (mode === "free") { if (pendingTaking) { setPendingTaking(null); goTo("prevention"); } else finish(); }
+    else if (mode === "full" || visited.has("prevention")) finish();
     else { setPrompt({ kind: "changedTaking" }); say(copy.guided.askChangedTaking); }
   };
   const finish = () => {
     setPrompt(null);
+    if (mode === "free") { say(copy.guided.anythingElse); setStep("free"); return; }
     say(mode === "full" ? copy.guided.done : copy.guided.doneQuick);
     setStep("done");
   };
+  const rate = (id: string, helping: string) => run(() => updatePrevention(id, { helping }), () => { say(copy.guided.nudgeThanks); say(copy.guided.askFree); setPrompt(null); });
 
   const busy = pending || reading;
+  const utiStep = step === "utis" || step === "free";
   const showInput = step !== "done" && !prompt;
 
   return (
-    <div className="space-y-4" data-testid="guided-chat">
+    <div className="space-y-4" data-testid="guided-chat" data-hydrated={hydrated ? "true" : "false"}>
       <div className="space-y-3" aria-live="polite">
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -236,6 +277,11 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
         <Card>
           {followUp && current && (
             <div className="mb-3 flex flex-wrap gap-2" data-testid="follow-up-chips">
+              {followUp === "wasTaking" && <>
+                <Chip onClick={() => answerFollowUp(wasTakingNote("Yes"))}>{copy.guided.yes}</Chip>
+                <Chip onClick={() => answerFollowUp(wasTakingNote("No"))}>No</Chip>
+                <Chip onClick={() => answerFollowUp(wasTakingNote(copy.guided.followUp.notSure))}>{copy.guided.followUp.notSure}</Chip>
+              </>}
               {followUp === "ended" && <>
                 <Chip onClick={() => answerFollowUp({ ongoing: true, ended_on: null })}>{copy.guided.fields.stillGoing}</Chip>
                 <Chip onClick={() => answerFollowUp({ ongoing: false })}>{copy.guided.fields.over}</Chip>
@@ -293,7 +339,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
         </Card>
       )}
 
-      {step === "utis" && drafts.map((d) => (
+      {utiStep && drafts.map((d) => (
         <UtiReview key={d.id} draft={d.uti} onChange={(patch) => updateDraft(d.id, patch)} pregnantOrTrying={pregnant} busy={busy} onSave={(u) => saveDraft(d.id, u)} onDiscard={() => dropDraft(d.id)} />
       ))}
 
@@ -316,6 +362,11 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
           <Button onClick={finish}>{copy.guided.noDone}</Button>
         </div>
       )}
+      {prompt?.kind === "rate" && (
+        <div className="flex flex-wrap gap-2" data-testid="guided-rate">
+          {HELPING.map((h) => <Chip key={h.key} disabled={busy} onClick={() => rate(prompt.id, h.key)}>{h.label}</Chip>)}
+        </div>
+      )}
       {prompt?.kind === "moreUtis" && (
         <div className="flex flex-wrap gap-2" data-testid="guided-more-utis">
           <Button variant="secondary" onClick={() => goTo("utis")}>{copy.guided.yes}</Button>
@@ -323,7 +374,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
         </div>
       )}
 
-      {step === "done" && (
+      {step === "done" && !compact && (
         <div className="flex flex-wrap gap-2" data-testid="guided-done">
           <LinkButton href="/portal/tracker">{copy.guided.goDashboard}</LinkButton>
           {savedCount > 0 && <LinkButton href="/portal/tracker/history" variant="secondary">{copy.guided.goHistory}</LinkButton>}

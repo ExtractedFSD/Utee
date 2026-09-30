@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     await sendEmail({
       to: email,
       subject,
-      html: `<p style="font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#1d003a">${body}</p><p><a href="${APP_URL}/portal/tracker" style="font-family:Helvetica,Arial,sans-serif;font-weight:600;color:#91193b">${copy.reminders.button}</a></p>`,
+      html: `<p style="font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#1d003a">${body}</p><p><a href="${APP_URL}/portal/tracker" style="font-family:Helvetica,Arial,sans-serif;font-weight:600;color:#91193b">${copy.reminders.button}</a></p>${kind === "monthly" ? `<p><a href="${APP_URL}/portal/tracker/setup?mode=prevention" style="font-family:Helvetica,Arial,sans-serif;font-weight:600;color:#91193b">${copy.reminders.chatButton}</a></p>` : ""}`,
     });
     await admin.from("tracker_profiles").update({ last_reminder_sent_at: new Date().toISOString() }).eq("user_id", p.user_id);
     await admin.from("tracker_audit_log").insert({ user_id: p.user_id, action: "reminder_sent", detail: { kind }, actor: "system" });

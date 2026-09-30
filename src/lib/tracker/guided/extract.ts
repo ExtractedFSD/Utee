@@ -5,8 +5,8 @@ import type { z } from "zod/v4";
 import { CONTRACEPTION, COURSE_TYPES, MENOPAUSE_STAGES, PREGNANT, SOURCES, SYMPTOMS, TEST_KINDS, TEST_RESULTS, TRIGGERS, WORKED } from "../options";
 import { ANTIBIOTICS } from "../search";
 import { PREVENTION_GROUPS, PREVENTION_OTHER } from "../prevention";
-import { parseAbout, parsePrevention, parseUtis } from "./local";
-import { aboutSchema, preventionSchema, utisSchema, type GuidedStep } from "./schema";
+import { parseAbout, parseFree, parsePrevention, parseUtis } from "./local";
+import { aboutSchema, freeSchema, preventionSchema, utisSchema, type GuidedStep } from "./schema";
 
 /*
  * Turns a typed answer into form fields. With an API key the model reads the
@@ -45,15 +45,23 @@ The person is describing one or more UTIs (urinary tract infections) they have h
 - treatments: one per antibiotic course. antibiotic_id from: ${ANTIBIOTICS.map((a) => `${a.id} = ${a.name}${a.brands?.length ? ` (${a.brands.join(", ")})` : ""}`).join("; ")}. days = course length if said. course_type: ${list(COURSE_TYPES)}. source (who gave it): ${list(SOURCES)}. worked (only if they said how it went): ${list(WORKED)}.
 - tests: kind: ${list(TEST_KINDS)}; result: ${list(TEST_RESULTS)}; tested_on YYYY-MM-DD or null.
 - notes: null unless something important does not fit.`,
+  free: "",
 };
+PROMPTS.free = `${RULES}
+The person may be describing UTIs they have had, changes to what they take or do to prevent UTIs, or both. Fill both parts; leave a part empty when it is not mentioned.
 
-const SCHEMAS = { about: aboutSchema, prevention: preventionSchema, utis: utisSchema } as const;
+UTIs (utis): ${PROMPTS.utis.slice(RULES.length).trim().replace(/^The person is describing[^\n]*\n/, "")}
+
+What they take (taking): ${PROMPTS.prevention.slice(RULES.length).trim()}
+An antibiotic taken as a course for a UTI belongs in that UTI's treatments, not in taking.`;
+
+const SCHEMAS = { about: aboutSchema, prevention: preventionSchema, utis: utisSchema, free: freeSchema } as const;
 
 export type Extracted<S extends GuidedStep> = z.infer<(typeof SCHEMAS)[S]>;
 
 export async function extract<S extends GuidedStep>(step: S, text: string, today: string): Promise<{ result: Extracted<S>; source: "ai" | "local" }> {
   const local = () => ({
-    result: (step === "about" ? parseAbout(text) : step === "prevention" ? parsePrevention(text) : parseUtis(text, today)) as Extracted<S>,
+    result: (step === "about" ? parseAbout(text) : step === "prevention" ? parsePrevention(text) : step === "free" ? parseFree(text, today) : parseUtis(text, today)) as Extracted<S>,
     source: "local" as const,
   });
   if (!aiAvailable()) return local();
