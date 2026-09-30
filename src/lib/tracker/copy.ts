@@ -5,7 +5,7 @@
  * claims, no treatment advice.
  */
 
-export const CONSENT_VERSION = "2026-09-30.1";
+export const CONSENT_VERSION = "2026-09-30.2";
 
 export const copy = {
   consent: {
@@ -15,10 +15,10 @@ export const copy = {
     trackerText:
       "I consent to Utee storing the symptoms, triggers, treatments, tests and notes I log in the tracker. This is health information. It is stored in the UK, only I can see it, and I can export or delete it at any time from the tracker settings. My chats with Una, the tracker helper, are kept with my record so I can reopen them. What I type to Una is sent to Utee's AI provider only to fill in the form, and I can turn that off and tap the options instead.",
     trackerLabel: "I agree to Utee storing my tracker entries",
-    researchTitle: "Optional: help research",
+    researchTitle: "Optional: help other women with UTIs",
     researchText:
-      "I also consent to Utee using my tracker entries, with anything that could identify me removed, in combined figures for research and reporting. This is optional and I can switch it off at any time.",
-    researchLabel: "Use my anonymised entries for research (optional)",
+      "I also consent to Utee using my tracker entries, with anything that could identify me removed, in combined figures for research and reporting. Recurrent UTIs are under-researched, and most of what is known comes from a handful of small studies. Real records of what people notice, what they take and what helps are what change that. Combined with others', my entries could help improve testing, treatment and care for women like me. This is optional and I can switch it off at any time.",
+    researchLabel: "Yes, use my anonymised entries to help research that could improve care for women with UTIs (optional)",
     separateNote:
       "This is separate from the consent you give when you use a Utee test. You can withdraw either at any time in settings.",
     button: "Start tracking",

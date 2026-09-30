@@ -98,7 +98,7 @@ function LoginForm() {
       <div className="bg-white rounded-card shadow-card p-6">
         {step === "email" ? (
           <form onSubmit={sendCode} className="space-y-4">
-            <div className="flex rounded-full bg-pink-25 p-1 text-eyebrow uppercase">
+            <div className="flex rounded-full bg-pink-25 p-1 text-sm font-semibold">
               {(["signin", "signup"] as const).map((m) => (
                 <button
                   key={m}
