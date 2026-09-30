@@ -215,7 +215,11 @@ they take, or both in one message (`guided/schema.ts` freeSchema). She also
 asks two data-driven questions, still from fixed copy: whether something on the
 list for three weeks or more is helping, and, when an antibiotic-type
 prevention is active, whether they were still taking it when a new UTI started.
-The monthly reminder email links to "Update by chat".
+The monthly reminder email links to "Update by chat". Every conversation is
+kept in `tracker_chats` (migration `0006_chats.sql`, owner-only RLS) so it can
+be reopened from the bubble's History view and continued. The chat is
+chat-first: Una asks one question at a time with tappable chips, shows a short
+overview, and saves on "Save". There is no form or card to scroll.
 
 **Prevention.** "What I'm taking" (`/portal/tracker/prevention`, table
 `tracker_preventions`, migration `0005_prevention.sql`) records everything a

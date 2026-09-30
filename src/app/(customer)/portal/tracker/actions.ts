@@ -614,6 +614,64 @@ export async function deletePrevention(id: string) {
   return { ok: true };
 }
 
+// -------------------------------------------------------------------- chats
+
+const chatMessageSchema = z.object({
+  role: z.enum(["assistant", "user"]),
+  text: z.string().max(4000).optional(),
+  lines: z.array(z.string().max(500)).max(40).optional(),
+  flag: z.array(z.string().max(40)).max(20).optional(),
+  at: z.string().max(40),
+});
+
+/** Keep a conversation with Una. Creates it on the first call, then replaces the messages. */
+export async function saveChat(input: { id: string | null; mode: string; messages: unknown[] }) {
+  const { user, supabase } = await session();
+  const parsed = z.array(chatMessageSchema).max(400).safeParse(input.messages);
+  if (!parsed.success) return { error: "Could not save the chat." };
+  const messages = parsed.data;
+  const firstUser = messages.find((m) => m.role === "user" && m.text)?.text ?? null;
+  const title = firstUser ? firstUser.slice(0, 80) : null;
+  const now = new Date().toISOString();
+  if (input.id && uuid.safeParse(input.id).success) {
+    const { error } = await supabase.from("tracker_chats").update({ messages, title, updated_at: now }).eq("id", input.id).eq("user_id", user.id);
+    if (error) return { error: "Could not save the chat." };
+    return { ok: true, id: input.id };
+  }
+  const { data, error } = await supabase
+    .from("tracker_chats")
+    .insert({ user_id: user.id, mode: input.mode.slice(0, 20), messages, title })
+    .select("id")
+    .single();
+  if (error || !data) return { error: "Could not save the chat." };
+  return { ok: true, id: data.id as string };
+}
+
+export async function listChats() {
+  const { user, supabase } = await session();
+  const { data } = await supabase
+    .from("tracker_chats")
+    .select("id, title, mode, created_at, updated_at, messages")
+    .eq("user_id", user.id)
+    .order("updated_at", { ascending: false })
+    .limit(50);
+  return (data ?? []).map((c) => ({ id: c.id as string, title: (c.title as string | null), mode: c.mode as string, updated_at: c.updated_at as string, count: Array.isArray(c.messages) ? c.messages.length : 0 }));
+}
+
+export async function getChat(id: string) {
+  const { user, supabase } = await session();
+  if (!uuid.safeParse(id).success) return null;
+  const { data } = await supabase.from("tracker_chats").select("id, title, mode, messages, created_at, updated_at").eq("id", id).eq("user_id", user.id).maybeSingle();
+  return data ? { ...data, messages: (data.messages ?? []) as unknown[] } : null;
+}
+
+export async function deleteChat(id: string) {
+  const { user, supabase } = await session();
+  if (!uuid.safeParse(id).success) return { error: "Not found" };
+  await supabase.from("tracker_chats").delete().eq("id", id).eq("user_id", user.id);
+  return { ok: true };
+}
+
 // ----------------------------------------------------------------- settings
 
 export async function setReminders(daily: boolean, monthly: boolean) {
@@ -630,7 +688,7 @@ export async function deleteAllTrackerData(confirmation: string) {
   if (confirmation.trim() !== "DELETE") return { error: "Type DELETE to confirm." };
   // Audit first: the log row survives (it is the record that a delete happened).
   await audit(supabase, user.id, "tracker_data_deleted");
-  for (const table of ["tracker_episodes", "tracker_checkins", "tracker_preventions", "tracker_consents", "tracker_profiles"]) {
+  for (const table of ["tracker_episodes", "tracker_checkins", "tracker_preventions", "tracker_chats", "tracker_consents", "tracker_profiles"]) {
     const { error } = await supabase.from(table).delete().eq("user_id", user.id);
     if (error) return { error: "Could not delete everything. Please try again." };
   }

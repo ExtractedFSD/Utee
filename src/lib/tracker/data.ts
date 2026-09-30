@@ -101,6 +101,9 @@ export type PreventionRow = {
   created_at: string;
 };
 
+export type ChatMessage = { role: "assistant" | "user"; text?: string; lines?: string[]; flag?: string[]; at: string };
+export type ChatRow = { id: string; title: string | null; mode: string; messages: ChatMessage[]; created_at: string; updated_at: string };
+
 export type TrackerData = {
   episodes: EpisodeRow[];
   symptoms: (SymptomRow & { id: string })[];
