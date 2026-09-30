@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   admin,
   card,
+  completeTriage,
   createUser,
   emailFor,
   expectKitStatus,
@@ -116,13 +117,17 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
   await test.step("Buyer submits symptoms", async () => {
     await buyerPage.goto(`/k/${code}`);
     await expect(buyerPage).toHaveURL(`/triage/${code}`);
-    await buyerPage.getByLabel("Blood in urine").check();
-    await buyerPage.locator('select[name="duration"]').selectOption("Less than 24 hours");
-    await buyerPage.locator('input[name="previousUti"][value="yes"]').check();
-    await buyerPage.locator('input[name="pregnant"][value="no"]').check();
-    await buyerPage.locator('input[name="consent"]').check();
-    await buyerPage.getByRole("button", { name: "Submit & take my sample" }).click();
+    // Answers yes to "visible blood": the urgent-care screen appears first.
+    await completeTriage(buyerPage, {
+      flag: "d7",
+      continuous: "yes",
+      scores: { cloudy: 3 },
+      change: 1,
+      duration: "Less than 24 hours",
+      previousUti: "yes",
+    });
     await expect(buyerPage).toHaveURL(new RegExp(`/portal/tests/${kitId}`));
+    await expect(buyerPage.getByTestId("triage-flags")).toContainText("Can you see visible blood or blood clots in your urine?");
     await expectKitStatus(code, "activated");
   });
 

@@ -4,18 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardTitle, PageHeader, StatusBadge, Pill } from "@/components/ui";
 import { formatDateTime, type KitStatus } from "@/lib/status";
 import { CaseActions } from "./CaseActions";
-
-const SYMPTOM_LABELS: Record<string, string> = {
-  burning: "Pain/burning on urination",
-  frequency: "Increased frequency",
-  urgency: "Urgency",
-  lower_abdominal_pain: "Lower abdominal pain",
-  blood_in_urine: "Haematuria",
-  cloudy_or_smelly: "Cloudy/odorous urine",
-  fever: "Fever/chills",
-  back_pain: "Flank pain",
-  nausea: "Nausea/vomiting",
-};
+import { TriageSummary } from "@/components/TriageSummary";
+import type { StoredTriage } from "@/lib/triage/questions";
 
 export default async function CasePage({
   params,
@@ -55,14 +45,7 @@ export default async function CasePage({
     full_name: string | null;
     email: string;
   } | null;
-  const symptoms = (triage?.symptoms ?? null) as {
-    selected?: string[];
-    duration?: string;
-    previousUti?: string;
-    pregnant?: string;
-    currentAntibiotics?: string;
-    notes?: string;
-  } | null;
+  const symptoms = (triage?.symptoms ?? null) as StoredTriage | null;
   const status = kit.status as KitStatus;
 
   return (
@@ -77,39 +60,8 @@ export default async function CasePage({
         <Card>
           <CardTitle>Patient-reported symptoms</CardTitle>
           {symptoms ? (
-            <div className="space-y-3 text-sm text-slate-700">
-              <ul className="space-y-1">
-                {(symptoms.selected ?? []).map((key) => (
-                  <li key={key} className="flex gap-2">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="mt-1 shrink-0 text-maroon"><path d="M20 6 9 17l-5-5" /></svg>
-                    {SYMPTOM_LABELS[key] ?? key}
-                  </li>
-                ))}
-              </ul>
-              <dl className="space-y-1 border-t border-slate-100 pt-3">
-                <div className="flex gap-2">
-                  <dt className="font-medium text-slate-600">Duration:</dt>
-                  <dd>{symptoms.duration ?? "Not answered"}</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="font-medium text-slate-600">Previous UTI:</dt>
-                  <dd>{symptoms.previousUti ?? "Not answered"}</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="font-medium text-slate-600">Pregnant:</dt>
-                  <dd>{symptoms.pregnant ?? "Not answered"}</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="font-medium text-slate-600">Current antibiotics:</dt>
-                  <dd>{symptoms.currentAntibiotics || "None reported"}</dd>
-                </div>
-                {symptoms.notes && (
-                  <div className="flex gap-2">
-                    <dt className="font-medium text-slate-600">Notes:</dt>
-                    <dd>{symptoms.notes}</dd>
-                  </div>
-                )}
-              </dl>
+            <div className="space-y-3">
+              <TriageSummary answers={symptoms} audience="clinic" />
               <p className="text-xs text-slate-400">
                 Consent {triage?.consent_given ? "given" : "NOT given"} ·{" "}
                 {formatDateTime(triage?.submitted_at)}

@@ -5,18 +5,8 @@ import { Card, CardTitle, PageHeader, StatusBadge, LinkButton, Callout, Notice }
 import { Timeline, type TimelineEvent } from "@/components/Timeline";
 import { royalMailTrackingUrl } from "@/lib/tracking";
 import { formatDateTime, type KitStatus } from "@/lib/status";
-
-const SYMPTOM_LABELS: Record<string, string> = {
-  burning: "Pain or burning when urinating",
-  frequency: "Needing to urinate more often than usual",
-  urgency: "Sudden urges to urinate",
-  lower_abdominal_pain: "Lower abdominal pain",
-  blood_in_urine: "Blood in urine",
-  cloudy_or_smelly: "Cloudy or strong-smelling urine",
-  fever: "Fever or chills",
-  back_pain: "Back or side (flank) pain",
-  nausea: "Nausea or vomiting",
-};
+import { TriageSummary } from "@/components/TriageSummary";
+import type { StoredTriage } from "@/lib/triage/questions";
 
 export default async function TestDetailPage({
   params,
@@ -52,11 +42,7 @@ export default async function TestDetailPage({
         .maybeSingle(),
     ]);
 
-  const symptoms = (triage?.symptoms ?? null) as {
-    selected?: string[];
-    duration?: string;
-    notes?: string;
-  } | null;
+  const symptoms = (triage?.symptoms ?? null) as StoredTriage | null;
 
   const status = kit.status as KitStatus;
   const needsTriage = ["assigned", "shipped", "delivered"].includes(status);
@@ -129,24 +115,7 @@ export default async function TestDetailPage({
           {symptoms && (
             <Card>
               <CardTitle>Your submitted symptoms</CardTitle>
-              <ul className="space-y-1.5">
-                {(symptoms.selected ?? []).map((key) => (
-                  <li key={key} className="text-sm text-slate-700 flex gap-2">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="mt-1 shrink-0 text-maroon"><path d="M20 6 9 17l-5-5" /></svg>
-                    {SYMPTOM_LABELS[key] ?? key}
-                  </li>
-                ))}
-              </ul>
-              {symptoms.duration && (
-                <p className="text-sm text-slate-600 mt-3">
-                  <span className="font-medium text-slate-700">Duration:</span> {symptoms.duration}
-                </p>
-              )}
-              {symptoms.notes && (
-                <p className="text-sm text-slate-600 mt-1">
-                  <span className="font-medium text-slate-700">Notes:</span> {symptoms.notes}
-                </p>
-              )}
+              <TriageSummary answers={symptoms} audience="patient" />
               <p className="text-xs text-slate-400 mt-3">
                 Submitted {formatDateTime(triage?.submitted_at)}
               </p>

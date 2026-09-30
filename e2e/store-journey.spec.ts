@@ -3,6 +3,7 @@ import {
   admin,
   anonClient,
   card,
+  completeTriage,
   createUser,
   emailFor,
   expectKitStatus,
@@ -117,16 +118,18 @@ test("store kit: order to report", async ({ browser, request }) => {
   });
 
   await test.step("Customer submits symptoms and consent", async () => {
-    await customerPage.getByLabel("Pain or burning when urinating").check();
-    await customerPage.getByLabel("Needing to urinate more often than usual").check();
-    await customerPage.locator('select[name="duration"]').selectOption("1–3 days");
-    await customerPage.locator('input[name="previousUti"][value="no"]').check();
-    await customerPage.locator('input[name="pregnant"][value="not_applicable"]').check();
-    await customerPage.locator('textarea[name="notes"]').fill("E2E test submission");
-    await customerPage.locator('input[name="consent"]').check();
-    await customerPage.getByRole("button", { name: "Submit & take my sample" }).click();
+    await completeTriage(customerPage, {
+      scores: { burning: 7, frequency: 4 },
+      change: -2,
+      duration: "1–3 days",
+      pregnant: "not_applicable",
+      notes: "E2E test submission",
+    });
     await expect(customerPage).toHaveURL(new RegExp(`/portal/tests/${kitId}`));
     await expect(customerPage.getByText("Symptoms submitted").first()).toBeVisible();
+    await expect(customerPage.getByText("Pain or burning sensation when you are urinating.")).toBeVisible();
+    await expect(customerPage.getByText("(7/10)")).toBeVisible();
+    await expect(customerPage.getByText("Worse (-2)")).toBeVisible();
     await expectKitStatus(code, "activated");
     // Scanning again after activation lands on the timeline, not the form.
     await customerPage.goto(`/k/${code}`);
@@ -198,6 +201,9 @@ test("store kit: order to report", async ({ browser, request }) => {
     await expect(clinicPage).toHaveURL(`/clinic/case/${kitId}`);
     await expect(clinicPage.getByText(customerName).first()).toBeVisible();
     await expect(clinicPage.getByText("Escherichia coli").first()).toBeVisible();
+    await expect(clinicPage.getByText("No warning signs reported.")).toBeVisible();
+    await expect(clinicPage.getByText("Episodes, past 6 months:")).toBeVisible();
+    await expect(clinicPage.locator("tr", { hasText: "Pain or burning sensation when you are urinating." })).toContainText("7");
     await clinicPage.getByRole("button", { name: "Mark case as received" }).click();
     await expectKitStatus(code, "clinic_received");
     await clinicPage.locator('textarea[name="summary"]').fill("Uncomplicated UTI. See report.");

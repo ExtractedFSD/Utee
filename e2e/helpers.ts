@@ -355,3 +355,63 @@ export function samplePdf(text: string): Buffer {
 export function trackingNumber(label: string) {
   return `E2E${label}${RUN}${crypto.randomInt(1000, 9999)}`.toUpperCase();
 }
+
+// ------------------------------------------------------------------ triage
+
+/**
+ * Walks the four-step questionnaire on /triage/[code]. Safety answers default
+ * to "no" (the path that reaches the rest of the form); pass `flag` to answer
+ * one of them "yes" and check the urgent-care screen appears, then continue.
+ */
+export async function completeTriage(
+  page: Page,
+  opts: {
+    flag?: string;
+    continuous?: "yes" | "no";
+    scores?: Record<string, number>;
+    change?: number;
+    duration?: string;
+    previousUti?: "yes" | "no" | "unsure";
+    pregnant?: "yes" | "no" | "not_applicable";
+    notes?: string;
+  } = {}
+) {
+  const form = page.locator("form[data-step]");
+  await expect(form).toHaveAttribute("data-step", "0");
+  for (let i = 1; i <= 8; i++) {
+    const key = `d${i}`;
+    await page.locator(`input[name="${key}"][value="${opts.flag === key ? "yes" : "no"}"]`).check();
+  }
+  await page.getByRole("button", { name: "Continue" }).click();
+  if (opts.flag) {
+    await expect(page.getByTestId("triage-urgent")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Call 111" })).toHaveAttribute("href", "tel:111");
+    await page.getByRole("button", { name: "I have read this, continue with my test" }).click();
+  }
+  await expect(form).toHaveAttribute("data-step", "1");
+
+  const continuous = opts.continuous ?? "no";
+  await page.locator(`input[name="continuous"][value="${continuous}"]`).check();
+  if (continuous === "no") {
+    await page.locator('input[name="episodes6m"]').fill("2");
+    await page.locator('input[name="episodes12m"]').fill("3");
+  }
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(form).toHaveAttribute("data-step", "2");
+
+  const keys = ["frequency", "urgency", "urge_after", "smell", "cloudy", "debris", "burning", "burning_after", "lower_back", "flank", "legs"];
+  for (const key of keys) {
+    const v = opts.scores?.[key] ?? 0;
+    await page.locator(`input[name="${key}"][value="${v}"]`).check({ force: true });
+  }
+  await page.locator(`input[name="change24h"][value="${opts.change ?? 0}"]`).check({ force: true });
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(form).toHaveAttribute("data-step", "3");
+
+  await page.locator('select[name="duration"]').selectOption(opts.duration ?? "1–3 days");
+  await page.locator(`input[name="previousUti"][value="${opts.previousUti ?? "no"}"]`).check();
+  await page.locator(`input[name="pregnant"][value="${opts.pregnant ?? "no"}"]`).check();
+  if (opts.notes) await page.locator('textarea[name="notes"]').fill(opts.notes);
+  await page.locator('input[name="consent"]').check();
+  await page.getByRole("button", { name: "Submit & take my sample" }).click();
+}
