@@ -6,7 +6,7 @@ import { CONTRACEPTION, COURSE_TYPES, MENOPAUSE_STAGES, PREGNANT, SOURCES, SYMPT
 import { ANTIBIOTICS } from "../search";
 import { PREVENTION_GROUPS, PREVENTION_OTHER } from "../prevention";
 import { parseAbout, parseFree, parsePrevention, parseUtis } from "./local";
-import { aboutSchema, freeSchema, preventionSchema, utisSchema, type GuidedStep } from "./schema";
+import { aboutSchema, looseFreeSchema, normaliseFree, preventionSchema, utisSchema, type FreeExtract, type GuidedStep } from "./schema";
 
 /*
  * Turns a typed answer into form fields. With an API key the model reads the
@@ -55,11 +55,25 @@ UTIs (utis): ${PROMPTS.utis.slice(RULES.length).trim().replace(/^The person is d
 What they take (taking): ${PROMPTS.prevention.slice(RULES.length).trim()}
 An antibiotic taken as a course for a UTI belongs in that UTI's treatments, not in taking.
 
-The open UTI (existing): if the person says the UTI they already have has cleared up, gone, or they are better, set existing.ended true and existing.ended_on to the date if they give one. Leave utis empty in that case unless they clearly describe a different, new UTI.`;
+The UTI they already have (existing): if they talk about their current UTI ("my UTI is still here", "it's gone", "today I..."), set existing.mentioned true and leave utis empty unless they clearly describe a different, past UTI. If it has cleared up: ended true and ended_on if given. If it is still going: ended false. Read how they feel today into feeling (1 awful, 2 bad, 3 ok, 4 good, 5 great), what they notice today into symptoms_today, any cause they suspect into triggers (or "other" plus other_trigger, e.g. "Shower gel"), any antibiotic started into treatments, any test into tests, and anything else worth keeping, such as a plan to see a doctor, into note in a few words ("Going to the doctor today").`;
 
-const SCHEMAS = { about: aboutSchema, prevention: preventionSchema, utis: utisSchema, free: freeSchema } as const;
+// The free-form call uses a loose schema (plain strings) and normalises afterwards; the grammar for the full one is too large.
+const SCHEMAS = { about: aboutSchema, prevention: preventionSchema, utis: utisSchema, free: looseFreeSchema } as const;
 
-export type Extracted<S extends GuidedStep> = z.infer<(typeof SCHEMAS)[S]>;
+export type Extracted<S extends GuidedStep> = S extends "free" ? FreeExtract : z.infer<(typeof SCHEMAS)[S]>;
+
+/** The JSON shape asked for in the free-form call, where a compiled grammar would be too large. */
+const FREE_SHAPE = `Reply with JSON only, no prose, in exactly this shape (null or [] where nothing was said):
+{"utis":[{"started_on":"YYYY-MM-DD"|null,"ended_on":"YYYY-MM-DD"|null,"ongoing":true|false|null,"symptoms":[keys],"other_symptom":string|null,"triggers":[keys],"other_trigger":string|null,"treatments":[{"antibiotic_id":id|null,"other_name":string|null,"days":int|null,"course_type":key|null,"source":key|null,"worked":key|null}],"tests":[{"kind":key,"result":key|null,"tested_on":"YYYY-MM-DD"|null}],"notes":string|null}],
+ "taking":{"keys":[keys],"stopped_keys":[keys],"other_name":string|null,"antibiotic_id":id|null},
+ "existing":{"mentioned":true|false,"ended":true|false|null,"ended_on":"YYYY-MM-DD"|null,"feeling":1-5|null,"symptoms_today":[keys],"other_symptom":string|null,"triggers":[keys],"other_trigger":string|null,"treatments":[...same as above],"tests":[...same as above],"note":string|null}}`;
+
+function parseJsonText(text: string): unknown {
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
 
 export async function extract<S extends GuidedStep>(step: S, text: string, today: string): Promise<{ result: Extracted<S>; source: "ai" | "local" }> {
   const local = () => ({
@@ -69,6 +83,20 @@ export async function extract<S extends GuidedStep>(step: S, text: string, today
   if (!aiAvailable()) return local();
   try {
     const client = new Anthropic({ timeout: 25_000, maxRetries: 1 });
+    if (step === "free") {
+      const response = await client.messages.create({
+        model: "claude-opus-5-5",
+        max_tokens: 4000,
+        system: [{ type: "text", text: `${PROMPTS.free}\n\n${FREE_SHAPE}`, cache_control: { type: "ephemeral" } }],
+        messages: [{ role: "user", content: `Today is ${today}.\n\nThe person wrote:\n${text}` }],
+        output_config: { effort: "low" },
+      });
+      if (response.stop_reason === "refusal") return local();
+      const reply = response.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+      const loose = looseFreeSchema.safeParse(parseJsonText(reply));
+      if (!loose.success) { console.error("[guided] free-form reply did not match the shape"); return local(); }
+      return { result: normaliseFree(loose.data) as Extracted<S>, source: "ai" };
+    }
     const response = await client.messages.parse({
       model: "claude-opus-5-5",
       max_tokens: 4000,
@@ -77,9 +105,10 @@ export async function extract<S extends GuidedStep>(step: S, text: string, today
       output_config: { effort: "low", format: zodOutputFormat(SCHEMAS[step]) },
     });
     if (response.stop_reason === "refusal" || !response.parsed_output) return local();
-    return { result: response.parsed_output as Extracted<S>, source: "ai" };
+    const parsed = step === "free" ? normaliseFree(response.parsed_output as z.infer<typeof looseFreeSchema>) : response.parsed_output;
+    return { result: parsed as Extracted<S>, source: "ai" };
   } catch (err) {
-    if (err instanceof Anthropic.APIError) console.error(`[guided] extraction failed (${err.status})`);
+    if (err instanceof Anthropic.APIError) console.error(`[guided] extraction failed (${err.status}): ${err.message.slice(0, 300)}`);
     else console.error("[guided] extraction failed");
     return local();
   }

@@ -219,11 +219,27 @@ describe("guided setup, rule-based reading", () => {
   it("hears that the current UTI has cleared, with or without a date", () => {
     const gone = parseFree("My UTI has gone", today);
     expect(gone.utis).toHaveLength(0);
-    expect(gone.existing).toEqual({ ended: true, ended_on: null });
-    expect(parseFree("it cleared up yesterday, feeling much better", today).existing).toEqual({ ended: true, ended_on: "2026-09-28" });
+    expect(gone.existing).toMatchObject({ ended: true, ended_on: null });
+    expect(parseFree("it cleared up yesterday, feeling much better", today).existing).toMatchObject({ ended: true, ended_on: "2026-09-28" });
     const fresh = parseFree("had one 2 weeks ago, burning, it's gone now", today);
     expect(fresh.utis).toHaveLength(1);
     expect(fresh.existing.ended).toBeNull();
+  });
+  it("reads news about the ongoing UTI: still here, a suspected cause, a plan", () => {
+    const f = parseFree("My uti is still here i think maybe shower gel causes it - i will go to the doctor today", today);
+    expect(f.utis).toHaveLength(0);
+    expect(f.existing.mentioned).toBe(true);
+    expect(f.existing.ended).toBe(false);
+    expect(f.existing.triggers).toEqual(["other"]);
+    expect(f.existing.other_trigger).toBe("Shower gel");
+    expect(f.existing.note).toBe("I will go to the doctor today");
+    const day = parseFree("still got it, feeling rough today, burning and going all the time", today);
+    expect(day.existing).toMatchObject({ ended: false, feeling: 2 });
+    expect(day.existing.symptoms_today).toEqual(["burning", "frequency"]);
+    const course = parseFree("Feeling rough today, still burning and going all the time. Started the trimethoprim the GP gave me", today);
+    expect(course.utis).toHaveLength(0);
+    expect(course.existing.mentioned).toBe(true);
+    expect(course.existing.treatments[0]?.antibiotic_id).toBe("trimethoprim");
   });
   it("keeps an answer that is not in any list as Other, tidied", () => {
     expect(freeTextAnswer("I think it might have been my shower gel")).toBe("Shower gel");

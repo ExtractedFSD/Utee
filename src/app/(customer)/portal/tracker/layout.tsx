@@ -18,10 +18,20 @@ export default async function TrackerLayout({ children }: { children: React.Reac
   const { data: openRows } = ready
     ? await ctx.supabase.from("tracker_episodes").select("id, started_on, tracker_treatments(id, antibiotic_id, other_name, worked)").eq("user_id", ctx.user.id).is("ended_on", null).order("started_on", { ascending: false })
     : { data: [] };
+  const today = isoDaysAgo(0);
+  const openIds = (openRows ?? []).map((e) => e.id as string);
+  const [{ data: todaySymptoms }, { data: todayCheckin }] = openIds.length
+    ? await Promise.all([
+        ctx.supabase.from("tracker_symptoms").select("episode_id, symptom").in("episode_id", openIds).eq("logged_on", today),
+        ctx.supabase.from("tracker_checkins").select("episode_id, feeling").eq("user_id", ctx.user.id).eq("on_date", today),
+      ])
+    : [{ data: [] }, { data: [] }];
   const openEpisodes = (openRows ?? []).map((e) => ({
     id: e.id as string,
     startedOn: e.started_on as string,
     treatments: ((e.tracker_treatments ?? []) as { id: string; antibiotic_id: string; other_name: string | null; worked: string | null }[]).map((t) => ({ id: t.id, name: antibioticName(t.antibiotic_id, t.other_name), worked: t.worked })),
+    symptomsToday: (todaySymptoms ?? []).filter((x) => x.episode_id === e.id).map((x) => x.symptom as string),
+    feelingToday: (todayCheckin ?? []).find((c) => c.episode_id === e.id)?.feeling ?? null,
   }));
   const weekAgo = isoDaysAgo(7);
   const stale = [...openEpisodes].reverse().find((e) => e.startedOn <= weekAgo) ?? null;

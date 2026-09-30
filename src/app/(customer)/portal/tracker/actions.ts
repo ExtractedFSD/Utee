@@ -14,8 +14,8 @@ import {
 import { antibioticById } from "@/lib/tracker/search";
 import { ANTIBIOTIC_PREVENTIONS, HELPING, PREVENTION_KEYS, diffPreventions } from "@/lib/tracker/prevention";
 import { extract } from "@/lib/tracker/guided/extract";
-import { utiSaveSchema, type GuidedStep, type UtiSave } from "@/lib/tracker/guided/schema";
-import { ageBandFor, isoToday } from "@/lib/tracker/stats";
+import { utiSaveSchema, type GuidedStep, type TestExtract, type TreatmentExtract, type UtiSave } from "@/lib/tracker/guided/schema";
+import { ageBandFor, formatDay, isoToday } from "@/lib/tracker/stats";
 
 const keys = (list: { key: string }[]) => list.map((o) => o.key) as [string, ...string[]];
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date");
@@ -244,6 +244,53 @@ export async function saveGuidedUti(input: UtiSave) {
     startedOn: d.started_on,
     treatments: (savedTreatments ?? []).map((t) => ({ id: t.id as string, antibiotic_id: t.antibiotic_id as string, other_name: t.other_name as string | null, worked: t.worked as string | null })),
   };
+}
+
+/** Today's log and anything new for the UTI already open, saved in one go. */
+export async function updateOpenUti(input: {
+  episodeId: string; feeling: number | null; symptomsToday: string[]; otherSymptom: string | null;
+  triggers: string[]; otherTrigger: string | null; note: string | null;
+  treatments: TreatmentExtract[]; tests: TestExtract[];
+}) {
+  const { user, supabase } = await session();
+  if (!uuid.safeParse(input.episodeId).success) return { error: "Not found" };
+  const { data: episode } = await supabase.from("tracker_episodes").select("id, started_on, notes").eq("id", input.episodeId).eq("user_id", user.id).maybeSingle();
+  if (!episode) return { error: "Not found" };
+  const today = isoToday();
+  if (input.feeling !== null) {
+    if (!Number.isInteger(input.feeling) || input.feeling < 1 || input.feeling > 5) return { error: "Choose a face" };
+    await supabase.from("tracker_checkins").upsert({ user_id: user.id, episode_id: episode.id, on_date: today, feeling: input.feeling }, { onConflict: "user_id,on_date" });
+  }
+  const symptoms = input.symptomsToday.filter((k) => SYMPTOMS.some((o) => o.key === k));
+  if (symptoms.length) {
+    const { data: have } = await supabase.from("tracker_symptoms").select("symptom").eq("episode_id", episode.id).eq("logged_on", today);
+    const seen = new Set((have ?? []).map((h) => h.symptom));
+    const rows = symptoms.filter((k) => !seen.has(k)).map((symptom) => ({ user_id: user.id, episode_id: episode.id, symptom, other_text: symptom === "other" ? input.otherSymptom?.trim() || null : null, logged_on: today }));
+    if (rows.length) await supabase.from("tracker_symptoms").insert(rows);
+  }
+  const triggers = input.triggers.filter((k) => TRIGGERS.some((o) => o.key === k));
+  if (triggers.length) {
+    const { data: have } = await supabase.from("tracker_triggers").select("trigger, other_text").eq("episode_id", episode.id);
+    const rows = triggers
+      .filter((k) => !(have ?? []).some((h) => h.trigger === k && (k !== "other" || (h.other_text ?? "") === (input.otherTrigger?.trim() ?? ""))))
+      .map((trigger) => ({ user_id: user.id, episode_id: episode.id, trigger, other_text: trigger === "other" ? input.otherTrigger?.trim() || null : null, logged_on: today }));
+    if (rows.length) await supabase.from("tracker_triggers").insert(rows);
+  }
+  const treatments = input.treatments.filter((t) => t.antibiotic_id).map((t) => ({
+    user_id: user.id, episode_id: episode.id, antibiotic_id: t.antibiotic_id!, other_name: t.antibiotic_id === "other" ? t.other_name?.trim() || null : null,
+    started_on: today, days: t.days && t.days > 0 ? Math.min(t.days, 365) : null, course_type: t.course_type ?? "treatment", source: t.source, worked: t.worked,
+  }));
+  if (treatments.length) await supabase.from("tracker_treatments").insert(treatments);
+  const tests = input.tests.map((t) => ({ user_id: user.id, episode_id: episode.id, kind: t.kind, tested_on: today, result: t.result, notes: null, kit_id: null }));
+  if (tests.length) await supabase.from("tracker_tests").insert(tests);
+  if (input.note?.trim()) {
+    const line = `${formatDay(today)}: ${input.note.trim().slice(0, 500)}`;
+    const notes = [episode.notes, line].filter(Boolean).join("\n").slice(0, 4000);
+    await supabase.from("tracker_episodes").update({ notes, updated_at: new Date().toISOString() }).eq("id", episode.id);
+  }
+  await audit(supabase, user.id, "guided_uti_updated", { episode_id: episode.id, feeling: input.feeling, symptoms: symptoms.length, triggers: triggers.length, note: !!input.note });
+  revalidate(episode.id);
+  return { ok: true };
 }
 
 // ----------------------------------------------------------------- episodes
