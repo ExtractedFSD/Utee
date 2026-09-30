@@ -152,8 +152,8 @@ export default async function PortalHome({
       <div className="grid gap-6 md:grid-cols-2">
         <Callout>
           <div className="flex flex-col gap-5 sm:flex-row">
-            <div className="relative aspect-square w-full shrink-0 overflow-hidden rounded-2xl sm:w-44">
-              <Image src="/images/urologist.jpg" alt="Consultant urologist" fill sizes="(min-width: 640px) 176px, 100vw" className="object-cover object-[50%_25%]" />
+            <div className="relative aspect-square w-44 shrink-0 overflow-hidden rounded-2xl">
+              <Image src="/images/urologist.jpg" alt="Consultant urologist" fill sizes="176px" className="object-cover object-[50%_25%]" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -174,12 +174,14 @@ export default async function PortalHome({
         <Callout>
           <div className="flex flex-col gap-5 sm:flex-row">
             {/* Placeholder until the product image is ready. */}
-            <div className="flex aspect-square w-full shrink-0 items-center justify-center rounded-2xl bg-white/15 sm:w-44" aria-hidden>
+            <div className="flex aspect-square w-44 shrink-0 items-center justify-center rounded-2xl bg-white/15" aria-hidden>
               <Image src="/logo-white.png" alt="" width={96} height={40} className="opacity-70" />
             </div>
             <div className="min-w-0">
               <h3 className="font-display text-2xl font-light">The Utee range</h3>
-              <p className="text-sm text-white/85 mt-2 mb-5 leading-relaxed">D-Mannose sachets, Vaginal Probiotics and the On-The-Go pack.</p>
+              <span className="mt-2 inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[.12em] text-white">From £19.99</span>
+              <p className="text-sm font-semibold text-white mt-3 leading-relaxed">Urinary Tract Care, made for women.</p>
+              <p className="text-sm text-white/85 mt-1 mb-5 leading-relaxed">D-Mannose sachets, Vaginal Probiotics and the On-The-Go pack.</p>
               <LinkButton href={storeUrl} variant="white" external>
                 Shop supplements
               </LinkButton>
