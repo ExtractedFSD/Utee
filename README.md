@@ -19,11 +19,15 @@ tracking.
    it in the freepost return box. The form is four steps, defined in
    `src/lib/triage/questions.ts`: a safety check (eight yes/no warning signs;
    any "yes" shows an urgent-care screen with a call-111 button before the
-   patient can continue), how often UTI symptoms happen, eleven symptoms each
-   scored 0 to 10 plus the change over the past 24 hours (-5 to +5), then
-   duration, pregnancy, antibiotics, notes and consent. Answers are saved as
-   one JSON document (`triage_submissions.symptoms`, `version: 2`); the
-   clinic case page shows every score and any safety flags.
+   patient can continue); UTI history (continuous symptoms for 3+ months,
+   had a UTI before, and if so episode counts for 6 and 12 months plus past
+   antibiotics from the tracker's searchable list, each with whether it
+   worked); symptoms as tick-all-that-apply with the change over the past
+   24 hours (-5 to +5), duration and pregnancy; then notes, consent and the
+   optional research consent. Answers are saved as one JSON document
+   (`triage_submissions.symptoms`, `version: 3`; the summary component still
+   renders the earlier shapes); the clinic case page shows every answer and
+   any safety flags.
 4. **Transit** — Royal Mail tracking events arrive at `/api/webhooks/tracking`
    and appear on the customer's timeline for both directions.
 5. **Lab** — The lab scans the QR on the pot → sees the *specimen number only*

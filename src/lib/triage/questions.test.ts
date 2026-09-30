@@ -3,10 +3,10 @@ import {
   SAFETY_QUESTIONS,
   SYMPTOM_QUESTIONS,
   SYMPTOM_LABELS,
+  WORKED_OPTIONS,
   changeLabel,
-  isVersioned,
+  orderedSymptoms,
   safetyFlagsIn,
-  selectedFrom,
 } from "./questions";
 
 describe("pre-sample questionnaire", () => {
@@ -22,15 +22,18 @@ describe("pre-sample questionnaire", () => {
     expect(safetyFlagsIn({})).toEqual([]);
   });
 
-  it("counts a symptom as present only when scored above 0", () => {
-    expect(selectedFrom({ burning: 7, frequency: 0, cloudy: 1 })).toEqual(["cloudy", "burning"]);
+  it("keeps ticked symptoms in question order", () => {
+    expect(orderedSymptoms(["burning", "cloudy", "nope"])).toEqual(["cloudy", "burning"]);
+  });
+
+  it("asks whether each past antibiotic worked, including still taking it", () => {
+    expect(WORKED_OPTIONS.map((o) => o.key)).toEqual(["yes", "partly", "no", "taking"]);
   });
 
   it("keeps labels for symptom keys from older submissions", () => {
     for (const key of ["blood_in_urine", "fever", "nausea", "back_pain", "lower_abdominal_pain", "cloudy_or_smelly"]) {
       expect(SYMPTOM_LABELS[key]).toBeTruthy();
     }
-    expect(isVersioned({ selected: ["fever"] })).toBe(false);
   });
 
   it("describes the 24 hour change scale in words", () => {

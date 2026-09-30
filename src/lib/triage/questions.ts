@@ -77,21 +77,51 @@ export const SAFETY_LABELS: Record<string, string> = Object.fromEntries(
 );
 
 export type YesNo = "yes" | "no";
+export type PreviousUti = "yes" | "no" | "unsure";
+export type Worked = "yes" | "no" | "partly" | "taking";
 
-/** What the form saves into triage_submissions.symptoms (version 2). */
+export const WORKED_OPTIONS: { key: Worked; label: string }[] = [
+  { key: "yes", label: "Yes, it cleared it" },
+  { key: "partly", label: "Partly" },
+  { key: "no", label: "No" },
+  { key: "taking", label: "Still taking it" },
+];
+
+export const WORKED_LABELS: Record<string, string> = Object.fromEntries(WORKED_OPTIONS.map((o) => [o.key, o.label]));
+
+export const ANTIBIOTICS_QUESTION = "Which antibiotics have you had for a UTI before, and did they work?";
+
+export type PastAntibiotic = { id: string; name: string; worked: Worked };
+
+/** What the form saves into triage_submissions.symptoms (version 3). */
 export type TriageAnswers = {
-  version: 2;
+  version: 3;
   safety: Record<SafetyKey, YesNo>;
   /** Safety questions answered "yes", in question order. Empty when none. */
   safetyFlags: SafetyKey[];
   history: {
     continuous: YesNo;
+    previousUti: PreviousUti;
     episodes6m: number | null;
     episodes12m: number | null;
   };
+  antibiotics: PastAntibiotic[];
+  /** Symptoms ticked, in question order. Empty when "none of these". */
+  selected: SymptomKey[];
+  change24h: number;
+  duration: string;
+  pregnant: string;
+  notes: string;
+};
+
+/** Version 2 (short-lived): the same sections with symptoms scored 0 to 10. */
+export type ScoredTriageAnswers = {
+  version: 2;
+  safety: Record<SafetyKey, YesNo>;
+  safetyFlags: SafetyKey[];
+  history: { continuous: YesNo; episodes6m: number | null; episodes12m: number | null };
   severity: Record<SymptomKey, number>;
   change24h: number;
-  /** Symptoms scored above 0, kept so older views that list symptoms still work. */
   selected: SymptomKey[];
   duration: string;
   previousUti: string;
@@ -111,18 +141,16 @@ export type LegacyTriageAnswers = {
   notes?: string;
 };
 
-export type StoredTriage = TriageAnswers | LegacyTriageAnswers;
-
-export function isVersioned(answers: StoredTriage | null | undefined): answers is TriageAnswers {
-  return !!answers && answers.version === 2;
-}
+export type StoredTriage = TriageAnswers | ScoredTriageAnswers | LegacyTriageAnswers;
 
 export function safetyFlagsIn(safety: Partial<Record<string, string>>): SafetyKey[] {
   return SAFETY_QUESTIONS.filter((q) => safety[q.key] === "yes").map((q) => q.key);
 }
 
-export function selectedFrom(severity: Partial<Record<string, number>>): SymptomKey[] {
-  return SYMPTOM_QUESTIONS.filter((q) => (severity[q.key] ?? 0) > 0).map((q) => q.key);
+/** Ticked symptoms in question order, whatever order they were ticked in. */
+export function orderedSymptoms(keys: Iterable<string>): SymptomKey[] {
+  const set = new Set(keys);
+  return SYMPTOM_QUESTIONS.filter((q) => set.has(q.key)).map((q) => q.key);
 }
 
 export function changeLabel(value: number): string {
