@@ -101,7 +101,6 @@ const TRIGGER_RULES: [string, RegExp][] = [
   ["new_contraception", /new (pill|coil|contracept)|started (the|a new) pill|changed (my )?(pill|coil)/],
   ["menopause", /menopaus/],
   ["swimming_hot_bath", /swim|hot bath|jacuzzi|hot tub|pool|spa\b/],
-  ["constipation", /constipat/],
   ["recent_antibiotics", /antibiotics for (something|a|my) (else|chest|throat|tooth|ear|skin)/],
 ];
 
@@ -256,17 +255,6 @@ const PREVENTION_RULES: [string, RegExp][] = [
   ["lubricant", /lubricant|\blube\b/],
   ["barrier_cream", /barrier cream|sudocrem|bepanthen/],
   ["intimate_wash", /intimate wash|femfresh|ph[- ]balanced|ph wash/],
-  ["water", /\bwater\b|hydrat|drink(ing)? (more|lots|plenty)|fluids/],
-  ["pee_after_sex", /(pee|wee|urinat|go to the (loo|toilet)|empty(ing)? (my )?bladder) (straight )?after sex/],
-  ["front_to_back", /front to back|wipe/],
-  ["no_holding", /not hold|don'?t hold|never hold/],
-  ["double_void", /double void|empty(ing)? (it )?(fully|properly|completely)/],
-  ["showers", /shower/],
-  ["cotton_underwear", /cotton/],
-  ["no_perfumed", /perfum|unscented|fragrance|scented/],
-  ["constipation", /constipat/],
-  ["pelvic_physio", /pelvic floor|physio/],
-  ["bladder_training", /bladder training|bladder retraining/],
 ];
 
 const STOP_WORDS = /stopp?ed|no longer|not (taking|using|doing) .* any ?more|gave up|quit|came off|ran out|finished with|don'?t (take|use|do) .* any ?more|used to/;
@@ -307,6 +295,5 @@ export function parseFree(text: string, today = isoToday()): FreeExtract {
     taking.keys = taking.keys.filter((k) => k !== "low_dose_antibiotic");
     taking.antibiotic_id = null;
   }
-  if (utis.length && !/water|hydrat/.test(t.replace(/not drinking|didn'?t drink|dehydrat/g, ""))) taking.keys = taking.keys.filter((k) => k !== "water");
   return { utis, taking };
 }

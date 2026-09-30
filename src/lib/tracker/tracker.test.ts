@@ -4,7 +4,7 @@ import { searchAntibiotics, antibioticName, PINNED_ANTIBIOTICS, ANTIBIOTICS } fr
 import { summarise, patterns, episodeLength, orderByUsage, daysBetween, ageBandFor } from "./stats";
 import { copy } from "./copy";
 import { SYMPTOMS, TRIGGERS } from "./options";
-import { diffPreventions, preventionName } from "./prevention";
+import { diffPreventions, preventionName, searchPreventions } from "./prevention";
 import { parseAbout, parseDatePhrase, parseFree, parsePrevention, parseUtis } from "./guided/local";
 
 describe("red flags", () => {
@@ -144,7 +144,7 @@ describe("copy", () => {
 
 describe("prevention", () => {
   it("diffs a re-picked list into adds and stops, ignoring unknown keys", () => {
-    const d = diffPreventions(["d_mannose", "water"], ["water", "vaginal_oestrogen", "made_up"]);
+    const d = diffPreventions(["d_mannose", "probiotics"], ["probiotics", "vaginal_oestrogen", "made_up", "water"]);
     expect(d.add).toEqual(["vaginal_oestrogen"]);
     expect(d.stop).toEqual(["d_mannose"]);
   });
@@ -152,6 +152,15 @@ describe("prevention", () => {
     expect(preventionName({ option_key: "p_happi", other_name: null, antibiotic_id: null })).toBe("P Happi spray");
     expect(preventionName({ option_key: "other", other_name: "Cystopurin", antibiotic_id: null })).toBe("Cystopurin");
     expect(preventionName({ option_key: "low_dose_antibiotic", other_name: null, antibiotic_id: "nitrofurantoin" })).toBe("Low-dose daily antibiotic: Nitrofurantoin");
+    expect(preventionName({ option_key: "water", other_name: null, antibiotic_id: null })).toBe("Drinking more water");
+  });
+  it("search finds things by brand, spelling and group", () => {
+    expect(searchPreventions("hiprex")[0].key).toBe("methenamine");
+    expect(searchPreventions("vagifem")[0].key).toBe("vaginal_oestrogen");
+    expect(searchPreventions("mann")[0].key).toBe("d_mannose");
+    expect(searchPreventions("vaccine").map((o) => o.key)).toContain("uromune");
+    expect(searchPreventions("")).toEqual([]);
+    expect(searchPreventions("water")).toEqual([]);
   });
 });
 
@@ -170,13 +179,13 @@ describe("guided setup, rule-based reading", () => {
     expect(parseAbout("on the pill, not there yet with menopause").contraception).toBe("pill");
   });
   it("reads what people take", () => {
-    const p = parsePrevention("I take D-mannose and vaginal oestrogen and drink more water");
-    expect(p.keys.sort()).toEqual(["d_mannose", "vaginal_oestrogen", "water"]);
+    const p = parsePrevention("I take D-mannose and vaginal oestrogen and a probiotic");
+    expect(p.keys.sort()).toEqual(["d_mannose", "probiotics", "vaginal_oestrogen"]);
     expect(parsePrevention("nothing").keys).toEqual([]);
     expect(parsePrevention("trimethoprim every night to prevent them").antibiotic_id).toBe("trimethoprim");
-    const changed = parsePrevention("I've stopped the cranberry tablets and started D-mannose, still drinking lots of water");
+    const changed = parsePrevention("I've stopped the cranberry tablets and started D-mannose, still on the probiotics");
     expect(changed.stopped_keys).toEqual(["cranberry"]);
-    expect(changed.keys.sort()).toEqual(["d_mannose", "water"]);
+    expect(changed.keys.sort()).toEqual(["d_mannose", "probiotics"]);
     expect(parsePrevention("nothing's changed").keys).toEqual([]);
   });
   it("reads one UTI with its course, without confusing course length with UTI length", () => {

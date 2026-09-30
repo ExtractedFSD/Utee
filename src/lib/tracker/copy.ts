@@ -29,7 +29,7 @@ export const copy = {
     intro:
       "A few questions asked once, so you don't have to answer them every time. You can change them later in settings.",
     pregnantHint: "If yes, we'll show safety information whenever you log a new UTI.",
-    preventiveTitle: "Are you taking or doing anything to help prevent UTIs?",
+    preventiveTitle: "Are you taking anything to help prevent UTIs?",
     preventiveHint: "Choose everything that applies. You can change this any time. Nothing here is a recommendation.",
     button: "Save and continue",
   },
@@ -71,7 +71,7 @@ export const copy = {
     community: "Utee community",
     communityBody: "Talk with other people who understand. Opens in a new tab.",
     prevention: "What I'm taking",
-    preventionEmpty: "Nothing logged yet. Add anything you take or do to help prevent UTIs, so your record shows what you've tried and what you feel helps.",
+    preventionEmpty: "Nothing logged yet. Add anything you take to help prevent UTIs, so your record shows what you've tried and what you feel helps.",
     preventionManage: "Manage",
     preventionAdd: "Add what I'm taking",
     preventionHelps: "helps",
@@ -96,15 +96,15 @@ export const copy = {
     aiOn: "AI reading on",
     aiOff: "AI reading off",
     askAbout: "First, a bit about you. Are you before, around or after the menopause? Do you use contraception? Are you pregnant or trying?",
-    askPrevention: "Do you take or do anything to help prevent UTIs? For example something you take each day, vaginal oestrogen, a vaccine, a cream or spray, or a habit like drinking more water.",
+    askPrevention: "Do you take anything to help prevent UTIs? For example something you take each day, vaginal oestrogen, a vaccine, or a cream or spray.",
     askUtis: "Now your UTIs, one or several. For each, roughly when it started and ended, what you noticed, what you took and whether it helped. Or say \"none yet\".",
     askUtisQuick: "Tell me about a UTI, or several at once. Roughly when it started and ended, what you noticed, what you took and whether it helped.",
     gotIt: "Here's what I picked up. Check it and change anything that's wrong.",
     addedToCard: "Added that below. Change it if it's not right.",
-    askPreventionUpdate: "What are you taking or doing now to help prevent UTIs, and has anything stopped? I'll update your list.",
+    askPreventionUpdate: "What are you taking now to help prevent UTIs, and has anything stopped? I'll update your list.",
     savedPreventionUpdate: (added: number, stopped: number) =>
       added === 0 && stopped === 0 ? "Noted. Your list is unchanged." : [added ? `added ${added}` : "", stopped ? `stopped ${stopped}` : ""].filter(Boolean).join(" and ").replace(/^./, (c) => c.toUpperCase()) + ".",
-    askChangedTaking: "Has anything changed in what you take or do to prevent UTIs?",
+    askChangedTaking: "Has anything changed in what you take to prevent UTIs?",
     askMoreUtis: "Any UTIs to add?",
     yes: "Yes",
     noDone: "No, I'm done",
@@ -166,7 +166,7 @@ export const copy = {
 
   prevention: {
     title: "What I'm taking",
-    intro: "Everything you take or do to help prevent UTIs, and whether you feel it helps. Only you can say. This is your record, not advice.",
+    intro: "Everything you take to help prevent UTIs, and whether you feel it helps. Only you can say. This is your record, not advice.",
     current: "Taking now",
     past: "Tried before",
     nothingYet: "Nothing here yet.",
@@ -186,6 +186,10 @@ export const copy = {
     groupNote: "Groups are for finding things quickly. Nothing here is a recommendation.",
     edit: "Edit",
     updateByChat: "Update by chat",
+    searchPlaceholder: "Search, for example D-mannose, Hiprex, oestrogen",
+    searchNone: (q: string) => `Nothing called "${q}" in the list.`,
+    addAsOther: (q: string) => `Add "${q}"`,
+    browse: "Or browse the list",
   },
 
   patterns: {

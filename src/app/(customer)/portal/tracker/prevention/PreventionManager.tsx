@@ -97,7 +97,7 @@ export function PreventionManager({ rows }: { rows: PreventionRow[] }) {
         </Card>
       )}
 
-      <Sheet open={!!open} title={open ? preventionName(open) : ""} onClose={() => setOpenId(null)} testId="sheet-prevention">
+      <Sheet open={!!open} title={open ? preventionName(open) : ""} onClose={() => setOpenId(null)} testId="sheet-prevention" modal>
         {open && (
           <div className="space-y-5">
             <div>
@@ -151,7 +151,7 @@ function AddSheet({ open, onClose, exclude, pending, run }: { open: boolean; onC
   const [startedOn, setStartedOn] = useState("");
   const reset = () => { setSelected(new Set()); setOtherName(""); setAntibioticId(null); setAntibioticOther(""); setStartedOn(""); };
   return (
-    <Sheet open={open} title={copy.prevention.add} onClose={() => { reset(); onClose(); }} doneLabel={copy.episode.cancel} testId="sheet-add-prevention">
+    <Sheet open={open} title={copy.prevention.add} onClose={() => { reset(); onClose(); }} doneLabel={copy.episode.cancel} testId="sheet-add-prevention" modal>
       <div className="space-y-5">
         <PreventionPicker
           selected={selected}
@@ -162,6 +162,7 @@ function AddSheet({ open, onClose, exclude, pending, run }: { open: boolean; onC
           antibioticOther={antibioticOther}
           onAntibiotic={(id, other) => { setAntibioticId(id); if (other !== undefined) setAntibioticOther(other); }}
           exclude={exclude}
+          autoFocus
         />
         <div>
           <label className="block text-sm font-semibold text-slate-700 mb-2" htmlFor="prevention-add-start">{copy.prevention.startDate}</label>

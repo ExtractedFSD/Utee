@@ -219,9 +219,10 @@ The monthly reminder email links to "Update by chat".
 
 **Prevention.** "What I'm taking" (`/portal/tracker/prevention`, table
 `tracker_preventions`, migration `0005_prevention.sql`) records everything a
-person takes or does to help prevent UTIs: prescribed medicines, hormonal
-options, vaccines, supplements, creams and habits, multi-select from the list in
-`src/lib/tracker/prevention.ts`. Each item keeps a start and stop date and a
+person takes to help prevent UTIs: prescribed medicines, hormonal options,
+vaccines, supplements, creams and sprays, searchable (brands and spellings
+included) and multi-select from the list in `src/lib/tracker/prevention.ts`.
+Retired options stay in `RETIRED_OPTIONS` so old rows still read well. Each item keeps a start and stop date and a
 self-rating ("Is it helping?"), so the history and what people feel works are
 kept. It is asked on "About you", shown as coloured pills on the dashboard, and
 included in the GP summary and exports.
