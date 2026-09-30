@@ -1,6 +1,6 @@
 import { ANTIBIOTICS } from "../search";
 import { isoDaysAgo, isoToday } from "../stats";
-import type { AboutExtract, FreeExtract, PreventionExtract, TestExtract, TreatmentExtract, UtiExtract, UtisExtract } from "./schema";
+import type { AboutExtract, ExistingExtract, FreeExtract, PreventionExtract, TestExtract, TreatmentExtract, UtiExtract, UtisExtract } from "./schema";
 import { emptyUti } from "./schema";
 
 /*
@@ -283,19 +283,29 @@ export function parsePrevention(text: string): PreventionExtract {
 
 const UTI_CUES = /\buti\b|infection|cystitis|flare|episode|kicked off|came on|started|had one|got one|another one/;
 
+const GONE = /(?:uti|infection|it|symptoms|everything)(?:'s| has| is| have|s)? (?:all )?(?:gone|cleared(?: up)?|better|over|finished|passed|stopped|disappeared)|(?:i'?m|i am|i feel|feeling|i'?ve been) (?:all |much |a lot )?better|all clear|back to normal|no (?:more )?symptoms|it'?s cleared/;
+
+/** News about the UTI already on the record: has it cleared, and when. */
+export function parseExisting(text: string, today = isoToday()): ExistingExtract {
+  const t = text.toLowerCase();
+  if (!GONE.test(t)) return { ended: null, ended_on: null };
+  return { ended: true, ended_on: parseDatePhrase(t, today) };
+}
+
 /** Free-form: decide what the message is about and read each part. */
 export function parseFree(text: string, today = isoToday()): FreeExtract {
   const t = text.toLowerCase();
   const symptomatic = SYMPTOM_RULES.some(([, re]) => re.test(t));
   const treated = antibioticsIn(t).length > 0 && /course|days?\b|gp|doctor|pharmac|prescri|took|gave me|put me on/.test(t);
-  const looksLikeUti = symptomatic || treated || (UTI_CUES.test(t) && parseDatePhrase(t, today) !== null);
+  const existing = parseExisting(text, today);
+  const looksLikeUti = symptomatic || treated || (UTI_CUES.test(t) && parseDatePhrase(t, today) !== null && !existing.ended);
   const utis = looksLikeUti ? parseUtis(text, today).utis.filter((u) => u.started_on || u.symptoms.length || u.treatments.length || u.tests.length) : [];
   const taking = parsePrevention(text);
   if (utis.length && !/low[- ]dose|daily|every (day|night|morning)|prophyla|to prevent/.test(t)) {
     taking.keys = taking.keys.filter((k) => k !== "low_dose_antibiotic");
     taking.antibiotic_id = null;
   }
-  return { utis, taking };
+  return { utis, taking, existing: utis.length ? { ended: null, ended_on: null } : existing };
 }
 
 /** A typed answer that is not in any list, tidied for storing as "Other": lead-ins dropped, first letter capitalised. */

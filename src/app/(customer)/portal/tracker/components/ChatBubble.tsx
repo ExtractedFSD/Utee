@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { copy } from "@/lib/tracker/copy";
 import type { ChatMessage } from "@/lib/tracker/data";
 import { formatDay } from "@/lib/tracker/stats";
-import { GuidedChat, type Nudges } from "../setup/GuidedChat";
+import { GuidedChat, type Nudges, type OpenEpisode } from "../setup/GuidedChat";
 import { getChat, listChats } from "../actions";
 
 type ChatSummary = { id: string; title: string | null; mode: string; updated_at: string; count: number };
@@ -15,8 +15,8 @@ type ChatSummary = { id: string; title: string | null; mode: string; updated_at:
  * the free-form chat. The panel has a History view listing earlier chats,
  * any of which can be reopened and continued.
  */
-export function ChatBubble({ enabled, aiAvailable, pregnantOrTrying, activePreventions, nudges }: {
-  enabled: boolean; aiAvailable: boolean; pregnantOrTrying: string; activePreventions: string[]; nudges: Nudges;
+export function ChatBubble({ enabled, aiAvailable, pregnantOrTrying, activePreventions, nudges, openEpisodes }: {
+  enabled: boolean; aiAvailable: boolean; pregnantOrTrying: string; activePreventions: string[]; nudges: Nudges; openEpisodes: OpenEpisode[];
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -103,7 +103,7 @@ export function ChatBubble({ enabled, aiAvailable, pregnantOrTrying, activePreve
                     )}
                 </div>
               ) : (
-                <GuidedChat key={session.key} mode="free" compact aiAvailable={aiAvailable} pregnantOrTrying={pregnantOrTrying} activePreventions={activePreventions} initialAbout={null} nudges={nudges} resume={session.resume} />
+                <GuidedChat key={session.key} mode="free" compact aiAvailable={aiAvailable} pregnantOrTrying={pregnantOrTrying} activePreventions={activePreventions} initialAbout={null} nudges={nudges} openEpisodes={openEpisodes} resume={session.resume} />
               )}
             </div>
           </section>

@@ -5,6 +5,7 @@ import { summarise, patterns, episodeLength, orderByUsage, daysBetween, ageBandF
 import { copy } from "./copy";
 import { SYMPTOMS, TRIGGERS } from "./options";
 import { diffPreventions, preventionName, searchPreventions } from "./prevention";
+import { tipsFor } from "./tips";
 import { freeTextAnswer, parseAbout, parseDatePhrase, parseFree, parsePrevention, parseUtis } from "./guided/local";
 
 describe("red flags", () => {
@@ -105,14 +106,20 @@ describe("stats", () => {
       { episode_id: "b", trigger: "sex", other_text: null, logged_on: "2026-06-01" },
       { episode_id: "c", trigger: "dont_know", other_text: null, logged_on: "2025-11-10" },
     ];
-    const p = patterns(episodes, symptoms, triggers, treatments);
+    const p = patterns(episodes, [...symptoms, { episode_id: "a", symptom: "other", other_text: "Itchy", logged_on: "2026-09-25" }], [...triggers, { episode_id: "a", trigger: "other", other_text: "Shower gel", logged_on: "2026-09-25" }], treatments);
     expect(p.enough).toBe(true);
-    expect(p.triggers[0]).toBe("Sex: logged in 2 of 4 UTIs");
-    expect(p.triggers.some((t) => t.startsWith("Don't know"))).toBe(false);
-    expect(p.antibiotics[0]).toBe("Nitrofurantoin: you said it worked 1 of 2 times");
-    expect(p.symptoms[0]).toBe("Burning or stinging when peeing: 2 of 4 UTIs");
-    const joined = [...p.triggers, ...p.antibiotics, ...p.symptoms].join(" ").toLowerCase();
-    for (const banned of ["recurrent", "risk", "should", "recommend"]) expect(joined).not.toContain(banned);
+    expect(p.total).toBe(4);
+    expect(p.triggers[0]).toEqual({ key: "sex", label: "Sex", count: 2 });
+    expect(p.triggers.map((t) => t.key)).not.toContain("dont_know");
+    expect(p.triggers.map((t) => t.key)).not.toContain("other");
+    expect(p.symptoms.map((t) => t.key)).not.toContain("other");
+    expect(p.antibiotics[0]).toEqual({ name: "Nitrofurantoin", worked: 1, rated: 2 });
+    expect(p.symptoms[0]).toEqual({ key: "burning", label: "Burning or stinging when peeing", count: 2 });
+    const tips = tipsFor(p.triggers.map((t) => t.key));
+    expect(tips[0].key).toBe("pee_after_sex");
+    expect(tips).toHaveLength(3);
+    const joined = tips.map((t) => `${t.title} ${t.body}`).join(" ").toLowerCase();
+    for (const banned of ["you should", "we recommend", "recurrent", "risk"]) expect(joined).not.toContain(banned);
   });
   it("orders chips by usage, keeping Other last", () => {
     const keys = TRIGGERS.map((t) => t.key);
@@ -208,6 +215,15 @@ describe("guided setup, rule-based reading", () => {
     expect(course.taking.keys).toEqual([]);
     expect(parseFree("started taking cranberry tablets", today).utis).toHaveLength(0);
     expect(parseFree("started taking cranberry tablets", today).taking.keys).toEqual(["cranberry"]);
+  });
+  it("hears that the current UTI has cleared, with or without a date", () => {
+    const gone = parseFree("My UTI has gone", today);
+    expect(gone.utis).toHaveLength(0);
+    expect(gone.existing).toEqual({ ended: true, ended_on: null });
+    expect(parseFree("it cleared up yesterday, feeling much better", today).existing).toEqual({ ended: true, ended_on: "2026-09-28" });
+    const fresh = parseFree("had one 2 weeks ago, burning, it's gone now", today);
+    expect(fresh.utis).toHaveLength(1);
+    expect(fresh.existing.ended).toBeNull();
   });
   it("keeps an answer that is not in any list as Other, tidied", () => {
     expect(freeTextAnswer("I think it might have been my shower gel")).toBe("Shower gel");

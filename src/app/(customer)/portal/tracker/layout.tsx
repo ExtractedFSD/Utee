@@ -2,6 +2,7 @@ import { loadPreventions, trackerContext } from "@/lib/tracker/data";
 import { aiAvailable } from "@/lib/tracker/guided/extract";
 import { ANTIBIOTIC_PREVENTIONS, preventionName } from "@/lib/tracker/prevention";
 import { isoDaysAgo } from "@/lib/tracker/stats";
+import { antibioticName } from "@/lib/tracker/search";
 import { ChatBubble } from "./components/ChatBubble";
 
 /**
@@ -13,6 +14,17 @@ export default async function TrackerLayout({ children }: { children: React.Reac
   const ctx = await trackerContext();
   const ready = ctx.consents.tracker && !!ctx.profile;
   const active = ready ? (await loadPreventions(ctx.supabase, ctx.user.id)).filter((p) => !p.stopped_on) : [];
+  // Open UTIs, newest first, with their antibiotics, so Una can close one and ask how it went.
+  const { data: openRows } = ready
+    ? await ctx.supabase.from("tracker_episodes").select("id, started_on, tracker_treatments(id, antibiotic_id, other_name, worked)").eq("user_id", ctx.user.id).is("ended_on", null).order("started_on", { ascending: false })
+    : { data: [] };
+  const openEpisodes = (openRows ?? []).map((e) => ({
+    id: e.id as string,
+    startedOn: e.started_on as string,
+    treatments: ((e.tracker_treatments ?? []) as { id: string; antibiotic_id: string; other_name: string | null; worked: string | null }[]).map((t) => ({ id: t.id, name: antibioticName(t.antibiotic_id, t.other_name), worked: t.worked })),
+  }));
+  const weekAgo = isoDaysAgo(7);
+  const stale = [...openEpisodes].reverse().find((e) => e.startedOn <= weekAgo) ?? null;
   const threeWeeksAgo = isoDaysAgo(21);
   const unrated = active.find((p) => !p.helping && (p.started_on ?? p.created_at.slice(0, 10)) <= threeWeeksAgo) ?? null;
   const antibiotic = active.find((p) => ANTIBIOTIC_PREVENTIONS.includes(p.option_key)) ?? null;
@@ -28,7 +40,9 @@ export default async function TrackerLayout({ children }: { children: React.Reac
         nudges={{
           unrated: unrated ? { id: unrated.id, name: preventionName(unrated) } : null,
           antibioticPrevention: antibiotic ? preventionName(antibiotic) : null,
+          staleOpen: stale ? stale.id : null,
         }}
+        openEpisodes={openEpisodes}
       />
     </>
   );

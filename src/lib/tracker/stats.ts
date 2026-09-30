@@ -95,9 +95,14 @@ export function summarise(
   };
 }
 
-export type Patterns = { triggers: string[]; antibiotics: string[]; symptoms: string[]; enough: boolean };
+export type PatternItem = { key: string; label: string; count: number };
+export type PatternAntibiotic = { name: string; worked: number; rated: number };
+export type Patterns = { total: number; enough: boolean; triggers: PatternItem[]; symptoms: PatternItem[]; antibiotics: PatternAntibiotic[] };
 
-/** Plain counts reflected back. No interpretation. */
+/**
+ * Plain counts reflected back, per UTI, with no interpretation. "Other" and
+ * "don't know" carry no meaning across UTIs, so they are left out.
+ */
 export function patterns(
   episodes: EpisodeRow[],
   symptoms: SymptomRow[],
@@ -115,14 +120,16 @@ export function patterns(
     }
     return [...seen.entries()].map(([k, eps]) => ({ key: k, count: eps.size })).sort((a, b) => b.count - a.count);
   };
+  const skip = new Set(["other", "dont_know"]);
   const trig = countPerEpisode(triggers, (r) => r.trigger)
-    .filter((x) => x.key !== "dont_know")
-    .slice(0, 3)
-    .map((x) => copy.patterns.trigger(labelFor(TRIGGERS, x.key), x.count, n));
+    .filter((x) => !skip.has(x.key))
+    .slice(0, 4)
+    .map((x) => ({ key: x.key, label: labelFor(TRIGGERS, x.key), count: x.count }));
   const sym = countPerEpisode(symptoms, (r) => r.symptom)
-    .slice(0, 3)
-    .map((x) => copy.patterns.symptom(labelFor(SYMPTOMS, x.key), x.count, n));
-  const rated = new Map<string, { worked: number; rated: number; name: string }>();
+    .filter((x) => !skip.has(x.key))
+    .slice(0, 4)
+    .map((x) => ({ key: x.key, label: labelFor(SYMPTOMS, x.key), count: x.count }));
+  const rated = new Map<string, PatternAntibiotic>();
   for (const t of treatments) {
     if (!t.worked || t.worked === "too_early") continue;
     const name = antibioticName(t.antibiotic_id, t.other_name);
@@ -131,11 +138,8 @@ export function patterns(
     if (t.worked === "yes") cur.worked += 1;
     rated.set(name, cur);
   }
-  const ab = [...rated.values()]
-    .sort((a, b) => b.rated - a.rated)
-    .slice(0, 3)
-    .map((x) => copy.patterns.antibiotic(x.name, x.worked, x.rated));
-  return { triggers: trig, antibiotics: ab, symptoms: sym, enough };
+  const ab = [...rated.values()].sort((a, b) => b.rated - a.rated).slice(0, 4);
+  return { total: n, enough, triggers: trig, symptoms: sym, antibiotics: ab };
 }
 
 /** Order chips by what this user logs most; unseen keys keep default order. */

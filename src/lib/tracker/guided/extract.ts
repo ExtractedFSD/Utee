@@ -53,7 +53,9 @@ The person may be describing UTIs they have had, changes to what they take or do
 UTIs (utis): ${PROMPTS.utis.slice(RULES.length).trim().replace(/^The person is describing[^\n]*\n/, "")}
 
 What they take (taking): ${PROMPTS.prevention.slice(RULES.length).trim()}
-An antibiotic taken as a course for a UTI belongs in that UTI's treatments, not in taking.`;
+An antibiotic taken as a course for a UTI belongs in that UTI's treatments, not in taking.
+
+The open UTI (existing): if the person says the UTI they already have has cleared up, gone, or they are better, set existing.ended true and existing.ended_on to the date if they give one. Leave utis empty in that case unless they clearly describe a different, new UTI.`;
 
 const SCHEMAS = { about: aboutSchema, prevention: preventionSchema, utis: utisSchema, free: freeSchema } as const;
 
