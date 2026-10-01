@@ -227,6 +227,20 @@ test.describe("QR landing", () => {
     await page.goto(`/k/${voided.code}`);
     await expect(page).toHaveURL("/portal?kit=voided");
     await expect(page.getByText("has been cancelled")).toBeVisible();
+
+    // No phone: type the code at /start. Typos are caught before leaving the page.
+    const real = await insertKit();
+    await page.goto("/start");
+    const wrongCheck = real.code.slice(0, 7) + (real.code[7] === "0" ? "1" : "0");
+    await page.getByLabel("Kit code").fill(wrongCheck);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByText("doesn't look like a Utee kit code")).toBeVisible();
+    await expect(page).toHaveURL("/start");
+    await page.getByLabel("Kit code").fill(` ut-${real.code.slice(0, 4).toLowerCase()}-${real.code.slice(4).toLowerCase()} `);
+    await expect(page.getByText(`We read that as UT-${real.code.slice(0, 4)}-${real.code.slice(4)}.`)).toBeVisible();
+    await page.getByRole("button", { name: "Continue" }).click();
+    // A printed, unassigned kit is claimed by whoever enters it: straight to the questionnaire.
+    await expect(page).toHaveURL(`/triage/${real.code}`);
     await ctx.close();
   });
 });
