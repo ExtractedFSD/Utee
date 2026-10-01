@@ -22,7 +22,8 @@ tracking.
    the QR before taking your sample*. Code rules live in
    `src/lib/kit-code.ts`; entry accepts any spelling (case, dashes, the UT
    prefix, I/L for 1 and O for 0) and rejects a wrong check character.
-3. **Activation** — The patient scans the QR (`/k/{code}`), signs in, completes
+3. **Activation** — The patient scans the QR (`/k/{code}`), or types the code
+   at `/start` if they have no phone to scan with, signs in, completes
    the symptom (triage) form and ticks consent, then takes the sample and posts
    it in the freepost return box. The form is four steps, defined in
    `src/lib/triage/questions.ts`: a safety check (eight yes/no warning signs;
