@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, PageHeader } from "@/components/ui";
 import { EmailLogTable, type EmailLogRow } from "@/components/EmailLogTable";
 import { formatKitCode } from "@/lib/kit-code";
+import { TestEmailButton } from "./TestEmailButton";
 
 /** Every email the portal has sent, newest first. Super admin only. */
 export default async function EmailsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
@@ -40,6 +41,12 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
           </div>
         }
       />
+      <Card>
+        <p className="text-sm text-slate-600 mb-3">
+          Sends a sample lab-query email to the admin notification address, through the same code every real email uses.
+        </p>
+        <TestEmailButton />
+      </Card>
       <Card>
         <EmailLogTable rows={rows} showKit />
       </Card>
