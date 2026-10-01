@@ -10,12 +10,14 @@ test("urologist appointment stays locked until a Utee test is on the account", a
   await page.goto("/portal");
   await expect(page.getByTestId("urologist-locked")).toContainText("Unlocked once you have a Utee test on your account");
   await expect(page.getByRole("link", { name: "Order a Utee test" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Coming soon" })).toHaveCount(0);
+  await expect(page.getByTestId("urologist").getByRole("link", { name: "Coming soon" })).toHaveCount(0);
+  await expect(page.getByTestId("community")).toContainText("Join the Utee Community");
+  await expect(page.getByTestId("community").getByRole("link", { name: "Coming soon" })).toBeVisible();
 
   const kit = await insertKit();
   await admin().from("kits").update({ customer_id: user.id, status: "shipped" }).eq("id", kit.id);
   await page.reload();
   await expect(page.getByTestId("urologist-locked")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Coming soon" })).toBeVisible();
+  await expect(page.getByTestId("urologist").getByRole("link", { name: "Coming soon" })).toBeVisible();
   await ctx.close();
 });
