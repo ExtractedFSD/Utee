@@ -152,6 +152,7 @@ export function TriageForm({ code }: { code: string }) {
   const [episodes6m, setEpisodes6m] = useState("");
   const [episodes12m, setEpisodes12m] = useState("");
   const [antibiotics, setAntibiotics] = useState<Chosen[]>([]);
+  const [addingAntibiotic, setAddingAntibiotic] = useState(false);
   const [selected, setSelected] = useState<Set<SymptomKey>>(new Set());
   const [noneOfThese, setNoneOfThese] = useState(false);
   const [change24h, setChange24h] = useState<number | undefined>();
@@ -215,6 +216,7 @@ export function TriageForm({ code }: { code: string }) {
 
   function addAntibiotic(id: string | null, other?: string) {
     if (!id) return;
+    setAddingAntibiotic(false);
     // "I don't know" stands alone: nothing to ask about it, nothing to add to it.
     if (id === ANTIBIOTIC_UNKNOWN) return setAntibiotics([{ id, name: antibioticName(id), worked: "unknown" }]);
     setAntibiotics((list) => [...list, { id, name: id === "other" ? other ?? "" : antibioticName(id) }]);
@@ -421,11 +423,22 @@ export function TriageForm({ code }: { code: string }) {
                     ))}
                   </ul>
                 )}
-                {!unknownAntibiotics && (
+                {!unknownAntibiotics && (antibiotics.length === 0 || addingAntibiotic) && (
                   <>
-                    <AntibioticPicker value={null} exclude={antibiotics.map((a) => a.id).filter((id) => id !== "other")} onChange={addAntibiotic} />
-                    <p className="text-xs text-slate-500">Leave this empty if you have not had antibiotics for a UTI.</p>
+                    <AntibioticPicker value={null} exclude={antibiotics.map((a) => a.id).filter((id) => id !== "other")} onChange={addAntibiotic} autoFocus={addingAntibiotic} />
+                    {antibiotics.length === 0 ? (
+                      <p className="text-xs text-slate-500">Leave this empty if you have not had antibiotics for a UTI.</p>
+                    ) : (
+                      <button type="button" onClick={() => setAddingAntibiotic(false)} className="text-sm font-semibold text-slate-500 hover:text-midnight">
+                        Cancel
+                      </button>
+                    )}
                   </>
+                )}
+                {!unknownAntibiotics && antibiotics.length > 0 && !addingAntibiotic && (
+                  <button type="button" onClick={() => setAddingAntibiotic(true)} className="text-sm font-semibold text-maroon">
+                    + Add another antibiotic
+                  </button>
                 )}
               </div>
             </>

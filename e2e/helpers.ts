@@ -404,6 +404,11 @@ export async function completeTriage(
       await expect(page.getByText("Did it work?")).toHaveCount(0);
     }
     for (const [i, a] of (opts.antibiotics ?? []).entries()) {
+      if (i > 0) {
+        // The picker folds away after the first one; the list stays.
+        await expect(page.getByRole("combobox", { name: "Search by name or brand" })).toHaveCount(0);
+        await page.getByRole("button", { name: "+ Add another antibiotic" }).click();
+      }
       await page.getByRole("combobox", { name: "Search by name or brand" }).fill(a.search);
       await page.getByRole("option").first().click();
       if (a.worked) await page.locator(`input[name="worked-${i}"][value="${a.worked}"]`).check();
