@@ -1,3 +1,5 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+
 const BRAND = "#91193b"; // Utee maroon
 const MIDNIGHT = "#1d003a";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -29,19 +31,59 @@ function button(href: string, label: string) {
 const p = (text: string) =>
   `<p style="font-size:15px;line-height:1.55;color:${MIDNIGHT};margin:0 0 12px;">${text}</p>`;
 
+export type EmailStatus = "sent" | "failed" | "skipped" | "delivered" | "bounced" | "complained" | "delivery_delayed";
+
 /**
- * Sends via Resend. Soft-fails (logs) when RESEND_API_KEY is unset so local
- * dev and webhook processing never break on email problems.
+ * Writes one email_log row per recipient. Never throws: a logging problem
+ * must not break the action that sent the email.
+ */
+async function logEmail(row: {
+  kitId?: string | null;
+  to: string[];
+  subject: string;
+  kind?: string;
+  status: EmailStatus;
+  providerId?: string | null;
+  error?: string | null;
+}) {
+  try {
+    const admin = createAdminClient();
+    await admin.from("email_log").insert(
+      row.to.map((to) => ({
+        kit_id: row.kitId ?? null,
+        to_email: to,
+        subject: row.subject,
+        kind: row.kind ?? null,
+        status: row.status,
+        provider_id: row.providerId ?? null,
+        error: row.error ?? null,
+      }))
+    );
+  } catch (err) {
+    console.error("[email] log failed", err);
+  }
+}
+
+/**
+ * Sends via Resend and records the attempt in email_log. Soft-fails (logs)
+ * when RESEND_API_KEY is unset so local dev and webhook processing never
+ * break on email problems.
  */
 export async function sendEmail(opts: {
   to: string | string[];
   subject: string;
   html: string;
-}) {
+  /** The kit this email is about, so it shows on the admin kit page. */
+  kitId?: string | null;
+  /** Template name, for filtering the log. */
+  kind?: string;
+}): Promise<{ ok: boolean; id?: string }> {
+  const to = Array.isArray(opts.to) ? opts.to : [opts.to];
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.log(`[email skipped, no RESEND_API_KEY] to=${opts.to} subject="${opts.subject}"`);
-    return;
+    console.log(`[email skipped, no RESEND_API_KEY] to=${to} subject="${opts.subject}"`);
+    await logEmail({ ...opts, to, status: "skipped", error: "RESEND_API_KEY not set" });
+    return { ok: false };
   }
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -52,16 +94,29 @@ export async function sendEmail(opts: {
       },
       body: JSON.stringify({
         from: process.env.EMAIL_FROM ?? "Utee <onboarding@resend.dev>",
-        to: Array.isArray(opts.to) ? opts.to : [opts.to],
+        to,
         subject: opts.subject,
         html: opts.html,
       }),
     });
+    const text = await res.text();
     if (!res.ok) {
-      console.error(`[email] Resend error ${res.status}: ${await res.text()}`);
+      console.error(`[email] Resend error ${res.status}: ${text}`);
+      await logEmail({ ...opts, to, status: "failed", error: `Resend ${res.status}: ${text.slice(0, 500)}` });
+      return { ok: false };
     }
+    let id: string | undefined;
+    try {
+      id = (JSON.parse(text) as { id?: string }).id;
+    } catch {
+      // Resend always returns JSON; keep going without the id if not.
+    }
+    await logEmail({ ...opts, to, status: "sent", providerId: id ?? null });
+    return { ok: true, id };
   } catch (err) {
     console.error("[email] send failed", err);
+    await logEmail({ ...opts, to, status: "failed", error: err instanceof Error ? err.message : String(err) });
+    return { ok: false };
   }
 }
 
@@ -140,6 +195,47 @@ export const emails = {
       "New specimen on its way",
       p(`Specimen <strong>${kitCode}</strong> has been activated by the patient and the return parcel is in transit. Scan the QR code on the pot when it arrives to confirm receipt.`) +
         button(`${APP_URL}/lab`, "Open lab portal")
+    ),
+  }),
+
+  labSpecimenDelivered: (kitCode: string) => ({
+    subject: `Specimen ${kitCode} delivered to you`,
+    html: wrap(
+      "Specimen delivered",
+      p(`Royal Mail reports that specimen <strong>${kitCode}</strong> has been delivered to the laboratory. Please scan the QR code on the bag to confirm receipt and start the test.`) +
+        button(`${APP_URL}/lab`, "Open lab portal")
+    ),
+  }),
+
+  labWaitingSince: (kitCode: string) => ({
+    subject: `Specimen ${kitCode} awaiting results`,
+    html: wrap(
+      "Specimen awaiting results",
+      p(`Specimen <strong>${kitCode}</strong> was confirmed received but no result has been recorded yet.`) +
+        button(`${APP_URL}/lab`, "Open lab portal")
+    ),
+  }),
+
+  adminLabQuery: (kitCode: string, reasons: string[], note?: string) => ({
+    subject: `Lab query on specimen ${kitCode}`,
+    html: wrap(
+      "Test invalid, lab is troubleshooting",
+      p(`The laboratory recorded an invalid run for specimen <strong>${kitCode}</strong>:`) +
+        `<ul style="font-size:15px;line-height:1.55;color:${MIDNIGHT};margin:0 0 12px 20px;padding:0;">${reasons.map((r) => `<li>${r}</li>`).join("")}</ul>` +
+        (note ? p(`Lab note: ${note}`) : "") +
+        p("The kit is held in the lab query state. The lab can re-run the test, or escalate it to Utee if the sample can't be re-tested.") +
+        button(`${APP_URL}/admin`, "Open admin")
+    ),
+  }),
+
+  adminLabEscalation: (kitCode: string, note: string) => ({
+    subject: `Lab escalation on specimen ${kitCode}`,
+    html: wrap(
+      "Specimen escalated by the lab",
+      p(`The laboratory could not complete the test for specimen <strong>${kitCode}</strong> and has escalated it to Utee.`) +
+        p(`Lab note: ${note}`) +
+        p("Decide whether to send the patient a replacement kit or close the case, then update the kit from the admin page.") +
+        button(`${APP_URL}/admin`, "Open admin")
     ),
   }),
 

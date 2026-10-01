@@ -7,13 +7,14 @@ export type KitStatus =
   | "activated"
   | "in_transit_to_lab"
   | "received_by_lab"
+  | "lab_query"
   | "lab_complete"
   | "clinic_received"
   | "report_ready"
   | "closed"
   | "voided";
 
-export type Role = "customer" | "lab" | "clinic" | "admin" | "super_admin";
+export type Role = "customer" | "lab" | "clinic" | "fulfilment" | "admin" | "super_admin";
 
 /** Order of the pipeline, used for the admin funnel and timeline rendering. */
 export const KIT_PIPELINE: KitStatus[] = [
@@ -25,6 +26,7 @@ export const KIT_PIPELINE: KitStatus[] = [
   "activated",
   "in_transit_to_lab",
   "received_by_lab",
+  "lab_query",
   "lab_complete",
   "clinic_received",
   "report_ready",
@@ -44,6 +46,7 @@ export const KIT_STATUS_LABELS: Record<KitStatus, string> = {
   activated: "Symptoms submitted",
   in_transit_to_lab: "Sample on its way to the lab",
   received_by_lab: "Received by lab",
+  lab_query: "Lab is checking your sample",
   lab_complete: "Lab analysis complete",
   clinic_received: "With the clinical team",
   report_ready: "Your report is ready",
@@ -61,6 +64,7 @@ export const KIT_STATUS_ADMIN_LABELS: Record<KitStatus, string> = {
   activated: "Triage submitted",
   in_transit_to_lab: "Returning to lab",
   received_by_lab: "At lab",
+  lab_query: "Lab query",
   lab_complete: "Awaiting clinic",
   clinic_received: "Clinic reviewing",
   report_ready: "Report ready",
@@ -77,6 +81,7 @@ export const KIT_STATUS_COLORS: Record<KitStatus, string> = {
   activated: "bg-lavender-50 text-violet-800",
   in_transit_to_lab: "bg-sun text-amber-800",
   received_by_lab: "bg-sun text-amber-800",
+  lab_query: "bg-peach-50 text-maroon",
   lab_complete: "bg-pink-50 text-maroon",
   clinic_received: "bg-pink-50 text-maroon",
   report_ready: "bg-mint text-emerald-800",
@@ -101,6 +106,8 @@ export function homeForRole(role: Role): string {
       return "/lab";
     case "clinic":
       return "/clinic";
+    case "fulfilment":
+      return "/fulfilment";
     case "admin":
     case "super_admin":
       return "/admin";

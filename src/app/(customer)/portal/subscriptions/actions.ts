@@ -32,6 +32,7 @@ export async function skipDelivery(subscriptionId: string) {
     .eq("id", sub.id);
   await sendEmail({
     to: user.email,
+    kind: "subscriptionChanged",
     ...emails.subscriptionChanged(
       "skipped",
       sub.product_title,
@@ -58,6 +59,7 @@ export async function delayDelivery(subscriptionId: string, newDate: string) {
     .eq("id", sub.id);
   await sendEmail({
     to: user.email,
+    kind: "subscriptionChanged",
     ...emails.subscriptionChanged(
       "delayed",
       sub.product_title,
@@ -81,6 +83,7 @@ export async function cancelSub(subscriptionId: string, reason: string) {
     .eq("id", sub.id);
   await sendEmail({
     to: user.email,
+    kind: "subscriptionChanged",
     ...emails.subscriptionChanged(
       "cancelled",
       sub.product_title,

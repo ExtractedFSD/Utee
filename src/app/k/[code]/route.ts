@@ -42,10 +42,11 @@ export async function GET(
 
   // A voided code is dead for everyone except admins, who can see why.
   if (kit.status === "voided" && profile?.role !== "admin" && profile?.role !== "super_admin") {
-    const home = profile?.role === "lab" ? "/lab" : profile?.role === "clinic" ? "/clinic" : "/portal";
+    const home =
+      profile?.role === "lab" ? "/lab" : profile?.role === "clinic" ? "/clinic" : profile?.role === "fulfilment" ? "/fulfilment" : "/portal";
     return NextResponse.redirect(url(`${home}?kit=voided`));
   }
-  if (kit.status === "generated" && !["admin", "super_admin", "lab", "clinic"].includes(profile?.role ?? "")) {
+  if (kit.status === "generated" && !["admin", "super_admin", "lab", "clinic", "fulfilment"].includes(profile?.role ?? "")) {
     // Not printed yet, so nobody outside Utee can be holding it.
     return NextResponse.redirect(url(`/portal?kit=not-found`));
   }
@@ -55,6 +56,8 @@ export async function GET(
       return NextResponse.redirect(url(`/lab/specimen/${kit.code}`));
     case "clinic":
       return NextResponse.redirect(url(`/clinic/case/${kit.id}`));
+    case "fulfilment":
+      return NextResponse.redirect(url(`/fulfilment?code=${kit.code}`));
     case "admin":
     case "super_admin":
       return NextResponse.redirect(url(`/admin/kits/${kit.id}`));

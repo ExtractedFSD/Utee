@@ -169,19 +169,20 @@ test("store kit: order to report", async ({ browser, request }) => {
     expect(html).not.toContain("E2E test submission");
     await labPage.getByRole("button", { name: "Confirm specimen received" }).click();
     await expectKitStatus(code, "received_by_lab");
-    await labPage.locator('select[name="outcome"]').selectOption("positive");
-    await labPage.locator('input[name="organism"]').fill("Escherichia coli");
-    await labPage.locator('input[name="colonyCount"]').fill(">10^5 CFU/mL");
-    await labPage.locator('textarea[name="sensitivities"]').fill("Sensitive: nitrofurantoin");
+    await labPage.locator('input[name="organism"][value="e_coli"]').check();
+    await labPage.locator('input[name="control_positive"]').check();
+    await labPage.locator('textarea[name="comments"]').fill("Clear positive band");
     await labPage.locator('input[name="report"]').setInputFiles({
       name: "lab.pdf",
       mimeType: "application/pdf",
       buffer: samplePdf("Lab report"),
     });
     await labPage.locator('input[name="confirmCode"]').fill(code);
-    await labPage.getByRole("button", { name: "Submit results to clinic" }).click();
+    await labPage.getByRole("button", { name: "Record results" }).click();
     await expectKitStatus(code, "lab_complete");
     expect((await listStorage("lab-reports", code)).length).toBe(1);
+    const { data: saved } = await admin().from("lab_results").select("outcome, organism, organisms, valid").eq("kit_id", kitId).single();
+    expect(saved).toEqual({ outcome: "positive", organism: "Escherichia coli", organisms: ["e_coli"], valid: true });
   });
 
   await test.step("Customer sees progress but never raw results", async () => {
@@ -206,7 +207,7 @@ test("store kit: order to report", async ({ browser, request }) => {
     await clinicPage.goto(`/k/${code}`);
     await expect(clinicPage).toHaveURL(`/clinic/case/${kitId}`);
     await expect(clinicPage.getByText(customerName).first()).toBeVisible();
-    await expect(clinicPage.getByText("Escherichia coli").first()).toBeVisible();
+    await expect(clinicPage.getByText("Positive for: Escherichia coli")).toBeVisible();
     await expect(clinicPage.getByText("No warning signs reported.")).toBeVisible();
     await expect(clinicPage.getByText("Research use agreed")).toBeVisible();
     await expect(clinicPage.getByText("Had a UTI before:")).toBeVisible();
@@ -259,6 +260,11 @@ test("store kit: order to report", async ({ browser, request }) => {
 
   await test.step("Super admin rolls back the report and the PDF is removed", async () => {
     await adminPage.goto(`/admin/kits/${kitId}`);
+    // Every email about this kit was logged; the super admin can see them.
+    const { data: logged } = await admin().from("email_log").select("kind, status, to_email").eq("kit_id", kitId);
+    expect((logged ?? []).map((l) => l.kind)).toEqual(expect.arrayContaining(["kitShipped", "triageReceived", "receivedByLab", "labComplete", "reportReady"]));
+    expect((logged ?? []).every((l) => ["sent", "failed", "skipped", "delivered", "bounced"].includes(l.status))).toBe(true);
+    await expect(adminPage.getByTestId("email-log")).toContainText("Your Utee report is ready to download");
     await adminPage.getByPlaceholder(/Reason \(required/).fill("E2E: testing rollback");
     await adminPage.getByRole("button", { name: "Roll back stage" }).click();
     await expectKitStatus(code, "clinic_received");

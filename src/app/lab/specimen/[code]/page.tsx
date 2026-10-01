@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatKitCode } from "@/lib/kit-code";
 import { Card, CardTitle, PageHeader, StatusBadge, Pill } from "@/components/ui";
 import { formatDateTime, type KitStatus } from "@/lib/status";
-import { SpecimenActions } from "./SpecimenActions";
+import { LabQueryActions, SpecimenActions } from "./SpecimenActions";
+import { judgeSheet, type Controls, type UropathogenKey } from "@/lib/lab-sheet";
 
 /**
  * Lab specimen page, reached by scanning the QR on the urine pot. Shows the
@@ -28,13 +29,21 @@ export default async function SpecimenPage({
 
   const { data: result } = await admin
     .from("lab_results")
-    .select("outcome, organism, colony_count, comments, uploaded_at, report_path")
+    .select("outcome, organism, organisms, controls, valid, comments, uploaded_at, report_path, previous_attempts")
     .eq("kit_id", kit.id)
     .maybeSingle();
 
   const status = kit.status as KitStatus;
   const canReceive = ["activated", "in_transit_to_lab"].includes(status);
-  const canUpload = status === "received_by_lab" && !result;
+  const canRecord = status === "received_by_lab";
+  const attempts = ((result?.previous_attempts as unknown[]) ?? []).length + (result ? 1 : 0);
+  const reasons =
+    result && !result.valid
+      ? (() => {
+          const v = judgeSheet({ organisms: (result.organisms as UropathogenKey[]) ?? [], controls: result.controls as Controls });
+          return v.valid ? [] : v.reasons;
+        })()
+      : [];
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -44,7 +53,9 @@ export default async function SpecimenPage({
         action={<StatusBadge status={status} />}
       />
 
-      {result ? (
+      {status === "lab_query" && <LabQueryActions code={kit.code} reasons={reasons} />}
+
+      {result && !canRecord && status !== "lab_query" ? (
         <Card>
           <CardTitle>Results on file</CardTitle>
           <div className="space-y-2 text-sm text-slate-700">
@@ -54,15 +65,17 @@ export default async function SpecimenPage({
                 {result.outcome}
               </Pill>
             </p>
-            {result.organism && <p>Organism: {result.organism}</p>}
-            {result.colony_count && <p>Colony count: {result.colony_count}</p>}
+            {result.organism && <p>Positive for: {result.organism}</p>}
             {result.comments && <p>Comments: {result.comments}</p>}
-            {result.report_path && <p>PDF report attached.</p>}
-            <p className="text-xs text-slate-400">Uploaded {formatDateTime(result.uploaded_at)}</p>
+            {result.report_path && <p>PDF attached.</p>}
+            {attempts > 1 && <p className="text-xs text-slate-500">Run {attempts}; earlier runs are kept on file.</p>}
+            <p className="text-xs text-slate-400">Recorded {formatDateTime(result.uploaded_at)}</p>
           </div>
         </Card>
       ) : (
-        <SpecimenActions code={kit.code} canReceive={canReceive} canUpload={canUpload} />
+        status !== "lab_query" && (
+          <SpecimenActions code={kit.code} canReceive={canReceive} canRecord={canRecord} attempt={attempts + 1} />
+        )
       )}
     </div>
   );

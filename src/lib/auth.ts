@@ -36,7 +36,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 /**
  * Guard for layouts/pages/actions. Redirects to login when signed out and to
  * the user's own area when they lack the required role. Admins can enter the
- * lab/clinic areas; super_admin can enter everything.
+ * lab, clinic and fulfilment areas; super_admin can enter everything.
  */
 export async function requireRole(allowed: Role[]): Promise<SessionUser> {
   const user = await getSessionUser();
@@ -44,7 +44,7 @@ export async function requireRole(allowed: Role[]): Promise<SessionUser> {
 
   const effectiveAllowed = new Set<Role>(allowed);
   effectiveAllowed.add("super_admin");
-  if (allowed.includes("lab") || allowed.includes("clinic")) {
+  if (allowed.includes("lab") || allowed.includes("clinic") || allowed.includes("fulfilment")) {
     effectiveAllowed.add("admin");
   }
 

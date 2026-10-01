@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Card, CardTitle, Button, Field, inputClass } from "@/components/ui";
 import { formatDate } from "@/lib/status";
 import { formatKitCode, normalizeKitCode } from "@/lib/kit-code";
-import { dispatchKit, prepareRetailKit } from "../actions";
+import { dispatchKit, prepareRetailKit } from "@/app/admin/actions";
 
 type PendingOrder = { id: string; order_number: string; email: string; placed_at: string };
 
@@ -16,10 +16,10 @@ function shown(raw: string) {
   return code ? formatKitCode(code) : raw.trim().toUpperCase();
 }
 
-export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
+export function KitTools({ pendingOrders, initialCode }: { pendingOrders: PendingOrder[]; initialCode?: string }) {
   const [pending, startTransition] = useTransition();
 
-  const [kitCode, setKitCode] = useState("");
+  const [kitCode, setKitCode] = useState(initialCode ?? "");
   const [orderQuery, setOrderQuery] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
   const [outboundTracking, setOutboundTracking] = useState("");

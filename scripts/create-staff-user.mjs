@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Create a staff user (lab / clinic / admin / super_admin) or a test customer.
+ * Create a staff user (lab / clinic / fulfilment / admin / super_admin) or a test customer.
  *
  *   node scripts/create-staff-user.mjs <email> <role> ["Full Name"]
  *
@@ -11,7 +11,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 const [email, role, fullName] = process.argv.slice(2);
-const valid = ["customer", "lab", "clinic", "admin", "super_admin"];
+const valid = ["customer", "lab", "clinic", "fulfilment", "admin", "super_admin"];
 
 if (!email || !valid.includes(role)) {
   console.error(`Usage: node scripts/create-staff-user.mjs <email> <${valid.join("|")}> ["Full Name"]`);

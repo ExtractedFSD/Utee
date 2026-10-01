@@ -1,5 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { logKitEvent } from "@/lib/events";
+import { emails, sendEmail } from "@/lib/email";
+import { formatKitCode } from "@/lib/kit-code";
 
 /**
  * Parcel tracking abstraction.
@@ -34,7 +36,7 @@ export async function applyTrackingEvent(
   // into a silent "no match" that the carrier would never retry.
   const { data: shipments, error: lookupError } = await admin
     .from("shipments")
-    .select("id, kit_id, direction, status, events, kits:kit_id(status)")
+    .select("id, kit_id, direction, status, events, kits:kit_id(status, code)")
     .eq("tracking_number", event.trackingNumber)
     .limit(2);
   if (lookupError) {
@@ -63,8 +65,9 @@ export async function applyTrackingEvent(
     return { matched: true, error: "shipment update failed" };
   }
 
-  const kit = shipment.kits as unknown as { status: string } | null;
+  const kit = shipment.kits as unknown as { status: string; code: string } | null;
   const isOutbound = shipment.direction === "outbound";
+  const alreadyDelivered = (shipment.events as { status?: string }[]).some((e) => e?.status === "delivered");
 
   if (isOutbound && event.status === "delivered" && kit?.status === "shipped") {
     await logKitEvent(admin, {
@@ -91,6 +94,12 @@ export async function applyTrackingEvent(
       detail: event.location,
       metadata: { trackingNumber: event.trackingNumber, status: event.status },
     });
+    // The sample has reached the lab's door; the lab still confirms by scanning.
+    const labEmail = process.env.LAB_NOTIFICATION_EMAIL;
+    if (!isOutbound && event.status === "delivered" && !alreadyDelivered && labEmail && kit &&
+      ["activated", "in_transit_to_lab"].includes(kit.status)) {
+      await sendEmail({ to: labEmail, kitId: shipment.kit_id, kind: "labSpecimenDelivered", ...emails.labSpecimenDelivered(formatKitCode(kit.code)) });
+    }
   }
 
   return { matched: true };

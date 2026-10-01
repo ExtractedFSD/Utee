@@ -17,11 +17,12 @@ export default async function LabHome({ searchParams }: { searchParams: Promise<
   const { data: kits } = await admin
     .from("kits")
     .select("id, code, status, activated_at, received_by_lab_at")
-    .in("status", ["activated", "in_transit_to_lab", "received_by_lab"])
+    .in("status", ["activated", "in_transit_to_lab", "received_by_lab", "lab_query"])
     .order("activated_at", { ascending: true });
 
-  const inbound = kits?.filter((k) => k.status !== "received_by_lab") ?? [];
+  const inbound = kits?.filter((k) => ["activated", "in_transit_to_lab"].includes(k.status)) ?? [];
   const awaitingResults = kits?.filter((k) => k.status === "received_by_lab") ?? [];
+  const queries = kits?.filter((k) => k.status === "lab_query") ?? [];
 
   const row = (kit: { id: string; code: string; status: string; activated_at: string | null }) => (
     <li key={kit.id}>
@@ -46,6 +47,12 @@ export default async function LabHome({ searchParams }: { searchParams: Promise<
       />
       {kitFlag === "voided" && (
         <Notice>That kit code has been cancelled by Utee. Do not process the sample; set it aside and contact Utee.</Notice>
+      )}
+      {queries.length > 0 && (
+        <Card className="border-2 border-maroon/30">
+          <CardTitle>Needs attention: test invalid ({queries.length})</CardTitle>
+          <ul className="divide-y divide-slate-100">{queries.map(row)}</ul>
+        </Card>
       )}
       <div className="grid gap-6 md:grid-cols-2">
         <Card>

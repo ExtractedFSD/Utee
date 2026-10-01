@@ -8,6 +8,7 @@ import { applyTrackingEvent } from "@/lib/tracking";
 import { sendEmail, emails } from "@/lib/email";
 import { KIT_REVERT_MAP, type KitStatus } from "@/lib/status";
 import { formatKitCode, generateKitCode, normalizeKitCode } from "@/lib/kits";
+import { registerShipment, trackshipEnabled } from "@/lib/trackship";
 
 /** Pre-print a batch of kit QR labels (status 'created', unassigned stock). */
 const BATCH_MAX = 5000;
@@ -142,7 +143,7 @@ export async function voidKit(kitId: string, reason: string) {
  * ('created') and claimable.
  */
 export async function prepareRetailKit(input: { kitCode: string; returnTracking: string }) {
-  const user = await requireRole(["admin"]);
+  const user = await requireRole(["admin", "fulfilment"]);
   const admin = createAdminClient();
 
   const kitCode = normalizeKitCode(input.kitCode);
@@ -190,12 +191,14 @@ export async function prepareRetailKit(input: { kitCode: string; returnTracking:
     type: "fulfilment",
     label: "Prepared for retail",
     detail: `Return label ${returnTrk} attached; awaiting registration by the buyer.`,
-    actorRole: "admin",
+    actorRole: user.role,
     actorId: user.id,
     visibleToCustomer: false,
   });
+  await registerTracking(admin, kit.id, kitCode, [returnTrk]);
 
   revalidatePath("/admin/kits");
+  revalidatePath("/fulfilment");
   return { ok: true };
 }
 
@@ -209,7 +212,7 @@ export async function dispatchKit(input: {
   outboundTracking: string;
   returnTracking: string;
 }) {
-  const user = await requireRole(["admin"]);
+  const user = await requireRole(["admin", "fulfilment"]);
   const admin = createAdminClient();
 
   const kitCode = normalizeKitCode(input.kitCode);
@@ -300,7 +303,7 @@ export async function dispatchKit(input: {
     kitId: kit.id,
     type: "fulfilment",
     label: `Kit assigned to order ${order.order_number}`,
-    actorRole: "admin",
+    actorRole: user.role,
     actorId: user.id,
     visibleToCustomer: false,
   });
@@ -309,15 +312,38 @@ export async function dispatchKit(input: {
     type: "fulfilment",
     label: "Your test kit has been dispatched",
     detail: "Sent via Royal Mail Tracked. Scan the QR code inside before taking your sample.",
-    actorRole: "admin",
+    actorRole: user.role,
     actorId: user.id,
     newStatus: "shipped",
   });
+  await registerTracking(admin, kit.id, kitCode, [outbound, returnTrk]);
 
-  await sendEmail({ to: order.email, ...emails.kitShipped(shown, outbound) });
+  await sendEmail({ to: order.email, kitId: kit.id, kind: "kitShipped", ...emails.kitShipped(shown, outbound) });
 
   revalidatePath("/admin/kits");
+  revalidatePath("/fulfilment");
   return { ok: true };
+}
+
+/**
+ * Hands the tracking numbers to TrackShip when it is the configured
+ * provider. Failures are logged against the kit, never thrown: the parcel
+ * has already gone, and an admin can see on the kit page that tracking
+ * didn't register.
+ */
+async function registerTracking(admin: ReturnType<typeof createAdminClient>, kitId: string, kitCode: string, trackingNumbers: string[]) {
+  if (!trackshipEnabled()) return;
+  for (const trackingNumber of trackingNumbers) {
+    const result = await registerShipment({ trackingNumber, orderRef: formatKitCode(kitCode) });
+    await logKitEvent(admin, {
+      kitId,
+      type: "tracking",
+      label: result.ok ? `Tracking registered: ${trackingNumber}` : `Tracking registration failed: ${trackingNumber}`,
+      detail: result.ok ? "TrackShip will post status updates for this parcel." : result.error,
+      visibleToCustomer: false,
+      metadata: { provider: "trackship", trackingNumber, ok: result.ok, raw: result.raw ?? null },
+    });
+  }
 }
 
 /**

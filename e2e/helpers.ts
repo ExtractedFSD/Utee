@@ -64,7 +64,7 @@ export function anonClient(): SupabaseClient {
   );
 }
 
-export type Role = "customer" | "lab" | "clinic" | "admin" | "super_admin";
+export type Role = "customer" | "lab" | "clinic" | "fulfilment" | "admin" | "super_admin";
 
 export function emailFor(label: string) {
   return `e2e-${label}-${RUN}@${TEST_EMAIL_DOMAIN}`;
@@ -301,7 +301,9 @@ export async function newestPrintedKitCode(): Promise<string> {
 }
 
 /** Inserts a printed-but-unassigned kit directly (for tests that don't cover the batch UI). */
-export async function insertKit(status: "printed" | "generated" | "voided" = "printed"): Promise<{ id: string; code: string }> {
+export async function insertKit(
+  status: "printed" | "generated" | "voided" | "received_by_lab" | "lab_query" = "printed"
+): Promise<{ id: string; code: string }> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateKitCode();
     const { data, error } = await admin().from("kits").insert({ code, status }).select("id, code").single();
