@@ -78,11 +78,11 @@ test("store kit: order to report", async ({ browser, request }) => {
 
   await test.step("Admin dispatches the kit against the order", async () => {
     await adminPage.goto("/admin/kits");
-    const dispatch = card(adminPage, "2 · Dispatch a kit");
+    const dispatch = card(adminPage, "1 · Dispatch a kit");
     // Typed the way it is printed on the label, dashes and all.
     await dispatch.getByLabel("Kit code").fill(formatKitCode(code));
     await dispatch.getByLabel("Find order").fill(`E2E${orderId}`);
-    await dispatch.getByLabel("Order").selectOption(`#E2E${orderId}`);
+    await dispatch.locator("select").selectOption(`#E2E${orderId}`);
     await dispatch.getByLabel("Outbound tracking no.").fill(outbound);
     await dispatch.getByLabel("Return tracking no.").fill(returnTrk);
     await dispatch.getByRole("button", { name: "Dispatch kit" }).click();

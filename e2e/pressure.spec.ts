@@ -130,7 +130,7 @@ test.describe("Dispatch validation", () => {
     await page.goto("/admin/kits");
     const dispatch = card(page, "1 · Dispatch a kit");
     await dispatch.getByLabel("Kit code").fill(fresh.code);
-    await dispatch.getByLabel("Order").selectOption(`#E2E${orderId}`);
+    await dispatch.locator("select").selectOption(`#E2E${orderId}`);
 
     const same = trackingNumber("SAME");
     await dispatch.getByLabel("Outbound tracking no.").fill(same);
@@ -143,7 +143,7 @@ test.describe("Dispatch validation", () => {
     await dispatch.getByRole("button", { name: "Dispatch kit" }).click();
     await expect(dispatch.getByText(new RegExp(`${usedTrk} is already used on ${existing.code}`))).toBeVisible();
 
-    expect((await kitByCode(fresh.code))?.status).toBe("created");
+    expect((await kitByCode(fresh.code))?.status).toBe("printed");
     const { data: shipments } = await admin().from("shipments").select("id").eq("kit_id", fresh.id);
     expect(shipments ?? []).toHaveLength(0);
     await ctx.close();

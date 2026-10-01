@@ -39,6 +39,7 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
   await test.step("Admin attaches the return label to a printed kit", async () => {
     code = (await insertKit()).code;
 
+    await adminPage.goto("/admin/kits");
     const retail = card(adminPage, "2 · Prepare a retail kit");
     await retail.getByLabel("Kit code").fill(code.toLowerCase());
     await retail.getByLabel("Return tracking no.").fill(returnTrk);
@@ -64,12 +65,12 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
     await adminPage.goto("/admin/kits");
     const dispatch = card(adminPage, "1 · Dispatch a kit");
     await dispatch.getByLabel("Kit code").fill(code);
-    await dispatch.getByLabel("Order").selectOption(`#E2E${orderId}`);
+    await dispatch.locator("select").selectOption(`#E2E${orderId}`);
     await dispatch.getByLabel("Outbound tracking no.").fill(trackingNumber("X"));
     await dispatch.getByLabel("Return tracking no.").fill(trackingNumber("Y"));
     await dispatch.getByRole("button", { name: "Dispatch kit" }).click();
     await expect(dispatch.getByText(/prepared for retail/)).toBeVisible();
-    expect((await kitByCode(code))?.status).toBe("created");
+    expect((await kitByCode(code))?.status).toBe("printed");
   });
 
   const buyerCtx = await browser.newContext();
@@ -157,7 +158,7 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
     await loginAs(labCtx, lab.email);
     const labPage = await labCtx.newPage();
     await labPage.goto("/lab");
-    await expect(labPage.getByRole("link", { name: new RegExp(code) })).toBeVisible();
+    await expect(labPage.getByRole("link", { name: new RegExp(formatKitCode(code)) })).toBeVisible();
     await labPage.goto(`/k/${code}`);
     await expect(labPage).toHaveURL(`/lab/specimen/${code}`);
     expect(await labPage.content()).not.toContain(buyerEmail);
