@@ -39,9 +39,13 @@ tracking.
    any safety flags.
 4. **Transit** — With `TRACKING_PROVIDER=trackship`, both tracking numbers
    are registered with TrackShip at dispatch (`src/lib/trackship.ts`) and
-   its status webhooks land at `/api/webhooks/trackship?secret=…`; the
-   generic `/api/webhooks/tracking` shape still works for any other
-   carrier feed. Events appear on the customer's timeline for both
+   its status webhooks land at `/api/webhooks/trackship`, authenticated by
+   the API key TrackShip echoes in its `trackship-api-key` header (set the
+   URL under "Connect a Store" > "Tracking API App"; the App Name there is
+   `TRACKSHIP_APP_NAME`). Scan times arrive without a zone and are read as
+   Europe/London. Admins can pull the latest state with "Refresh from
+   TrackShip" on the kit page. The generic `/api/webhooks/tracking` shape
+   still works for any other carrier feed. Events appear on the customer's timeline for both
    directions, and the lab is emailed when the return parcel is delivered.
 5. **Lab** — The lab scans the QR on the bag → sees the *specimen number only*
    (never patient identity), confirms receipt, runs the Lodestar rapid

@@ -330,3 +330,38 @@ test.describe("Fulfilment role", () => {
     await ctx.close();
   });
 });
+
+test.describe("TrackShip webhook", () => {
+  test("accepts the documented payload, authenticated by the shared secret, and moves the kit", async ({ request }) => {
+    const kit = await insertKit();
+    await admin().from("kits").update({ status: "activated" }).eq("id", kit.id);
+    const trk = trackingNumber("TS");
+    await admin().from("shipments").insert({ kit_id: kit.id, direction: "return", tracking_number: trk });
+    const payload = {
+      order_id: "41086",
+      tracking_number: trk,
+      tracking_provider: "royal-mail",
+      tracking_event_status: "in_transit",
+      last_event_time: "2026-10-01 09:15:00",
+      events: [
+        { message: "Item received", status: "pre_transit", datetime: "2026-10-01 08:00:00", tracking_location: { city: "Reading", state: "", country: "", zip: "" } },
+        { message: "Item at sorting centre", status: "in_transit", datetime: "2026-10-01 09:15:00", tracking_location: { city: "Swindon", state: "", country: "GB", zip: "" } },
+      ],
+      destination_events: null,
+    };
+    const secret = process.env.TRACKING_WEBHOOK_SECRET!;
+    const denied = await request.post("/api/webhooks/trackship", { data: payload, headers: { "trackship-api-key": "wrong" } });
+    expect(denied.status()).toBe(401);
+    const res = await request.post(`/api/webhooks/trackship?secret=${encodeURIComponent(secret)}`, { data: payload });
+    expect(res.status()).toBe(200);
+    expect(await res.json()).toEqual({ matched: true });
+    await expectKitStatus(kit.code, "in_transit_to_lab");
+    const { data: shipment } = await admin().from("shipments").select("status, last_event").eq("tracking_number", trk).single();
+    expect(shipment).toEqual({ status: "in_transit", last_event: "Item at sorting centre" });
+    const events = await kitEvents(kit.id);
+    expect(events.map((e) => e.label)).toContain("Sample on its way to the lab");
+    // A test ping from the TrackShip dashboard carries no shipment and must still get a 200.
+    const ping = await request.post(`/api/webhooks/trackship?secret=${encodeURIComponent(secret)}`, { data: { hello: "trackship" } });
+    expect(ping.status()).toBe(200);
+  });
+});

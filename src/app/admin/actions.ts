@@ -8,7 +8,7 @@ import { applyTrackingEvent } from "@/lib/tracking";
 import { sendEmail, emails } from "@/lib/email";
 import { KIT_REVERT_MAP, type KitStatus } from "@/lib/status";
 import { formatKitCode, generateKitCode, normalizeKitCode } from "@/lib/kits";
-import { registerShipment, trackshipEnabled } from "@/lib/trackship";
+import { getShipment, registerShipment, trackingEventFromWebhook, trackshipEnabled } from "@/lib/trackship";
 
 /** Pre-print a batch of kit QR labels (status 'created', unassigned stock). */
 const BATCH_MAX = 5000;
@@ -344,6 +344,37 @@ async function registerTracking(admin: ReturnType<typeof createAdminClient>, kit
       metadata: { provider: "trackship", trackingNumber, ok: result.ok, raw: result.raw ?? null },
     });
   }
+}
+
+/** Pulls the current state of both parcels from TrackShip and records anything new. */
+export async function refreshTracking(kitId: string) {
+  await requireRole(["admin"]);
+  if (!trackshipEnabled()) return { error: "TrackShip is not the configured tracking provider" };
+  const admin = createAdminClient();
+  const { data: shipments } = await admin.from("shipments").select("tracking_number, direction, last_event").eq("kit_id", kitId);
+  if (!shipments?.length) return { error: "No shipments on this kit" };
+
+  const notes: string[] = [];
+  for (const s of shipments) {
+    const { data, error } = await getShipment(s.tracking_number);
+    if (!data) {
+      notes.push(`${s.direction}: ${error ?? "nothing from TrackShip"}`);
+      continue;
+    }
+    const { event, status } = trackingEventFromWebhook(data);
+    if (!event) {
+      notes.push(`${s.direction}: ${status ?? "no status"} (nothing to record)`);
+      continue;
+    }
+    if (event.description === s.last_event) {
+      notes.push(`${s.direction}: no change (${event.description})`);
+      continue;
+    }
+    const result = await applyTrackingEvent(admin, event);
+    notes.push(result.error ? `${s.direction}: ${result.error}` : `${s.direction}: ${event.description}`);
+  }
+  revalidatePath(`/admin/kits/${kitId}`);
+  return { ok: true, message: notes.join(" · ") };
 }
 
 /**

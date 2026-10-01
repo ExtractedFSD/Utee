@@ -128,6 +128,7 @@ export default async function AdminKitPage({
             kitId={kit.id}
             status={status}
             mockTracking={process.env.TRACKING_PROVIDER === "mock"}
+            trackship={process.env.TRACKING_PROVIDER === "trackship" && !!process.env.TRACKSHIP_API_KEY}
             canRevert={user.role === "super_admin" && status in KIT_REVERT_MAP}
           />
         </div>

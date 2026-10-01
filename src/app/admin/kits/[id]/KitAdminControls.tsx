@@ -3,17 +3,19 @@
 import { useState, useTransition } from "react";
 import { Card, CardTitle, Button, inputClass } from "@/components/ui";
 import type { KitStatus } from "@/lib/status";
-import { closeKit, simulateTracking, revertKitStage } from "../../actions";
+import { closeKit, refreshTracking, simulateTracking, revertKitStage } from "../../actions";
 
 export function KitAdminControls({
   kitId,
   status,
   mockTracking,
+  trackship = false,
   canRevert,
 }: {
   kitId: string;
   status: KitStatus;
   mockTracking: boolean;
+  trackship?: boolean;
   canRevert: boolean;
 }) {
   const [pending, startTransition] = useTransition();
@@ -33,6 +35,24 @@ export function KitAdminControls({
     <Card>
       <CardTitle>Admin tools</CardTitle>
       <div className="space-y-4">
+        {trackship && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Tracking</p>
+            <Button
+              variant="secondary"
+              disabled={pending}
+              onClick={() =>
+                run(async () => {
+                  const result = await refreshTracking(kitId);
+                  if (result.ok) setMessage(result.message ?? "Refreshed");
+                  return result;
+                })
+              }
+            >
+              Refresh from TrackShip
+            </Button>
+          </div>
+        )}
         {mockTracking && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
