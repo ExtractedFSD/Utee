@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatKitCode } from "@/lib/kit-code";
 import { Card, CardTitle, PageHeader, StatusBadge, EmptyState } from "@/components/ui";
 import { formatDateTime, type KitStatus } from "@/lib/status";
 
@@ -42,7 +43,7 @@ export default async function ClinicHome() {
                   >
                     <div>
                       <p className="text-sm font-semibold text-slate-900">
-                        <span className="font-mono">{kit.code}</span>
+                        <span className="font-mono">{formatKitCode(kit.code)}</span>
                         {patient?.full_name && (
                           <span className="font-normal text-slate-500"> · {patient.full_name}</span>
                         )}
@@ -72,7 +73,7 @@ export default async function ClinicHome() {
                   href={`/clinic/case/${kit.id}`}
                   className="flex items-center justify-between gap-4 py-3 hover:bg-slate-50 -mx-2 px-2 rounded-xl"
                 >
-                  <p className="text-sm font-mono text-slate-700">{kit.code}</p>
+                  <p className="text-sm font-mono text-slate-700">{formatKitCode(kit.code)}</p>
                   <p className="text-xs text-slate-400">{formatDateTime(kit.report_ready_at)}</p>
                 </Link>
               </li>

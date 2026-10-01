@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { claimKit, isClaimable } from "@/lib/kits";
+import { claimKit, isClaimable, normalizeKitCode } from "@/lib/kits";
 
 /**
  * QR code entry point, the QR on the kit box and urine pot encodes
@@ -17,16 +17,20 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
-  const { code } = await params;
+  const { code: raw } = await params;
   const url = (path: string) => new URL(path, req.nextUrl.origin);
+  // Anything that isn't a well-formed code (right alphabet, right check
+  // character) is "not found" before it goes anywhere near the database.
+  const code = normalizeKitCode(raw);
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.redirect(url(`/login?next=/k/${encodeURIComponent(code)}`));
+    return NextResponse.redirect(url(`/login?next=/k/${encodeURIComponent(code ?? raw)}`));
   }
+  if (!code) return NextResponse.redirect(url(`/portal?kit=not-found`));
 
   const admin = createAdminClient();
   const [{ data: profile }, { data: kit }] = await Promise.all([
@@ -35,6 +39,16 @@ export async function GET(
   ]);
 
   if (!kit) return NextResponse.redirect(url(`/portal?kit=not-found`));
+
+  // A voided code is dead for everyone except admins, who can see why.
+  if (kit.status === "voided" && profile?.role !== "admin" && profile?.role !== "super_admin") {
+    const home = profile?.role === "lab" ? "/lab" : profile?.role === "clinic" ? "/clinic" : "/portal";
+    return NextResponse.redirect(url(`${home}?kit=voided`));
+  }
+  if (kit.status === "generated" && !["admin", "super_admin", "lab", "clinic"].includes(profile?.role ?? "")) {
+    // Not printed yet, so nobody outside Utee can be holding it.
+    return NextResponse.redirect(url(`/portal?kit=not-found`));
+  }
 
   switch (profile?.role) {
     case "lab":

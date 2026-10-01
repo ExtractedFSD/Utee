@@ -148,7 +148,7 @@ export async function ownKits(supabase: SupabaseClient) {
   const { data } = await supabase
     .from("kits")
     .select("id, code, status, created_at, clinic_reports(status)")
-    .neq("status", "created")
+    .not("status", "in", "(generated,printed,voided)")
     .order("created_at", { ascending: false });
   return (data ?? []).map((k) => ({
     id: k.id as string,

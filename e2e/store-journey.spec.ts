@@ -12,7 +12,7 @@ import {
   listStorage,
   loginAs,
   loginViaUi,
-  newestCreatedKitCode,
+  createBatchViaUi,
   postShopify,
   postTracking,
   registerUser,
@@ -21,6 +21,7 @@ import {
   shopifyOrderPayload,
   trackingNumber,
 } from "./helpers";
+import { formatKitCode } from "../src/lib/kit-code";
 
 /**
  * The store journey: Shopify order → account → dispatch → QR scan → symptoms
@@ -67,29 +68,25 @@ test("store kit: order to report", async ({ browser, request }) => {
   await loginAs(adminCtx, superAdmin.email);
   const adminPage = await adminCtx.newPage();
 
-  await test.step("Admin prints a label", async () => {
-    await adminPage.goto("/admin/kits");
-    const batch = card(adminPage, "1 · Create kit labels");
-    await batch.getByLabel("Quantity").fill("1");
-    await batch.getByRole("button", { name: "Create batch" }).click();
-    await expect(batch.getByText(/Created 1 kits/)).toBeVisible();
-    code = await newestCreatedKitCode();
-    await adminPage.goto("/admin/kits/print");
-    // The label carries the QR (an SVG) and the human-readable code; the QR
-    // encodes NEXT_PUBLIC_APP_URL/k/<code>, which the scan step below follows.
-    const label = adminPage.locator("div").filter({ hasText: code }).filter({ has: adminPage.locator("svg") }).last();
-    await expect(label).toBeVisible();
+  await test.step("Super admin generates a batch, downloads the CSV and marks it printed", async () => {
+    const batch = await createBatchViaUi(adminPage, 1, "E2E store run");
+    code = batch.codes[0];
+    const kit = await kitByCode(code);
+    expect(kit?.status).toBe("printed");
+    expect(kit?.batch_id).toBe(batch.batchId);
   });
 
   await test.step("Admin dispatches the kit against the order", async () => {
     await adminPage.goto("/admin/kits");
-    const dispatch = card(adminPage, "2 · Dispatch a kit");
-    await dispatch.getByLabel("Kit code").fill(code);
-    await dispatch.getByLabel("Order").selectOption(`#E2E${orderId}`);
+    const dispatch = card(adminPage, "1 · Dispatch a kit");
+    // Typed the way it is printed on the label, dashes and all.
+    await dispatch.getByLabel("Kit code").fill(formatKitCode(code));
+    await dispatch.getByLabel("Find order").fill(`E2E${orderId}`);
+    await dispatch.locator("select").selectOption(`#E2E${orderId}`);
     await dispatch.getByLabel("Outbound tracking no.").fill(outbound);
     await dispatch.getByLabel("Return tracking no.").fill(returnTrk);
     await dispatch.getByRole("button", { name: "Dispatch kit" }).click();
-    await expect(dispatch.getByText(`Kit ${code} dispatched.`)).toBeVisible();
+    await expect(dispatch.getByText(`Kit ${formatKitCode(code)} dispatched.`)).toBeVisible();
     const kit = await expectKitStatus(code, "shipped");
     kitId = kit.id;
     const { data: shipments } = await admin().from("shipments").select("direction").eq("kit_id", kitId);

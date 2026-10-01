@@ -180,12 +180,13 @@ export function EmptyState({ title, body }: { title: string; body?: string }) {
 export function Callout({
   children,
   className = "",
+  ...props
 }: {
   children: React.ReactNode;
   className?: string;
-}) {
+} & Omit<React.HTMLAttributes<HTMLDivElement>, "className" | "children">) {
   return (
-    <div className={`rounded-card bg-gradient-brand text-white p-6 shadow-card ${className}`}>
+    <div {...props} className={`rounded-card bg-gradient-brand text-white p-6 shadow-card ${className}`}>
       {children}
     </div>
   );

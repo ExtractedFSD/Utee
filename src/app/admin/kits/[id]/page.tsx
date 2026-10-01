@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardTitle, PageHeader, StatusBadge, Pill } from "@/components/ui";
 import { Timeline, type TimelineEvent } from "@/components/Timeline";
 import { formatDateTime, KIT_REVERT_MAP, type KitStatus } from "@/lib/status";
+import { formatKitCode } from "@/lib/kit-code";
 import { KitAdminControls } from "./KitAdminControls";
 
 /** Full kit deep-dive for customer service: every event, hidden or not. */
@@ -20,7 +21,7 @@ export default async function AdminKitPage({
   const { data: kit } = await admin
     .from("kits")
     .select(
-      "id, code, status, created_at, profiles:customer_id(id, full_name, email), orders:order_id(id, order_number)"
+      "id, code, status, created_at, batch_id, sequence_number, voided_at, void_reason, profiles:customer_id(id, full_name, email), orders:order_id(id, order_number)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -53,11 +54,15 @@ export default async function AdminKitPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Kit ${kit.code}`}
+        title={`Kit ${formatKitCode(kit.code)}`}
         subtitle={
           patient
             ? `${patient.full_name ?? patient.email}${order ? ` · Order ${order.order_number}` : ""}`
-            : "Unassigned stock"
+            : status === "voided"
+              ? `Voided ${formatDateTime(kit.voided_at)}${kit.void_reason ? `: ${kit.void_reason}` : ""}`
+              : status === "generated"
+                ? "Generated, not yet marked as printed"
+                : "Unassigned stock"
         }
         action={<StatusBadge status={status} />}
       />
@@ -69,6 +74,11 @@ export default async function AdminKitPage({
             className="font-medium text-brand-600 hover:text-brand-700"
           >
             View patient →
+          </Link>
+        )}
+        {kit.batch_id && (
+          <Link href={`/admin/kits/batches/${kit.batch_id}`} className="font-medium text-brand-600 hover:text-brand-700">
+            Batch {kit.batch_id}, label {kit.sequence_number} →
           </Link>
         )}
         {triage && <Pill tone="brand">Triage {formatDateTime(triage.submitted_at)}</Pill>}

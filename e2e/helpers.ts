@@ -5,6 +5,7 @@ import { expect, type APIRequestContext, type BrowserContext, type Page } from "
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { loadEnv, requireEnv } from "./env";
+import { formatKitCode, generateKitCode } from "../src/lib/kit-code";
 
 loadEnv();
 
@@ -265,7 +266,7 @@ export async function postTracking(
 export async function kitByCode(code: string) {
   const { data, error } = await admin()
     .from("kits")
-    .select("id, code, status, customer_id, order_id")
+    .select("id, code, status, customer_id, order_id, batch_id")
     .eq("code", code)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -285,12 +286,12 @@ export async function expectKitStatus(code: string, status: string, timeoutMs = 
   throw new Error(`kit ${code} is "${last}", expected "${status}" after ${timeoutMs}ms`);
 }
 
-/** Newest unassigned kit, what "Create batch" of 1 just produced. */
-export async function newestCreatedKitCode(): Promise<string> {
+/** Newest printed, unassigned kit: what a one-code batch marked as printed just produced. */
+export async function newestPrintedKitCode(): Promise<string> {
   const { data } = await admin()
     .from("kits")
     .select("code")
-    .eq("status", "created")
+    .eq("status", "printed")
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
@@ -299,13 +300,11 @@ export async function newestCreatedKitCode(): Promise<string> {
   return data.code;
 }
 
-const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 /** Inserts a printed-but-unassigned kit directly (for tests that don't cover the batch UI). */
-export async function insertKit(): Promise<{ id: string; code: string }> {
+export async function insertKit(status: "printed" | "generated" | "voided" = "printed"): Promise<{ id: string; code: string }> {
   for (let attempt = 0; attempt < 5; attempt++) {
-    let code = "UT-";
-    for (let i = 0; i < 6; i++) code += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)];
-    const { data, error } = await admin().from("kits").insert({ code }).select("id, code").single();
+    const code = generateKitCode();
+    const { data, error } = await admin().from("kits").insert({ code, status }).select("id, code").single();
     if (!error && data) {
       registerKit(data.code);
       return data;
@@ -313,6 +312,42 @@ export async function insertKit(): Promise<{ id: string; code: string }> {
     if (error?.code !== "23505") throw new Error(error?.message);
   }
   throw new Error("could not insert a unique kit code");
+}
+
+/**
+ * Walks the super admin through a print run of `quantity` codes: generate,
+ * check the CSV, mark as sent to the printer. Returns the batch id and the
+ * stored codes in print order.
+ */
+export async function createBatchViaUi(page: Page, quantity: number, note: string) {
+  await page.goto("/admin/kits/batches");
+  await page.getByLabel("Quantity").fill(String(quantity));
+  await page.getByLabel("Note (optional)").fill(note);
+  await page.getByRole("button", { name: "Generate codes" }).click();
+  await page.waitForURL(/\/admin\/kits\/batches\/\d+$/);
+  const batchId = Number(page.url().split("/").pop());
+  const { data: kits } = await admin()
+    .from("kits")
+    .select("code, status, sequence_number")
+    .eq("batch_id", batchId)
+    .order("sequence_number", { ascending: true });
+  for (const k of kits ?? []) registerKit(k.code);
+  expect(kits).toHaveLength(quantity);
+  expect(kits!.every((k) => k.status === "generated")).toBe(true);
+  expect(kits!.map((k) => k.sequence_number)).toEqual(Array.from({ length: quantity }, (_, i) => i + 1));
+
+  const csv = await page.request.get(`/admin/kits/batches/${batchId}/csv`);
+  expect(csv.status()).toBe(200);
+  expect(csv.headers()["content-disposition"]).toContain(`utee-kit-codes-batch-${batchId}-${quantity}.csv`);
+  const lines = (await csv.text()).trim().split(/\r?\n/);
+  expect(lines[0]).toBe("sequence,kit_code_display,qr_url");
+  expect(lines).toHaveLength(quantity + 1);
+  expect(lines[1]).toBe(`1,${formatKitCode(kits![0].code)},${requireEnv("NEXT_PUBLIC_APP_URL")}/k/${kits![0].code}`);
+
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Mark as sent to printer" }).click();
+  await expect(page.getByText(/Marked as sent to the printer/)).toBeVisible();
+  return { batchId, codes: kits!.map((k) => k.code) };
 }
 
 export async function kitEvents(kitId: string) {

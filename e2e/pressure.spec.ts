@@ -108,7 +108,7 @@ test.describe("Tracking webhook", () => {
     await admin().from("shipments").insert({ kit_id: kit.id, direction: "return", tracking_number: trk });
     const res = await postTracking(request, { trackingNumber: trk, status: "exception", description: "Delay at sorting centre" });
     expect(await res.json()).toEqual({ matched: true });
-    expect((await kitByCode(kit.code))?.status).toBe("created");
+    expect((await kitByCode(kit.code))?.status).toBe("printed");
     const events = await kitEvents(kit.id);
     expect(events.map((e) => e.label)).toContain("Delay at sorting centre");
   });
@@ -128,9 +128,9 @@ test.describe("Dispatch validation", () => {
     await loginAs(ctx, adminUser.email);
     const page = await ctx.newPage();
     await page.goto("/admin/kits");
-    const dispatch = card(page, "2 · Dispatch a kit");
+    const dispatch = card(page, "1 · Dispatch a kit");
     await dispatch.getByLabel("Kit code").fill(fresh.code);
-    await dispatch.getByLabel("Order").selectOption(`#E2E${orderId}`);
+    await dispatch.locator("select").selectOption(`#E2E${orderId}`);
 
     const same = trackingNumber("SAME");
     await dispatch.getByLabel("Outbound tracking no.").fill(same);
@@ -143,7 +143,7 @@ test.describe("Dispatch validation", () => {
     await dispatch.getByRole("button", { name: "Dispatch kit" }).click();
     await expect(dispatch.getByText(new RegExp(`${usedTrk} is already used on ${existing.code}`))).toBeVisible();
 
-    expect((await kitByCode(fresh.code))?.status).toBe("created");
+    expect((await kitByCode(fresh.code))?.status).toBe("printed");
     const { data: shipments } = await admin().from("shipments").select("id").eq("kit_id", fresh.id);
     expect(shipments ?? []).toHaveLength(0);
     await ctx.close();
@@ -217,11 +217,16 @@ test.describe("QR landing", () => {
     const ctx = await browser.newContext();
     await loginAs(ctx, user.email);
     const page = await ctx.newPage();
-    for (const bad of ["UT-000000", "nope", "UT-ZZZZZZ%20", "..%2F..%2Fadmin"]) {
+    const voided = await insertKit("voided");
+    const unprinted = await insertKit("generated");
+    for (const bad of ["UT-000000", "nope", "UT-ZZZZ-ZZZZ", "..%2F..%2Fadmin", unprinted.code]) {
       await page.goto(`/k/${bad}`);
       await expect(page, bad).toHaveURL("/portal?kit=not-found");
     }
     await expect(page.getByText("couldn't find that kit code")).toBeVisible();
+    await page.goto(`/k/${voided.code}`);
+    await expect(page).toHaveURL("/portal?kit=voided");
+    await expect(page.getByText("has been cancelled")).toBeVisible();
     await ctx.close();
   });
 });

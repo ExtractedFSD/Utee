@@ -1,26 +1,12 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { logKitEvent } from "@/lib/events";
 import { sendEmail, emails } from "@/lib/email";
+import { formatKitCode } from "@/lib/kit-code";
 
-/** Printed kit code format: UT- plus six characters from the label alphabet. */
-export const KIT_CODE_RE = /^UT-[A-HJKMNP-Z2-9]{6}$/;
+export { formatKitCode, generateKitCode, kitCodeFromPath, normalizeKitCode } from "@/lib/kit-code";
 
-export function normalizeKitCode(raw: string): string | null {
-  const code = raw.trim().toUpperCase();
-  return KIT_CODE_RE.test(code) ? code : null;
-}
-
-/** Extracts the kit code from a QR landing path such as "/k/UT-7K3F9Q". */
-export function kitCodeFromPath(path: string | null | undefined): string | null {
-  if (!path) return null;
-  const match = /^\/k\/([^/?#]+)/.exec(path);
-  if (!match) return null;
-  try {
-    return normalizeKitCode(decodeURIComponent(match[1]));
-  } catch {
-    return null;
-  }
-}
+/** Statuses a kit can hold before it is assigned to anyone. */
+export const UNASSIGNED_STATUSES = ["generated", "printed", "voided"] as const;
 
 type ClaimableKit = { id: string; code: string; status: string; customer_id: string | null };
 
@@ -31,7 +17,7 @@ type ClaimableKit = { id: string; code: string; status: string; customer_id: str
  * be claimed by a stranger.
  */
 export function isClaimable(kit: ClaimableKit | null | undefined): kit is ClaimableKit {
-  return !!kit && kit.status === "created" && kit.customer_id === null;
+  return !!kit && kit.status === "printed" && kit.customer_id === null;
 }
 
 export async function findClaimableKit(admin: SupabaseClient, code: string) {
@@ -65,7 +51,7 @@ export async function claimKit(
       assigned_at: new Date().toISOString(),
     })
     .eq("id", kit.id)
-    .eq("status", "created")
+    .eq("status", "printed")
     .is("customer_id", null)
     .select("id");
   if (error) throw new Error(`kit claim failed: ${error.message}`);
@@ -81,6 +67,6 @@ export async function claimKit(
     metadata: { channel: "retail_claim" },
   });
 
-  await sendEmail({ to: customer.email, ...emails.kitClaimed(kit.code) });
+  await sendEmail({ to: customer.email, ...emails.kitClaimed(formatKitCode(kit.code)) });
   return true;
 }

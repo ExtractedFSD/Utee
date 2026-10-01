@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatKitCode, normalizeKitCode } from "@/lib/kit-code";
 import { logKitEvent } from "@/lib/events";
 
 export async function markReceived(code: string) {
@@ -59,10 +60,11 @@ export async function uploadResults(code: string, formData: FormData) {
 
   // Anti-mix-up guard: the tech must re-type the code printed on the physical
   // pot. A stale browser tab for a different specimen fails loudly here.
-  const confirmCode = String(formData.get("confirmCode") ?? "").trim().toUpperCase();
-  if (confirmCode !== code.toUpperCase()) {
+  const typed = String(formData.get("confirmCode") ?? "");
+  const confirmCode = normalizeKitCode(typed);
+  if (confirmCode !== code) {
     return {
-      error: `The code you entered (${confirmCode || "blank"}) doesn't match this specimen (${code}). Check you're holding the right pot and on the right page.`,
+      error: `The code you entered (${typed.trim() || "blank"}) doesn't match this specimen (${formatKitCode(code)}). Check you're holding the right tube and are on the right page.`,
     };
   }
 

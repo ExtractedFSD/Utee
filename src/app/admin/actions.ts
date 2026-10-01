@@ -3,39 +3,134 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { logKitEvent, generateKitCode } from "@/lib/events";
+import { logKitEvent } from "@/lib/events";
 import { applyTrackingEvent } from "@/lib/tracking";
 import { sendEmail, emails } from "@/lib/email";
 import { KIT_REVERT_MAP, type KitStatus } from "@/lib/status";
-import { normalizeKitCode } from "@/lib/kits";
+import { formatKitCode, generateKitCode, normalizeKitCode } from "@/lib/kits";
 
 /** Pre-print a batch of kit QR labels (status 'created', unassigned stock). */
-export async function createKitBatch(count: number) {
-  await requireRole(["admin"]);
-  if (!Number.isInteger(count) || count < 1 || count > 200) {
-    return { error: "Choose between 1 and 200 kits" };
+const BATCH_MAX = 5000;
+const INSERT_CHUNK = 500;
+
+/**
+ * A print run: one kit_batches row plus `quantity` kit codes in print order,
+ * all 'generated' until the batch is marked as sent to the printer. Codes
+ * are random, so an insert can clash with stock that already exists; each
+ * chunk retries with fresh codes on a unique violation.
+ */
+export async function createKitBatch(input: { quantity: number; note?: string }) {
+  const user = await requireRole(["admin"]);
+  if (user.role !== "super_admin") return { error: "Only a super admin can generate kit codes" };
+  const quantity = Number(input.quantity);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > BATCH_MAX) {
+    return { error: `Choose between 1 and ${BATCH_MAX} kits` };
   }
+  const note = (input.note ?? "").trim().slice(0, 200) || null;
   const admin = createAdminClient();
 
-  // Codes are random, so a batch can collide with itself or with stock already
-  // printed. Codes are unique in the database, which would otherwise fail the
-  // whole insert, so de-duplicate within the batch and retry on a clash.
-  let lastError = "";
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const codes = new Set<string>();
-    while (codes.size < count) codes.add(generateKitCode());
-    const rows = [...codes].map((code) => ({ code }));
+  const { data: batch, error: batchError } = await admin
+    .from("kit_batches")
+    .insert({ quantity, note, created_by: user.id })
+    .select("id")
+    .single();
+  if (batchError || !batch) return { error: batchError?.message ?? "Could not create the batch" };
 
-    const { error } = await admin.from("kits").insert(rows);
-    if (!error) {
-      revalidatePath("/admin/kits");
-      return { ok: true, codes: rows.map((r) => r.code) };
+  for (let from = 1; from <= quantity; from += INSERT_CHUNK) {
+    const to = Math.min(from + INSERT_CHUNK - 1, quantity);
+    let inserted = false;
+    let lastError = "";
+    for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
+      const codes = new Set<string>();
+      while (codes.size < to - from + 1) codes.add(generateKitCode());
+      const rows = [...codes].map((code, i) => ({
+        code,
+        status: "generated",
+        batch_id: batch.id,
+        sequence_number: from + i,
+      }));
+      const { error } = await admin.from("kits").insert(rows);
+      if (!error) inserted = true;
+      // 23505 = unique_violation: a code already exists, so draw this chunk again.
+      else if (error.code !== "23505") {
+        lastError = error.message;
+        break;
+      } else lastError = error.message;
     }
-    // 23505 = unique_violation: a code already exists, so draw a fresh batch.
-    if (error.code !== "23505") return { error: error.message };
-    lastError = error.message;
+    if (!inserted) {
+      // Leave nothing half-made: drop what this batch inserted and the batch.
+      await admin.from("kits").delete().eq("batch_id", batch.id);
+      await admin.from("kit_batches").delete().eq("id", batch.id);
+      return { error: `Could not generate unique kit codes. Please try again (${lastError})` };
+    }
   }
-  return { error: `Could not generate unique kit codes. Please try again (${lastError})` };
+
+  revalidatePath("/admin/kits/batches");
+  return { ok: true, batchId: batch.id as number };
+}
+
+/** The labels exist: every generated kit in the batch becomes usable stock. */
+export async function markBatchPrinted(batchId: number) {
+  const user = await requireRole(["admin"]);
+  if (user.role !== "super_admin") return { error: "Only a super admin can mark a batch as printed" };
+  const admin = createAdminClient();
+  const { data: batch } = await admin.from("kit_batches").select("id, sent_to_printer_at").eq("id", batchId).maybeSingle();
+  if (!batch) return { error: "Batch not found" };
+  if (batch.sent_to_printer_at) return { error: "This batch has already been marked as sent to the printer" };
+
+  const { error } = await admin
+    .from("kits")
+    .update({ status: "printed" })
+    .eq("batch_id", batchId)
+    .eq("status", "generated");
+  if (error) return { error: error.message };
+  await admin
+    .from("kit_batches")
+    .update({ sent_to_printer_at: new Date().toISOString(), sent_to_printer_by: user.id })
+    .eq("id", batchId);
+
+  revalidatePath(`/admin/kits/batches/${batchId}`);
+  revalidatePath("/admin/kits/batches");
+  revalidatePath("/admin/kits");
+  return { ok: true };
+}
+
+/**
+ * Retires a code whose labels were spoiled or damaged. Only an unassigned
+ * kit can be voided; a voided code can never be assigned, claimed or
+ * scanned in again.
+ */
+export async function voidKit(kitId: string, reason: string) {
+  const user = await requireRole(["admin"]);
+  if (user.role !== "super_admin") return { error: "Only a super admin can void a kit code" };
+  const why = reason.trim().slice(0, 300);
+  if (!why) return { error: "A reason is required for the audit log" };
+  const admin = createAdminClient();
+
+  const { data: voided, error } = await admin
+    .from("kits")
+    .update({ status: "voided", voided_at: new Date().toISOString(), voided_by: user.id, void_reason: why })
+    .eq("id", kitId)
+    .in("status", ["generated", "printed"])
+    .is("customer_id", null)
+    .select("id, code, batch_id");
+  if (error) return { error: error.message };
+  if (!voided?.length) return { error: "Only an unassigned kit can be voided" };
+
+  await logKitEvent(admin, {
+    kitId,
+    type: "system",
+    label: "Kit code voided",
+    detail: why,
+    actorRole: "admin",
+    actorId: user.id,
+    visibleToCustomer: false,
+  });
+
+  revalidatePath(`/admin/kits/${kitId}`);
+  if (voided[0].batch_id) revalidatePath(`/admin/kits/batches/${voided[0].batch_id}`);
+  revalidatePath("/admin/kits");
+  return { ok: true };
 }
 
 /**
@@ -51,7 +146,8 @@ export async function prepareRetailKit(input: { kitCode: string; returnTracking:
   const admin = createAdminClient();
 
   const kitCode = normalizeKitCode(input.kitCode);
-  if (!kitCode) return { error: "Enter a kit code in the form UT-XXXXXX" };
+  if (!kitCode) return { error: "That kit code isn't valid. Check the characters: it should look like UT-XXXX-XXXX" };
+  const shown = formatKitCode(kitCode);
   const returnTrk = input.returnTracking.trim();
   if (!returnTrk) return { error: "The return tracking number is required" };
 
@@ -60,9 +156,11 @@ export async function prepareRetailKit(input: { kitCode: string; returnTracking:
     .select("id, status, customer_id")
     .eq("code", kitCode)
     .maybeSingle();
-  if (!kit) return { error: `Kit ${kitCode} not found. Create a batch first` };
-  if (kit.status !== "created" || kit.customer_id) {
-    return { error: `Kit ${kitCode} is already assigned` };
+  if (!kit) return { error: `Kit ${shown} not found` };
+  if (kit.status === "voided") return { error: `Kit ${shown} has been voided and can't be used` };
+  if (kit.status === "generated") return { error: `Kit ${shown} is in a batch not yet marked as printed` };
+  if (kit.status !== "printed" || kit.customer_id) {
+    return { error: `Kit ${shown} is already assigned` };
   }
 
   const { data: clash } = await admin
@@ -82,7 +180,7 @@ export async function prepareRetailKit(input: { kitCode: string; returnTracking:
     return {
       error:
         shipmentError.code === "23505"
-          ? `Kit ${kitCode} already has a return label, or that tracking number is in use`
+          ? `Kit ${shown} already has a return label, or that tracking number is in use`
           : shipmentError.message,
     };
   }
@@ -114,14 +212,18 @@ export async function dispatchKit(input: {
   const user = await requireRole(["admin"]);
   const admin = createAdminClient();
 
-  const kitCode = input.kitCode.trim().toUpperCase();
+  const kitCode = normalizeKitCode(input.kitCode);
+  if (!kitCode) return { error: "That kit code isn't valid. Check the characters: it should look like UT-XXXX-XXXX" };
+  const shown = formatKitCode(kitCode);
   const { data: kit } = await admin
     .from("kits")
     .select("id, status")
     .eq("code", kitCode)
     .maybeSingle();
-  if (!kit) return { error: `Kit ${kitCode} not found. Create a batch first` };
-  if (kit.status !== "created") return { error: `Kit ${kitCode} is already assigned` };
+  if (!kit) return { error: `Kit ${shown} not found` };
+  if (kit.status === "voided") return { error: `Kit ${shown} has been voided and can't be used` };
+  if (kit.status === "generated") return { error: `Kit ${shown} is in a batch not yet marked as printed` };
+  if (kit.status !== "printed") return { error: `Kit ${shown} is already assigned` };
 
   // A kit prepared for retail already carries a return label; it is packed
   // for a retailer, not for a store order.
@@ -130,7 +232,7 @@ export async function dispatchKit(input: {
     .select("id", { count: "exact", head: true })
     .eq("kit_id", kit.id);
   if (existingShipments) {
-    return { error: `Kit ${kitCode} is prepared for retail. Pick a different kit for this order` };
+    return { error: `Kit ${shown} is prepared for retail. Pick a different kit for this order` };
   }
 
   const { data: order } = await admin
@@ -159,7 +261,7 @@ export async function dispatchKit(input: {
     return { error: `Tracking number ${clash.tracking_number} is already used on ${clashKit}` };
   }
 
-  // Claim the kit atomically: only a row still in 'created' is updated, so a
+  // Claim the kit atomically: only a row still in 'printed' is updated, so a
   // double-submit (or two admins picking the same kit) can't both succeed.
   const { data: claimed, error: updateError } = await admin
     .from("kits")
@@ -170,10 +272,10 @@ export async function dispatchKit(input: {
       assigned_at: new Date().toISOString(),
     })
     .eq("id", kit.id)
-    .eq("status", "created")
+    .eq("status", "printed")
     .select("id");
   if (updateError) return { error: updateError.message };
-  if (!claimed?.length) return { error: `Kit ${kitCode} is already assigned` };
+  if (!claimed?.length) return { error: `Kit ${shown} is already assigned` };
 
   const { error: shipmentError } = await admin.from("shipments").insert([
     { kit_id: kit.id, direction: "outbound", tracking_number: outbound },
@@ -183,7 +285,7 @@ export async function dispatchKit(input: {
     // Release the kit so it isn't stranded half-assigned with no shipments.
     await admin
       .from("kits")
-      .update({ status: "created", order_id: null, customer_id: null, assigned_at: null })
+      .update({ status: "printed", order_id: null, customer_id: null, assigned_at: null })
       .eq("id", kit.id)
       .eq("status", "assigned");
     return {
@@ -212,7 +314,7 @@ export async function dispatchKit(input: {
     newStatus: "shipped",
   });
 
-  await sendEmail({ to: order.email, ...emails.kitShipped(kitCode, outbound) });
+  await sendEmail({ to: order.email, ...emails.kitShipped(shown, outbound) });
 
   revalidatePath("/admin/kits");
   return { ok: true };

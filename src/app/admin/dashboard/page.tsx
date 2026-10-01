@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardTitle, PageHeader } from "@/components/ui";
 import {
   KIT_PIPELINE,
+  PRE_ASSIGNMENT_STATUSES,
   KIT_STATUS_ADMIN_LABELS,
   formatMoney,
   type KitStatus,
@@ -41,7 +42,7 @@ export default async function DashboardPage() {
     stageCounts.set(s, (stageCounts.get(s) ?? 0) + 1);
   }
   const totalKits = kits?.length ?? 0;
-  const stages = KIT_PIPELINE.filter((s) => s !== "created");
+  const stages = KIT_PIPELINE.filter((s) => !PRE_ASSIGNMENT_STATUSES.includes(s));
 
   return (
     <div className="space-y-6">

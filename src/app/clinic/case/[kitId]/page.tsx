@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatKitCode } from "@/lib/kit-code";
 import { Card, CardTitle, PageHeader, StatusBadge, Pill } from "@/components/ui";
 import { formatDateTime, type KitStatus } from "@/lib/status";
 import { CaseActions } from "./CaseActions";
@@ -51,7 +52,7 @@ export default async function CasePage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Case ${kit.code}`}
+        title={`Case ${formatKitCode(kit.code)}`}
         subtitle={patient ? `${patient.full_name ?? "Unnamed patient"} · ${patient.email}` : undefined}
         action={<StatusBadge status={status} />}
       />

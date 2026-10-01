@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatKitCode } from "@/lib/kit-code";
 import { Card, CardTitle, PageHeader, StatusBadge, Pill } from "@/components/ui";
 import { formatDateTime, type KitStatus } from "@/lib/status";
 import { SpecimenActions } from "./SpecimenActions";
@@ -38,7 +39,7 @@ export default async function SpecimenPage({
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <PageHeader
-        title={`Specimen ${kit.code}`}
+        title={`Specimen ${formatKitCode(kit.code)}`}
         subtitle="Patient identity is not shown to the laboratory."
         action={<StatusBadge status={status} />}
       />

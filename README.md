@@ -10,10 +10,18 @@ tracking.
 1. **Order** — Shopify fires `orders/create` → `/api/webhooks/shopify`. A portal
    account is auto-created for the customer (passwordless: they sign in with a
    one-time email code) and a welcome email is sent.
-2. **Fulfilment** — Admin creates pre-printed QR kit labels (`/admin/kits` →
-   "Print labels"), then at packing time links a kit code to the order and
-   enters both Royal Mail tracking numbers. The patient gets a dispatch email
-   reiterating: *scan the QR before taking your sample*.
+2. **Fulfilment** — A super admin generates kit codes in batches
+   (`/admin/kits/batches`): random, 7 characters plus a check character from
+   the Crockford alphabet (no I, L, O or U), stored as `7K4M92QX`, printed as
+   `UT-7K4M-92QX`, unique across every batch. The batch downloads as a CSV
+   (`sequence, kit_code_display, qr_url`) for the label printer; marking it
+   "sent to printer" turns its codes into usable stock, and a spoiled label
+   set can be voided. At packing time an admin links a printed kit to the
+   order (orders without a kit, searchable) and enters both Royal Mail
+   tracking numbers. The patient gets a dispatch email reiterating: *scan
+   the QR before taking your sample*. Code rules live in
+   `src/lib/kit-code.ts`; entry accepts any spelling (case, dashes, the UT
+   prefix, I/L for 1 and O for 0) and rejects a wrong check character.
 3. **Activation** — The patient scans the QR (`/k/{code}`), signs in, completes
    the symptom (triage) form and ticks consent, then takes the sample and posts
    it in the freepost return box. The form is four steps, defined in
@@ -45,10 +53,10 @@ email notifications to the right party.
 
 ### Kits sold outside the Utee store (retail / other marketplaces)
 
-Kits that never go through Shopify are printed as normal. At packing time the
-admin uses "Prepare a retail kit" (`/admin/kits`) to record the tracking number
+Kits that never go through Shopify come from the same batches. At packing time
+the admin uses "Prepare a retail kit" (`/admin/kits`) to record the tracking number
 of the pre-paid return label packed with it, instead of dispatching it against
-an order. The kit stays in the `created` state, marked *retail* in the stock
+an order. The kit stays in the `printed` state, marked *retail* in the stock
 list, and the customer registers it themselves:
 
 1. They scan the QR and land on `/login` with the kit remembered.
@@ -139,9 +147,10 @@ With only Supabase configured and `TRACKING_PROVIDER=mock`:
 1. Create a customer: `node scripts/create-staff-user.mjs you+patient@x.com customer "Pat Test"`,
    then insert a test order for them (or POST a sample payload to the Shopify
    webhook with HMAC disabled locally).
-2. As admin: create a kit batch, print labels, dispatch a kit against the order.
+2. As super admin: generate a kit batch, download the CSV, mark it as sent to
+   the printer. As admin: dispatch a kit against the order.
 3. As admin (kit page): simulate "outbound delivered".
-4. As the customer: visit `/k/UT-XXXXXX` (the QR URL), fill in triage + consent.
+4. As the customer: visit `/k/XXXXXXXX` (the QR URL), fill in triage + consent.
 5. As admin: simulate "return in transit".
 6. As lab: open the specimen, confirm receipt, upload results.
 7. As clinic: mark received, upload the final report PDF.
@@ -158,8 +167,7 @@ only follow it if that URL is reachable from the phone:
 - **Deployed** (Vercel or similar): set `NEXT_PUBLIC_APP_URL` to the public
   URL, and in Supabase → Authentication → URL Configuration set the Site URL
   to the same value and add `https://your-domain/**` to the redirect allow
-  list. Print labels from `/admin/kits/print` after that so they carry the
-  right URL.
+  list. Generate batches after that so the CSV carries the right URL.
 - **Local dev on a phone**: run `npm run dev` and expose port 3000 with a
   tunnel (`npx localtunnel --port 3000`, `ngrok http 3000`, or
   `cloudflared tunnel --url http://localhost:3000`). Put the tunnel URL in

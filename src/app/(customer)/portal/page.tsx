@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatKitCode } from "@/lib/kit-code";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardTitle, PageHeader, StatusBadge, EmptyState, LinkButton, Callout, Notice } from "@/components/ui";
@@ -50,6 +51,9 @@ export default async function PortalHome({
       {kitFlag === "not-found" && (
         <Notice>We couldn&apos;t find that kit code. Please check the QR code or contact us.</Notice>
       )}
+      {kitFlag === "voided" && (
+        <Notice>That kit code has been cancelled and can&apos;t be used. Please contact us and we&apos;ll sort out a replacement.</Notice>
+      )}
       {trackerFlag === "deleted" && <Notice tone="mint">Your tracker data has been deleted.</Notice>}
 
       <Callout className="flex flex-wrap items-center justify-between gap-4">
@@ -73,7 +77,7 @@ export default async function PortalHome({
                   className="flex items-center justify-between gap-4 py-3 hover:bg-slate-50 -mx-2 px-2 rounded-xl"
                 >
                   <div>
-                    <p className="text-sm font-medium text-slate-900">Kit {kit.code}</p>
+                    <p className="text-sm font-medium text-slate-900">Kit {formatKitCode(kit.code)}</p>
                     <p className="text-xs text-slate-400">Started {formatDate(kit.created_at)}</p>
                   </div>
                   <StatusBadge status={kit.status as KitStatus} />
@@ -152,7 +156,7 @@ export default async function PortalHome({
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 md:items-start">
-        <Callout>
+        <Callout data-testid="urologist">
           <div className="flex flex-col gap-5 sm:flex-row">
             <div className="relative h-44 w-44 shrink-0 self-start overflow-hidden rounded-2xl">
               <Image src="/images/urologist.jpg" alt="Consultant urologist" fill unoptimized className="object-cover object-[50%_25%]" />
@@ -187,6 +191,7 @@ export default async function PortalHome({
             </div>
           </div>
         </Callout>
+        <div className="space-y-6">
         <Callout>
           <div className="flex flex-col gap-5 sm:flex-row">
             {/* Placeholder until the product image is ready. */}
@@ -204,6 +209,25 @@ export default async function PortalHome({
             </div>
           </div>
         </Callout>
+        <Callout data-testid="community">
+          <div className="flex flex-col gap-5 sm:flex-row">
+            {/* Placeholder until the community image is ready. */}
+            <div className="flex h-44 w-44 shrink-0 items-center justify-center self-start rounded-2xl bg-white/15" aria-hidden>
+              <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="text-white/70"><circle cx="9" cy="8" r="3.5" /><circle cx="17" cy="10" r="2.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M15.5 20a5 5 0 0 1 6-4.6" /></svg>
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-display text-2xl font-light">Join the Utee Community</h3>
+              <p className="text-sm font-semibold text-white mt-3 leading-relaxed">You are not the only one dealing with this.</p>
+              <p className="text-sm text-white/85 mt-1 mb-5 leading-relaxed">
+                A private space for women living with UTIs to share what has helped, ask the questions you cannot ask anywhere else, and hear from people who understand. Members get early access to new Utee products and events.
+              </p>
+              <LinkButton href="#" variant="white">
+                Coming soon
+              </LinkButton>
+            </div>
+          </div>
+        </Callout>
+        </div>
       </div>
     </div>
   );

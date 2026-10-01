@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { sendEmail, emails } from "@/lib/email";
+import { formatKitCode } from "@/lib/kit-code";
 import type { KitStatus, Role } from "@/lib/status";
 
 type LogEventOpts = {
@@ -62,8 +63,9 @@ async function customerEmailForKit(admin: SupabaseClient, kitId: string) {
 }
 
 async function notifyForStatus(admin: SupabaseClient, kitId: string, status: KitStatus) {
-  const { code, email } = await customerEmailForKit(admin, kitId);
-  if (!code) return;
+  const { code: stored, email } = await customerEmailForKit(admin, kitId);
+  if (!stored) return;
+  const code = formatKitCode(stored);
 
   const labEmail = process.env.LAB_NOTIFICATION_EMAIL;
   const clinicEmail = process.env.CLINIC_NOTIFICATION_EMAIL;
@@ -86,14 +88,4 @@ async function notifyForStatus(admin: SupabaseClient, kitId: string, status: Kit
       if (email) await sendEmail({ to: email, ...emails.reportReady(code) });
       break;
   }
-}
-
-/** Generates a human-friendly unique kit code like UT-7K3F9Q. */
-export function generateKitCode() {
-  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O/1/I/L
-  let out = "";
-  for (let i = 0; i < 6; i++) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)];
-  }
-  return `UT-${out}`;
 }
