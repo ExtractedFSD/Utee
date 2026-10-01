@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { formatKitCode } from "@/lib/kit-code";
 import { Card, CardTitle, PageHeader, StatusBadge, LinkButton, Callout, Notice } from "@/components/ui";
 import { Timeline, type TimelineEvent } from "@/components/Timeline";
 import { royalMailTrackingUrl } from "@/lib/tracking";
@@ -50,7 +51,7 @@ export default async function TestDetailPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Test kit ${kit.code}`}
+        title={`Test kit ${formatKitCode(kit.code)}`}
         action={<StatusBadge status={status} />}
       />
 

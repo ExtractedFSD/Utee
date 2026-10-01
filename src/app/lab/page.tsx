@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Card, CardTitle, PageHeader, StatusBadge, EmptyState } from "@/components/ui";
+import { formatKitCode } from "@/lib/kit-code";
+import { Card, CardTitle, PageHeader, StatusBadge, EmptyState, Notice } from "@/components/ui";
 import { formatDateTime, type KitStatus } from "@/lib/status";
 
 /**
  * Lab work queue. Deliberately shows specimen codes only, never patient
  * names, emails or symptoms.
  */
-export default async function LabHome() {
+export default async function LabHome({ searchParams }: { searchParams: Promise<{ kit?: string }> }) {
+  const { kit: kitFlag } = await searchParams;
   await requireRole(["lab"]);
   const admin = createAdminClient();
 
@@ -28,7 +30,7 @@ export default async function LabHome() {
         className="flex items-center justify-between gap-4 py-3 hover:bg-slate-50 -mx-2 px-2 rounded-xl"
       >
         <div>
-          <p className="text-sm font-semibold text-slate-900 font-mono">{kit.code}</p>
+          <p className="text-sm font-semibold text-slate-900 font-mono">{formatKitCode(kit.code)}</p>
           <p className="text-xs text-slate-400">Activated {formatDateTime(kit.activated_at)}</p>
         </div>
         <StatusBadge status={kit.status as KitStatus} />
@@ -40,8 +42,11 @@ export default async function LabHome() {
     <div className="space-y-6">
       <PageHeader
         title="Specimens"
-        subtitle="Scan the QR code on the pot, or select the specimen below."
+        subtitle="Scan the QR code on the bag, or select the specimen below."
       />
+      {kitFlag === "voided" && (
+        <Notice>That kit code has been cancelled by Utee. Do not process the sample; set it aside and contact Utee.</Notice>
+      )}
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardTitle>Awaiting results ({awaitingResults.length})</CardTitle>

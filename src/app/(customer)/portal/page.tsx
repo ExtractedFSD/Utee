@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatKitCode } from "@/lib/kit-code";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardTitle, PageHeader, StatusBadge, EmptyState, LinkButton, Callout, Notice } from "@/components/ui";
@@ -50,6 +51,9 @@ export default async function PortalHome({
       {kitFlag === "not-found" && (
         <Notice>We couldn&apos;t find that kit code. Please check the QR code or contact us.</Notice>
       )}
+      {kitFlag === "voided" && (
+        <Notice>That kit code has been cancelled and can&apos;t be used. Please contact us and we&apos;ll sort out a replacement.</Notice>
+      )}
       {trackerFlag === "deleted" && <Notice tone="mint">Your tracker data has been deleted.</Notice>}
 
       <Callout className="flex flex-wrap items-center justify-between gap-4">
@@ -73,7 +77,7 @@ export default async function PortalHome({
                   className="flex items-center justify-between gap-4 py-3 hover:bg-slate-50 -mx-2 px-2 rounded-xl"
                 >
                   <div>
-                    <p className="text-sm font-medium text-slate-900">Kit {kit.code}</p>
+                    <p className="text-sm font-medium text-slate-900">Kit {formatKitCode(kit.code)}</p>
                     <p className="text-xs text-slate-400">Started {formatDate(kit.created_at)}</p>
                   </div>
                   <StatusBadge status={kit.status as KitStatus} />

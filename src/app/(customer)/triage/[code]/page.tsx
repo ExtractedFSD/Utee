@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/ui";
+import { formatKitCode } from "@/lib/kit-code";
 import { TriageForm } from "./TriageForm";
 
 export default async function TriagePage({
@@ -28,7 +29,7 @@ export default async function TriagePage({
     <div className="max-w-2xl mx-auto space-y-6">
       <PageHeader
         title="Before you take your sample"
-        subtitle={`Kit ${kit.code}. Please answer these questions now, then take your sample straight afterwards so your symptoms and sample arrive together.`}
+        subtitle={`Kit ${formatKitCode(kit.code)}. Please answer these questions now, then take your sample straight afterwards so your symptoms and sample arrive together.`}
       />
       <TriageForm code={kit.code} />
     </div>

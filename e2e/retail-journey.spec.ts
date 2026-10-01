@@ -10,12 +10,13 @@ import {
   kitEvents,
   loginAs,
   loginViaUi,
-  newestCreatedKitCode,
+  insertKit,
   postShopify,
   postTracking,
   shopifyOrderPayload,
   trackingNumber,
 } from "./helpers";
+import { formatKitCode } from "../src/lib/kit-code";
 
 /**
  * The retail journey: a kit sold outside the Utee store. No order, no
@@ -35,25 +36,20 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
   await loginAs(adminCtx, adminUser.email);
   const adminPage = await adminCtx.newPage();
 
-  await test.step("Admin prints a label and attaches the return label", async () => {
-    await adminPage.goto("/admin/kits");
-    const batch = card(adminPage, "1 · Create kit labels");
-    await batch.getByLabel("Quantity").fill("1");
-    await batch.getByRole("button", { name: "Create batch" }).click();
-    await expect(batch.getByText(/Created 1 kits/)).toBeVisible();
-    code = await newestCreatedKitCode();
+  await test.step("Admin attaches the return label to a printed kit", async () => {
+    code = (await insertKit()).code;
 
-    const retail = card(adminPage, "3 · Prepare a retail kit");
+    const retail = card(adminPage, "2 · Prepare a retail kit");
     await retail.getByLabel("Kit code").fill(code.toLowerCase());
     await retail.getByLabel("Return tracking no.").fill(returnTrk);
     await retail.getByRole("button", { name: "Attach return label" }).click();
-    await expect(retail.getByText(`Kit ${code} prepared for retail.`)).toBeVisible();
+    await expect(retail.getByText(`Kit ${formatKitCode(code)} prepared for retail.`)).toBeVisible();
 
     const kit = await kitByCode(code);
     kitId = kit!.id;
-    expect(kit?.status).toBe("created");
+    expect(kit?.status).toBe("printed");
     expect(kit?.customer_id).toBeNull();
-    const stockLink = adminPage.getByRole("link", { name: new RegExp(code) });
+    const stockLink = adminPage.getByRole("link", { name: new RegExp(formatKitCode(code)) });
     await expect(stockLink).toContainText("retail");
   });
 
@@ -66,7 +62,7 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
     );
     expect(res.status()).toBe(200);
     await adminPage.goto("/admin/kits");
-    const dispatch = card(adminPage, "2 · Dispatch a kit");
+    const dispatch = card(adminPage, "1 · Dispatch a kit");
     await dispatch.getByLabel("Kit code").fill(code);
     await dispatch.getByLabel("Order").selectOption(`#E2E${orderId}`);
     await dispatch.getByLabel("Outbound tracking no.").fill(trackingNumber("X"));

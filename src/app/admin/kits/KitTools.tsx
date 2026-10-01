@@ -1,18 +1,26 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Card, CardTitle, Button, Field, inputClass } from "@/components/ui";
 import { formatDate } from "@/lib/status";
-import { createKitBatch, dispatchKit, prepareRetailKit } from "../actions";
+import { formatKitCode, normalizeKitCode } from "@/lib/kit-code";
+import { dispatchKit, prepareRetailKit } from "../actions";
 
 type PendingOrder = { id: string; order_number: string; email: string; placed_at: string };
 
+const CODE_PLACEHOLDER = "UT-XXXX-XXXX";
+
+/** What a success message should call the kit, whatever was typed. */
+function shown(raw: string) {
+  const code = normalizeKitCode(raw);
+  return code ? formatKitCode(code) : raw.trim().toUpperCase();
+}
+
 export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
   const [pending, startTransition] = useTransition();
-  const [batchCount, setBatchCount] = useState(10);
-  const [batchMessage, setBatchMessage] = useState<string | null>(null);
 
   const [kitCode, setKitCode] = useState("");
+  const [orderQuery, setOrderQuery] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
   const [outboundTracking, setOutboundTracking] = useState("");
   const [returnTracking, setReturnTracking] = useState("");
@@ -24,48 +32,20 @@ export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
   const [retailReturnTracking, setRetailReturnTracking] = useState("");
   const [retailMessage, setRetailMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
+  const matchingOrders = useMemo(() => {
+    const q = orderQuery.trim().toLowerCase();
+    if (!q) return pendingOrders;
+    return pendingOrders.filter(
+      (o) => o.order_number.toLowerCase().includes(q) || o.email.toLowerCase().includes(q)
+    );
+  }, [orderQuery, pendingOrders]);
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Card>
-        <CardTitle>1 · Create kit labels</CardTitle>
+        <CardTitle>1 · Dispatch a kit</CardTitle>
         <p className="text-sm text-slate-500 mb-4">
-          Generates unique codes for pre-printing QR labels onto kit boxes and urine pots.
-        </p>
-        <div className="flex items-end gap-3">
-          <Field label="Quantity">
-            <input
-              type="number"
-              min={1}
-              max={200}
-              value={batchCount}
-              onChange={(e) => setBatchCount(Number(e.target.value))}
-              className={`${inputClass} w-28`}
-            />
-          </Field>
-          <Button
-            disabled={pending}
-            onClick={() => {
-              setBatchMessage(null);
-              startTransition(async () => {
-                const result = await createKitBatch(batchCount);
-                setBatchMessage(
-                  result.error
-                    ? result.error
-                    : `Created ${result.codes?.length} kits. Use "Print labels" to print them.`
-                );
-              });
-            }}
-          >
-            {pending ? "Creating…" : "Create batch"}
-          </Button>
-        </div>
-        {batchMessage && <p className="text-sm text-slate-600 mt-3">{batchMessage}</p>}
-      </Card>
-
-      <Card>
-        <CardTitle>2 · Dispatch a kit</CardTitle>
-        <p className="text-sm text-slate-500 mb-4">
-          When packing an order: scan/enter the kit code, pick the order, and enter both Royal
+          When packing an order: scan or enter the kit code, pick the order, and enter both Royal
           Mail tracking numbers. The patient is emailed their instructions automatically.
         </p>
         <div className="space-y-3">
@@ -73,8 +53,18 @@ export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
             <input
               value={kitCode}
               onChange={(e) => setKitCode(e.target.value)}
-              placeholder="UT-XXXXXX"
+              placeholder={CODE_PLACEHOLDER}
+              autoComplete="off"
               className={`${inputClass} font-mono`}
+            />
+          </Field>
+          <Field label="Find order" hint="Type part of the order number or the customer's email.">
+            <input
+              value={orderQuery}
+              onChange={(e) => setOrderQuery(e.target.value)}
+              placeholder="Search orders without a kit"
+              autoComplete="off"
+              className={inputClass}
             />
           </Field>
           <Field label="Order">
@@ -84,7 +74,7 @@ export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
               className={inputClass}
             >
               <option value="">Select order…</option>
-              {pendingOrders.map((order) => (
+              {matchingOrders.map((order) => (
                 <option key={order.id} value={order.order_number}>
                   {order.order_number} · {order.email} ({formatDate(order.placed_at)})
                 </option>
@@ -120,9 +110,10 @@ export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
                 });
                 if (result.error) setDispatchMessage({ ok: false, text: result.error });
                 else {
-                  setDispatchMessage({ ok: true, text: `Kit ${kitCode} dispatched.` });
+                  setDispatchMessage({ ok: true, text: `Kit ${shown(kitCode)} dispatched.` });
                   setKitCode("");
                   setOrderNumber("");
+                  setOrderQuery("");
                   setOutboundTracking("");
                   setReturnTracking("");
                 }
@@ -140,9 +131,9 @@ export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
       </Card>
 
       <Card>
-        <CardTitle>3 · Prepare a retail kit</CardTitle>
+        <CardTitle>2 · Prepare a retail kit</CardTitle>
         <p className="text-sm text-slate-500 mb-4">
-          For kits sold through retailers or other marketplaces: scan/enter the kit code and the
+          For kits sold through retailers or other marketplaces: scan or enter the kit code and the
           tracking number on the pre-paid return label you pack with it. The buyer registers the
           kit by scanning its QR, and their sample&apos;s return to the lab is then tracked as usual.
         </p>
@@ -152,7 +143,8 @@ export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
               <input
                 value={retailKitCode}
                 onChange={(e) => setRetailKitCode(e.target.value)}
-                placeholder="UT-XXXXXX"
+                placeholder={CODE_PLACEHOLDER}
+                autoComplete="off"
                 className={`${inputClass} font-mono`}
               />
             </Field>
@@ -175,10 +167,7 @@ export function KitTools({ pendingOrders }: { pendingOrders: PendingOrder[] }) {
                 });
                 if (result.error) setRetailMessage({ ok: false, text: result.error });
                 else {
-                  setRetailMessage({
-                    ok: true,
-                    text: `Kit ${retailKitCode.trim().toUpperCase()} prepared for retail.`,
-                  });
+                  setRetailMessage({ ok: true, text: `Kit ${shown(retailKitCode)} prepared for retail.` });
                   setRetailKitCode("");
                   setRetailReturnTracking("");
                 }

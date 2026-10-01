@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatKitCode } from "@/lib/kit-code";
 import { Card, CardTitle, PageHeader, StatusBadge, EmptyState } from "@/components/ui";
 import {
   KIT_PIPELINE,
+  PRE_ASSIGNMENT_STATUSES,
   KIT_STATUS_ADMIN_LABELS,
   formatDateTime,
   type KitStatus,
@@ -40,7 +42,7 @@ export default async function AdminHome() {
       <PageHeader title="Patients" subtitle="Live view of every test kit in flight." />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {KIT_PIPELINE.filter((s) => !["created", "closed"].includes(s)).map((stage) => (
+        {KIT_PIPELINE.filter((s) => !PRE_ASSIGNMENT_STATUSES.includes(s) && s !== "closed").map((stage) => (
           <Card key={stage} className="!p-4 text-center">
             <p className="text-2xl font-semibold text-slate-900">{stageCounts.get(stage) ?? 0}</p>
             <p className="text-xs text-slate-500 mt-1">{KIT_STATUS_ADMIN_LABELS[stage]}</p>
@@ -66,7 +68,7 @@ export default async function AdminHome() {
                   >
                     <div>
                       <p className="text-sm font-medium text-slate-900">
-                        <span className="font-mono">{kit.code}</span>
+                        <span className="font-mono">{formatKitCode(kit.code)}</span>
                         {patient && (
                           <span className="text-slate-500 font-normal">
                             {" "}

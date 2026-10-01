@@ -47,6 +47,16 @@ export default async function globalTeardown() {
     if (error) console.error("[e2e] kit cleanup failed", error.message);
   }
 
+  // Batches whose kits were all deleted above belong to this run.
+  const { data: batchesWithKits } = await db.from("kits").select("batch_id").not("batch_id", "is", null);
+  const keep = new Set((batchesWithKits ?? []).map((k) => k.batch_id as number));
+  const { data: allBatches } = await db.from("kit_batches").select("id");
+  const orphans = (allBatches ?? []).map((b) => b.id as number).filter((id) => !keep.has(id));
+  if (orphans.length) {
+    const { error } = await db.from("kit_batches").delete().in("id", orphans);
+    if (error) console.error("[e2e] batch cleanup failed", error.message);
+  }
+
   const { error: orderError } = await db.from("orders").delete().like("email", `%@${TEST_EMAIL_DOMAIN}`);
   if (orderError) console.error("[e2e] order cleanup failed", orderError.message);
 

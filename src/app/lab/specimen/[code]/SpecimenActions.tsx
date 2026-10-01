@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Card, CardTitle, Button, Field, inputClass } from "@/components/ui";
+import { formatKitCode } from "@/lib/kit-code";
 import { markReceived, uploadResults } from "./actions";
 
 export function SpecimenActions({
@@ -20,7 +21,7 @@ export function SpecimenActions({
     return (
       <Card className="text-center py-10">
         <p className="text-sm text-slate-600 mb-4">
-          Confirm that specimen <span className="font-mono font-semibold">{code}</span> has
+          Confirm that specimen <span className="font-mono font-semibold">{formatKitCode(code)}</span> has
           physically arrived at the laboratory.
         </p>
         <Button
@@ -100,7 +101,7 @@ export function SpecimenActions({
             <input
               name="confirmCode"
               required
-              placeholder="UT-XXXXXX"
+              placeholder="UT-XXXX-XXXX"
               autoComplete="off"
               className={`${inputClass} font-mono uppercase`}
             />

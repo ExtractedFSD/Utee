@@ -1,5 +1,6 @@
 export type KitStatus =
-  | "created"
+  | "generated"
+  | "printed"
   | "assigned"
   | "shipped"
   | "delivered"
@@ -9,13 +10,15 @@ export type KitStatus =
   | "lab_complete"
   | "clinic_received"
   | "report_ready"
-  | "closed";
+  | "closed"
+  | "voided";
 
 export type Role = "customer" | "lab" | "clinic" | "admin" | "super_admin";
 
 /** Order of the pipeline, used for the admin funnel and timeline rendering. */
 export const KIT_PIPELINE: KitStatus[] = [
-  "created",
+  "generated",
+  "printed",
   "assigned",
   "shipped",
   "delivered",
@@ -26,10 +29,15 @@ export const KIT_PIPELINE: KitStatus[] = [
   "clinic_received",
   "report_ready",
   "closed",
+  "voided",
 ];
 
+/** Statuses before a kit belongs to anyone; left out of patient funnels. */
+export const PRE_ASSIGNMENT_STATUSES: KitStatus[] = ["generated", "printed", "voided"];
+
 export const KIT_STATUS_LABELS: Record<KitStatus, string> = {
-  created: "Kit printed",
+  generated: "Kit code generated",
+  printed: "Kit printed",
   assigned: "Kit assigned to order",
   shipped: "Kit on its way to you",
   delivered: "Kit delivered",
@@ -40,11 +48,13 @@ export const KIT_STATUS_LABELS: Record<KitStatus, string> = {
   clinic_received: "With the clinical team",
   report_ready: "Your report is ready",
   closed: "Closed",
+  voided: "Kit code cancelled",
 };
 
 /** Admin-facing pipeline stage names. */
 export const KIT_STATUS_ADMIN_LABELS: Record<KitStatus, string> = {
-  created: "Unassigned stock",
+  generated: "Generated, not yet printed",
+  printed: "Unassigned stock",
   assigned: "Awaiting dispatch",
   shipped: "Outbound",
   delivered: "With patient",
@@ -55,10 +65,12 @@ export const KIT_STATUS_ADMIN_LABELS: Record<KitStatus, string> = {
   clinic_received: "Clinic reviewing",
   report_ready: "Report ready",
   closed: "Closed",
+  voided: "Voided",
 };
 
 export const KIT_STATUS_COLORS: Record<KitStatus, string> = {
-  created: "bg-slate-100 text-slate-700",
+  generated: "bg-slate-100 text-slate-500",
+  printed: "bg-slate-100 text-slate-700",
   assigned: "bg-slate-100 text-slate-700",
   shipped: "bg-pink-50 text-maroon",
   delivered: "bg-pink-50 text-maroon",
@@ -69,6 +81,7 @@ export const KIT_STATUS_COLORS: Record<KitStatus, string> = {
   clinic_received: "bg-pink-50 text-maroon",
   report_ready: "bg-mint text-emerald-800",
   closed: "bg-slate-100 text-slate-500",
+  voided: "bg-rose-50 text-rose-700",
 };
 
 /**
