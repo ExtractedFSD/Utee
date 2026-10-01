@@ -248,64 +248,67 @@ export function TriageForm({ code }: { code: string }) {
     });
   }
 
-  if (urgent) {
-    const flagged = SAFETY_QUESTIONS.filter((q) => safety[q.key] === "yes");
-    return (
-      <section className="space-y-6" data-testid="triage-urgent">
-        <Card className="border-2 border-maroon/40">
-          <p className="text-xs font-semibold uppercase tracking-[.14em] text-maroon">Please get medical help now</p>
-          <h2 className="font-display text-2xl font-light text-midnight mt-1">
-            Some of your answers can be signs of a more serious infection
-          </h2>
-          <p className="text-sm text-slate-700 mt-3 leading-relaxed">
-            A UTI can spread to the kidneys or the bloodstream, and the answers below are ones doctors treat as warning signs.
-            Please do not wait for a test result. Contact urgent care now: call <strong>NHS 111</strong>, or go to your nearest
-            urgent treatment centre. If you feel very unwell, are struggling to breathe, or are confused or drowsy, call{" "}
-            <strong>999</strong>.
-          </p>
-          <ul className="mt-4 space-y-1.5 text-sm text-slate-700">
-            {flagged.map((q) => (
-              <li key={q.key} className="flex gap-2">
-                <span className="mt-0.5 shrink-0 font-semibold text-maroon">Yes</span>
-                <span>{q.label}</span>
-              </li>
-            ))}
-          </ul>
+  const flagged = SAFETY_QUESTIONS.filter((q) => safety[q.key] === "yes");
+
+  return (
+    <>
+    {urgent && (
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-midnight/60 p-4 sm:items-center" role="presentation">
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="urgent-title"
+          aria-describedby="urgent-body"
+          data-testid="triage-urgent"
+          className="w-full max-w-md rounded-card bg-red-900 p-6 text-white shadow-card"
+        >
+          <div className="flex items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/15" aria-hidden>
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3 2.5 20h19L12 3Z" />
+                <path d="M12 9v5" />
+                <path d="M12 17.5h.01" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <h2 id="urgent-title" className="font-display text-2xl font-light leading-tight">
+                Please read this before you continue
+              </h2>
+              <p id="urgent-body" className="mt-3 text-sm leading-relaxed text-white/95">
+                Your symptoms indicate a potentially severe urinary tract infection (UTI). You can continue with this test, but for
+                your safety, we would strongly recommend that you seek urgent medical advice.
+              </p>
+              <ul className="mt-3 space-y-1 text-xs text-white/80">
+                {flagged.map((q) => (
+                  <li key={q.key}>You answered yes: {q.label}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <a
               href="tel:111"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-maroon px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] text-white shadow-card hover:bg-brand-700"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-white px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] text-red-900 shadow-card hover:bg-pink-25"
             >
-              Call 111
+              Call NHS 111
             </a>
-            <Button type="button" variant="secondary" onClick={() => setUrgent(false)}>
-              Change my answers
-            </Button>
-          </div>
-        </Card>
-        <Card>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            You can still send your sample. Your answers will be passed to the Utee clinical team with the rest of your
-            questionnaire, but a test result takes days and these symptoms need attention today.
-          </p>
-          <div className="mt-4">
-            <Button
+            <button
               type="button"
-              variant="secondary"
               onClick={() => {
                 setUrgent(false);
                 setStep(1);
               }}
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-white/50 px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] text-white hover:bg-white/10"
             >
-              I have read this, continue with my test
-            </Button>
+              Continue with my test
+            </button>
+            <button type="button" onClick={() => setUrgent(false)} className="text-sm text-white/80 underline hover:text-white">
+              Change my answers
+            </button>
           </div>
-        </Card>
-      </section>
-    );
-  }
-
-  return (
+        </div>
+      </div>
+    )}
     <form onSubmit={submit} className="space-y-6" data-step={step}>
       {step === 0 && (
         <Card className="space-y-5">
@@ -608,5 +611,6 @@ export function TriageForm({ code }: { code: string }) {
         )}
       </div>
     </form>
+    </>
   );
 }

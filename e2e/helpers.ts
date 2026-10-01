@@ -424,9 +424,11 @@ export async function completeTriage(
   }
   await page.getByRole("button", { name: "Continue" }).click();
   if (opts.flag) {
-    await expect(page.getByTestId("triage-urgent")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Call 111" })).toHaveAttribute("href", "tel:111");
-    await page.getByRole("button", { name: "I have read this, continue with my test" }).click();
+    const popup = page.getByTestId("triage-urgent");
+    await expect(popup).toBeVisible();
+    await expect(popup).toContainText("Your symptoms indicate a potentially severe urinary tract infection (UTI).");
+    await expect(popup.getByRole("link", { name: "Call NHS 111" })).toHaveAttribute("href", "tel:111");
+    await popup.getByRole("button", { name: "Continue with my test" }).click();
   }
   await expect(form).toHaveAttribute("data-step", "1");
 
