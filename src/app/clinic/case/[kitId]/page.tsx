@@ -28,7 +28,7 @@ export default async function CasePage({
     admin.from("triage_submissions").select("symptoms, consent_given, research_consent, submitted_at").eq("kit_id", kitId).maybeSingle(),
     admin
       .from("lab_results")
-      .select("outcome, organism, colony_count, sensitivities, comments, report_path, uploaded_at")
+      .select("outcome, organism, colony_count, sensitivities, comments, report_path, uploaded_at, controls, previous_attempts")
       .eq("kit_id", kitId)
       .maybeSingle(),
     admin.from("clinic_reports").select("status, summary, completed_at").eq("kit_id", kitId).maybeSingle(),
@@ -91,7 +91,16 @@ export default async function CasePage({
                   {labResult.outcome}
                 </Pill>
               </p>
-              {labResult.organism && <p>Organism: {labResult.organism}</p>}
+              {labResult.organism && <p>Positive for: {labResult.organism}</p>}
+              {labResult.controls && (
+                <p className="text-xs text-slate-500">
+                  Controls: positive {(labResult.controls as { positive?: boolean }).positive ? "confirmed" : "NOT confirmed"},
+                  negative {(labResult.controls as { negative?: boolean }).negative ? "reacted" : "clear"},
+                  error {(labResult.controls as { error?: boolean }).error ? "reported" : "none"}
+                  {((labResult.previous_attempts as unknown[]) ?? []).length > 0 &&
+                    ` · run ${((labResult.previous_attempts as unknown[]) ?? []).length + 1}`}
+                </p>
+              )}
               {labResult.colony_count && <p>Colony count: {labResult.colony_count}</p>}
               {(labResult.sensitivities as { text?: string } | null)?.text && (
                 <p>Sensitivities: {(labResult.sensitivities as { text: string }).text}</p>

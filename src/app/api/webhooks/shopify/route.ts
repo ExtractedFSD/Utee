@@ -125,6 +125,7 @@ export async function POST(req: NextRequest) {
     if (otherOrders === 0) {
       await sendEmail({
         to: email,
+        kind: "portalWelcome",
         ...emails.portalWelcome(String(order.name ?? order.id)),
       });
     }

@@ -72,20 +72,20 @@ async function notifyForStatus(admin: SupabaseClient, kitId: string, status: Kit
 
   switch (status) {
     case "activated":
-      if (email) await sendEmail({ to: email, ...emails.triageReceived(code) });
+      if (email) await sendEmail({ to: email, kitId, kind: "triageReceived", ...emails.triageReceived(code) });
       break;
     case "in_transit_to_lab":
-      if (labEmail) await sendEmail({ to: labEmail, ...emails.labNewSpecimen(code) });
+      if (labEmail) await sendEmail({ to: labEmail, kitId, kind: "labNewSpecimen", ...emails.labNewSpecimen(code) });
       break;
     case "received_by_lab":
-      if (email) await sendEmail({ to: email, ...emails.receivedByLab(code) });
+      if (email) await sendEmail({ to: email, kitId, kind: "receivedByLab", ...emails.receivedByLab(code) });
       break;
     case "lab_complete":
-      if (email) await sendEmail({ to: email, ...emails.labComplete(code) });
-      if (clinicEmail) await sendEmail({ to: clinicEmail, ...emails.clinicNewCase(code) });
+      if (email) await sendEmail({ to: email, kitId, kind: "labComplete", ...emails.labComplete(code) });
+      if (clinicEmail) await sendEmail({ to: clinicEmail, kitId, kind: "clinicNewCase", ...emails.clinicNewCase(code) });
       break;
     case "report_ready":
-      if (email) await sendEmail({ to: email, ...emails.reportReady(code) });
+      if (email) await sendEmail({ to: email, kitId, kind: "reportReady", ...emails.reportReady(code) });
       break;
   }
 }

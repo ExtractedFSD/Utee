@@ -11,6 +11,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ];
   if (user.role === "super_admin") {
     nav.push({ href: "/admin/kits/batches", label: "Batches" });
+    nav.push({ href: "/admin/emails", label: "Emails" });
     nav.push({ href: "/admin/dashboard", label: "Dashboard" });
   }
   return (

@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
     const body = kind === "daily" ? copy.reminders.dailyBody : copy.reminders.monthlyBody;
     await sendEmail({
       to: email,
+      kind: `trackerReminder:${kind}`,
       subject,
       html: `<p style="font-family:Helvetica,Arial,sans-serif;font-size:15px;color:#1d003a">${body}</p><p><a href="${APP_URL}/portal/tracker" style="font-family:Helvetica,Arial,sans-serif;font-weight:600;color:#91193b">${copy.reminders.button}</a></p>${kind === "monthly" ? `<p><a href="${APP_URL}/portal/tracker/setup?mode=prevention" style="font-family:Helvetica,Arial,sans-serif;font-weight:600;color:#91193b">${copy.reminders.chatButton}</a></p>` : ""}`,
     });

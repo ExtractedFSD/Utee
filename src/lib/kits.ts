@@ -67,6 +67,6 @@ export async function claimKit(
     metadata: { channel: "retail_claim" },
   });
 
-  await sendEmail({ to: customer.email, ...emails.kitClaimed(formatKitCode(kit.code)) });
+  await sendEmail({ to: customer.email, kitId: kit.id, kind: "kitClaimed", ...emails.kitClaimed(formatKitCode(kit.code)) });
   return true;
 }

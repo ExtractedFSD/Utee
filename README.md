@@ -37,12 +37,25 @@ tracking.
    (`triage_submissions.symptoms`, `version: 3`; the summary component still
    renders the earlier shapes); the clinic case page shows every answer and
    any safety flags.
-4. **Transit** — Royal Mail tracking events arrive at `/api/webhooks/tracking`
-   and appear on the customer's timeline for both directions.
-5. **Lab** — The lab scans the QR on the pot → sees the *specimen number only*
-   (never patient identity), confirms receipt, runs the test, and uploads
-   structured results + optional PDF. Customer sees "received" / "analysis
-   complete" but never raw results.
+4. **Transit** — With `TRACKING_PROVIDER=trackship`, both tracking numbers
+   are registered with TrackShip at dispatch (`src/lib/trackship.ts`) and
+   its status webhooks land at `/api/webhooks/trackship`, authenticated by
+   the API key TrackShip echoes in its `trackship-api-key` header (set the
+   URL under "Connect a Store" > "Tracking API App"; the App Name there is
+   `TRACKSHIP_APP_NAME`). Scan times arrive without a zone and are read as
+   Europe/London. Admins can pull the latest state with "Refresh from
+   TrackShip" on the kit page. The generic `/api/webhooks/tracking` shape
+   still works for any other carrier feed. Events appear on the customer's timeline for both
+   directions, and the lab is emailed when the return parcel is delivered.
+5. **Lab** — The lab scans the QR on the bag → sees the *specimen number only*
+   (never patient identity), confirms receipt, runs the Lodestar rapid
+   culture test and records the sheet (`src/lib/lab-sheet.ts`): six
+   uropathogens ticked if positive, plus the positive, negative and error
+   controls. A valid run goes to the clinic as positive or negative. A run
+   with the positive control unticked, the negative control ticked or an
+   error holds the kit in `lab_query`: Utee is emailed, the customer sees
+   "Lab is checking your sample", and the lab either re-runs (earlier
+   attempts are kept on the result) or escalates to Utee with a note.
 6. **Clinic** — Clinic is notified, marks the case received, reviews symptoms +
    lab results, and publishes the final patient report (PDF).
 7. **Report** — Customer is emailed, sees "report ready" on their timeline, and
@@ -50,7 +63,11 @@ tracking.
    supplements) are shown in the portal.
 
 Every transition appends to an append-only `kit_events` audit log and fans out
-email notifications to the right party.
+email notifications to the right party. Every email sent is recorded in
+`email_log` (recipient, subject, template, Resend id, status); super admins
+see it per kit on the admin kit page and across the board at `/admin/emails`,
+and Resend's delivery webhook (`/api/webhooks/resend`, signed with
+`RESEND_WEBHOOK_SECRET`) updates each row to delivered or bounced.
 
 ### Kits sold outside the Utee store (retail / other marketplaces)
 
@@ -120,8 +137,10 @@ service role behind explicit role checks (`src/lib/auth.ts`).
 3. **Install & run** — `npm install && npm run dev`.
 4. **Staff users** —
    `node scripts/create-staff-user.mjs lab@yourlab.com lab "Partner Lab"`
-   (likewise for `clinic`, `admin`, `super_admin`). Staff log in at `/login`
-   with a one-time email code, same as customers.
+   (likewise for `clinic`, `fulfilment`, `admin`, `super_admin`). Staff log
+   in at `/login` with a one-time email code, same as customers. A
+   `fulfilment` user lands on `/fulfilment`: the dispatch and retail tools
+   and the stock list, with no access to patients, results or reports.
 5. **Shopify webhooks** — Settings → Notifications → Webhooks: add
    `orders/create` and `orders/updated` → `https://your-domain/api/webhooks/shopify`
    (JSON). Put the shown signing secret in `SHOPIFY_WEBHOOK_SECRET`. Set

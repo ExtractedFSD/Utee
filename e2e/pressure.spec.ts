@@ -5,6 +5,7 @@ import {
   card,
   createUser,
   emailFor,
+  expectKitStatus,
   insertKit,
   kitByCode,
   kitEvents,
@@ -242,5 +243,125 @@ test.describe("QR landing", () => {
     // A printed, unassigned kit is claimed by whoever enters it: straight to the questionnaire.
     await expect(page).toHaveURL(`/triage/${real.code}`);
     await ctx.close();
+  });
+});
+
+test.describe("Lab sheet", () => {
+  test("an invalid run holds the kit for troubleshooting until a valid re-run", async ({ browser }) => {
+    const lab = await createUser("lab", "sheet-lab");
+    const kit = await insertKit("received_by_lab");
+    const ctx = await browser.newContext();
+    await loginAs(ctx, lab.email);
+    const page = await ctx.newPage();
+
+    // Error ticked and positive control missing: invalid, Utee notified, kit held.
+    await page.goto(`/lab/specimen/${kit.code}`);
+    await page.locator('input[name="organism"][value="e_coli"]').check();
+    await page.locator('input[name="control_error"]').check();
+    await page.locator('input[name="confirmCode"]').fill(kit.code);
+    await page.getByRole("button", { name: "Record results" }).click();
+    await expect(page.getByTestId("lab-query")).toBeVisible();
+    await expect(page.getByTestId("lab-query")).toContainText("Positive control not confirmed");
+    await expect(page.getByTestId("lab-query")).toContainText("Error reported by the device");
+    expect((await kitByCode(kit.code))?.status).toBe("lab_query");
+    await expect(page.getByTestId("lab-sheet")).toHaveCount(0);
+    const { data: held } = await admin().from("lab_results").select("valid, outcome").eq("kit_id", kit.id).single();
+    expect(held).toEqual({ valid: false, outcome: "inconclusive" });
+    const { data: adminMail } = await admin().from("email_log").select("kind").eq("kit_id", kit.id).eq("kind", "adminLabQuery");
+    expect(adminMail?.length).toBe(1);
+
+    // Escalating keeps it held and tells Utee why.
+    await page.getByLabel("Escalate to Utee").fill("Device error twice; sample volume low");
+    await page.getByRole("button", { name: "Escalate to Utee" }).click();
+    await expect(page.getByRole("button", { name: "Escalated" })).toBeVisible();
+    expect((await kitEvents(kit.id)).map((e) => e.label)).toContain("Escalated to Utee by the lab");
+
+    // Re-run: back to awaiting results, then a valid sheet goes to the clinic.
+    await page.getByRole("button", { name: "Re-run the test" }).click();
+    await expectKitStatus(kit.code, "received_by_lab");
+    await expect(page.getByTestId("lab-sheet")).toContainText("run 2");
+    await page.locator('input[name="organism"][value="klebsiella_pneumoniae"]').check();
+    await page.locator('input[name="control_positive"]').check();
+    await page.locator('input[name="confirmCode"]').fill(kit.code);
+    await page.getByRole("button", { name: "Record results" }).click();
+    await expectKitStatus(kit.code, "lab_complete");
+    const { data: final } = await admin().from("lab_results").select("valid, outcome, organism, previous_attempts").eq("kit_id", kit.id).single();
+    expect(final?.valid).toBe(true);
+    expect(final?.outcome).toBe("positive");
+    expect(final?.organism).toBe("Klebsiella pneumoniae");
+    expect((final?.previous_attempts as unknown[]).length).toBe(1);
+    await ctx.close();
+  });
+});
+
+test.describe("Fulfilment role", () => {
+  test("sees the packing tools and nothing else", async ({ browser, request }) => {
+    const packer = await createUser("fulfilment", "packer");
+    const orderId = Number(String(Date.now()).slice(-9));
+    expect((await postShopify(request, "orders/create", shopifyOrderPayload({ id: orderId, email: emailFor("packer-cust") }))).status()).toBe(200);
+    const kit = await insertKit();
+    const ctx = await browser.newContext();
+    await loginAs(ctx, packer.email);
+    const page = await ctx.newPage();
+
+    await page.goto("/admin");
+    await expect(page).toHaveURL("/fulfilment");
+    await page.goto("/admin/kits");
+    await expect(page).toHaveURL("/fulfilment");
+    await page.goto("/lab");
+    await expect(page).toHaveURL("/fulfilment");
+    await expect(page.getByRole("heading", { name: "Kit fulfilment" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Patients" })).toHaveCount(0);
+
+    // Scanning a kit lands on the packing page with the code filled in.
+    await page.goto(`/k/${kit.code}`);
+    await expect(page).toHaveURL(`/fulfilment?code=${kit.code}`);
+    const dispatch = card(page, "1 · Dispatch a kit");
+    await expect(dispatch.getByLabel("Kit code")).toHaveValue(`UT-${kit.code.slice(0, 4)}-${kit.code.slice(4)}`);
+    await dispatch.getByLabel("Find order").fill(`E2E${orderId}`);
+    await dispatch.locator("select").selectOption(`#E2E${orderId}`);
+    await dispatch.getByLabel("Outbound tracking no.").fill(trackingNumber("FOUT"));
+    await dispatch.getByLabel("Return tracking no.").fill(trackingNumber("FRET"));
+    await dispatch.getByRole("button", { name: "Dispatch kit" }).click();
+    await expect(dispatch.getByText(/dispatched\./)).toBeVisible();
+    await expectKitStatus(kit.code, "shipped");
+    const events = await kitEvents(kit.id);
+    expect(events.find((e) => e.label.startsWith("Kit assigned"))?.actor_role).toBe("fulfilment");
+    await ctx.close();
+  });
+});
+
+test.describe("TrackShip webhook", () => {
+  test("accepts the documented payload, authenticated by the shared secret, and moves the kit", async ({ request }) => {
+    const kit = await insertKit();
+    await admin().from("kits").update({ status: "activated" }).eq("id", kit.id);
+    const trk = trackingNumber("TS");
+    await admin().from("shipments").insert({ kit_id: kit.id, direction: "return", tracking_number: trk });
+    const payload = {
+      order_id: "41086",
+      tracking_number: trk,
+      tracking_provider: "royal-mail",
+      tracking_event_status: "in_transit",
+      last_event_time: "2026-10-01 09:15:00",
+      events: [
+        { message: "Item received", status: "pre_transit", datetime: "2026-10-01 08:00:00", tracking_location: { city: "Reading", state: "", country: "", zip: "" } },
+        { message: "Item at sorting centre", status: "in_transit", datetime: "2026-10-01 09:15:00", tracking_location: { city: "Swindon", state: "", country: "GB", zip: "" } },
+      ],
+      destination_events: null,
+    };
+    const secret = process.env.TRACKING_WEBHOOK_SECRET!;
+    const denied = await request.post("/api/webhooks/trackship", { data: payload, headers: { "trackship-api-key": "wrong" } });
+    expect(denied.status()).toBe(401);
+    const res = await request.post(`/api/webhooks/trackship?secret=${encodeURIComponent(secret)}`, { data: payload });
+    expect(res.status()).toBe(200);
+    expect(await res.json()).toEqual({ matched: true });
+    await expectKitStatus(kit.code, "in_transit_to_lab");
+    const { data: shipment } = await admin().from("shipments").select("status, last_event").eq("tracking_number", trk).single();
+    expect(shipment).toEqual({ status: "in_transit", last_event: "Item at sorting centre" });
+    const events = await kitEvents(kit.id);
+    expect(events.map((e) => e.label)).toContain("Sample on its way to the lab");
+    // A test ping from the TrackShip dashboard carries no shipment and must still get a 200.
+    const ping = await request.post(`/api/webhooks/trackship?secret=${encodeURIComponent(secret)}`, { data: { hello: "trackship" } });
+    expect(ping.status()).toBe(200);
   });
 });

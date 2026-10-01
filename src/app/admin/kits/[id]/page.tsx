@@ -6,6 +6,7 @@ import { Card, CardTitle, PageHeader, StatusBadge, Pill } from "@/components/ui"
 import { Timeline, type TimelineEvent } from "@/components/Timeline";
 import { formatDateTime, KIT_REVERT_MAP, type KitStatus } from "@/lib/status";
 import { formatKitCode } from "@/lib/kit-code";
+import { EmailLogTable } from "@/components/EmailLogTable";
 import { KitAdminControls } from "./KitAdminControls";
 
 /** Full kit deep-dive for customer service: every event, hidden or not. */
@@ -42,6 +43,15 @@ export default async function AdminKitPage({
       admin.from("lab_results").select("outcome, uploaded_at").eq("kit_id", id).maybeSingle(),
       admin.from("clinic_reports").select("status, completed_at").eq("kit_id", id).maybeSingle(),
     ]);
+  const { data: emailLog } =
+    user.role === "super_admin"
+      ? await admin
+          .from("email_log")
+          .select("id, to_email, subject, kind, status, error, created_at")
+          .eq("kit_id", id)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      : { data: null };
 
   const patient = kit.profiles as unknown as {
     id: string;
@@ -82,7 +92,7 @@ export default async function AdminKitPage({
           </Link>
         )}
         {triage && <Pill tone="brand">Triage {formatDateTime(triage.submitted_at)}</Pill>}
-        {labResult && <Pill tone="amber">Lab: {labResult.outcome}</Pill>}
+        {labResult && <Pill tone={status === "lab_query" ? "red" : "amber"}>Lab: {status === "lab_query" ? "invalid run" : labResult.outcome}</Pill>}
         {report && <Pill tone={report.status === "complete" ? "green" : "slate"}>Report {report.status}</Pill>}
       </div>
 
@@ -97,6 +107,12 @@ export default async function AdminKitPage({
               })) as TimelineEvent[]}
             />
           </Card>
+          {emailLog && (
+            <Card className="mt-6">
+              <CardTitle>Emails sent ({emailLog.length})</CardTitle>
+              <EmailLogTable rows={emailLog} />
+            </Card>
+          )}
         </div>
         <div className="space-y-6">
           {shipments?.map((shipment) => (
@@ -112,6 +128,7 @@ export default async function AdminKitPage({
             kitId={kit.id}
             status={status}
             mockTracking={process.env.TRACKING_PROVIDER === "mock"}
+            trackship={process.env.TRACKING_PROVIDER === "trackship" && !!process.env.TRACKSHIP_API_KEY}
             canRevert={user.role === "super_admin" && status in KIT_REVERT_MAP}
           />
         </div>
