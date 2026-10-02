@@ -16,11 +16,116 @@ function shown(raw: string) {
   return code ? formatKitCode(code) : raw.trim().toUpperCase();
 }
 
+/**
+ * One field for the order: type part of the order number or the customer's
+ * email, pick from the matches underneath. Only test-kit orders without a
+ * kit are offered, so an empty list means there is nothing to dispatch.
+ */
+function OrderPicker({
+  orders,
+  value,
+  onChange,
+}: {
+  orders: PendingOrder[];
+  value: string;
+  onChange: (orderNumber: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const chosen = orders.find((o) => o.order_number === value);
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = q
+      ? orders.filter((o) => o.order_number.toLowerCase().includes(q) || o.email.toLowerCase().includes(q))
+      : orders;
+    return list.slice(0, 10);
+  }, [query, orders]);
+
+  // Not wrapped in <Field>: its <label> would forward clicks on the option
+  // buttons to the first button inside it, which after a pick is "Change".
+  const labelClass = "block text-sm font-semibold text-slate-700 mb-1.5";
+  const hintClass = "block text-xs text-slate-500 mt-1.5";
+
+  if (chosen) {
+    return (
+      <div>
+        <span className={labelClass}>Order</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-maroon/30 bg-pink-25 px-4 py-2.5 text-sm" data-testid="chosen-order">
+          <span>
+            <span className="font-semibold text-midnight">{chosen.order_number}</span>
+            <span className="text-slate-600"> · {chosen.email} ({formatDate(chosen.placed_at)})</span>
+          </span>
+          <button type="button" onClick={() => { onChange(""); setQuery(""); }} className="text-sm font-semibold text-maroon">
+            Change
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label htmlFor="order-search" className={labelClass}>
+        Order
+      </label>
+      <div className="relative">
+        <input
+          id="order-search"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+          placeholder={orders.length ? "Search orders without a kit" : "Nothing to dispatch"}
+          disabled={!orders.length}
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls="order-options"
+          aria-autocomplete="list"
+          className={inputClass}
+        />
+        {open && orders.length > 0 && (
+          <ul id="order-options" role="listbox" className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-2xl border border-slate-200 bg-white p-1 shadow-card">
+            {matches.length ? (
+              matches.map((o) => (
+                <li key={o.id}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      onChange(o.order_number);
+                      setOpen(false);
+                    }}
+                    className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-pink-25"
+                  >
+                    <span className="font-semibold text-midnight">{o.order_number}</span>
+                    <span className="text-slate-600"> · {o.email}</span>
+                    <span className="block text-xs text-slate-400">{formatDate(o.placed_at)}</span>
+                  </button>
+                </li>
+              ))
+            ) : (
+              <li className="px-3 py-2 text-sm text-slate-500">No orders match that.</li>
+            )}
+          </ul>
+        )}
+      </div>
+      <span className={hintClass}>
+        {orders.length ? "Type part of the order number or the customer's email, then pick the order." : "No test-kit orders are waiting for a kit."}
+      </span>
+    </div>
+  );
+}
+
 export function KitTools({ pendingOrders, initialCode }: { pendingOrders: PendingOrder[]; initialCode?: string }) {
   const [pending, startTransition] = useTransition();
 
   const [kitCode, setKitCode] = useState(initialCode ?? "");
-  const [orderQuery, setOrderQuery] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
   const [outboundTracking, setOutboundTracking] = useState("");
   const [returnTracking, setReturnTracking] = useState("");
@@ -31,14 +136,6 @@ export function KitTools({ pendingOrders, initialCode }: { pendingOrders: Pendin
   const [retailKitCode, setRetailKitCode] = useState("");
   const [retailReturnTracking, setRetailReturnTracking] = useState("");
   const [retailMessage, setRetailMessage] = useState<{ ok: boolean; text: string } | null>(null);
-
-  const matchingOrders = useMemo(() => {
-    const q = orderQuery.trim().toLowerCase();
-    if (!q) return pendingOrders;
-    return pendingOrders.filter(
-      (o) => o.order_number.toLowerCase().includes(q) || o.email.toLowerCase().includes(q)
-    );
-  }, [orderQuery, pendingOrders]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -58,29 +155,7 @@ export function KitTools({ pendingOrders, initialCode }: { pendingOrders: Pendin
               className={`${inputClass} font-mono`}
             />
           </Field>
-          <Field label="Find order" hint="Type part of the order number or the customer's email.">
-            <input
-              value={orderQuery}
-              onChange={(e) => setOrderQuery(e.target.value)}
-              placeholder="Search orders without a kit"
-              autoComplete="off"
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Order">
-            <select
-              value={orderNumber}
-              onChange={(e) => setOrderNumber(e.target.value)}
-              className={inputClass}
-            >
-              <option value="">Select order…</option>
-              {matchingOrders.map((order) => (
-                <option key={order.id} value={order.order_number}>
-                  {order.order_number} · {order.email} ({formatDate(order.placed_at)})
-                </option>
-              ))}
-            </select>
-          </Field>
+          <OrderPicker orders={pendingOrders} value={orderNumber} onChange={setOrderNumber} />
           <div className="grid grid-cols-2 gap-3">
             <Field label="Outbound tracking no.">
               <input
@@ -113,7 +188,6 @@ export function KitTools({ pendingOrders, initialCode }: { pendingOrders: Pendin
                   setDispatchMessage({ ok: true, text: `Kit ${shown(kitCode)} dispatched.` });
                   setKitCode("");
                   setOrderNumber("");
-                  setOrderQuery("");
                   setOutboundTracking("");
                   setReturnTracking("");
                 }
