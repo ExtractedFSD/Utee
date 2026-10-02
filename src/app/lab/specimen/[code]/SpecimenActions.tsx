@@ -87,15 +87,26 @@ export function ReceiveActions({ code, canReceive }: { code: string; canReceive:
 }
 
 /** The sheet, offered again after a first invalid run. */
+export type SheetInitial = { organisms: string[]; controls: { positive: boolean; negative: boolean; error: boolean }; comments: string | null };
+
 export function SheetForm({
   code,
   attempt,
   lastInvalid,
+  amend,
+  initial,
+  onCancel,
+  onSaved,
 }: {
   code: string;
   /** 1 for the first run, 2 for the re-run, and so on. */
   attempt: number;
   lastInvalid: string[] | null;
+  /** Correcting a result already sent to the clinic. */
+  amend?: boolean;
+  initial?: SheetInitial;
+  onCancel?: () => void;
+  onSaved?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -105,15 +116,21 @@ export function SheetForm({
     startTransition(async () => {
       const result = await recordSheet(code, formData);
       if (result?.error) setError(result.error);
+      else onSaved?.();
     });
   }
 
   return (
     <form action={onSubmit} data-testid="lab-sheet">
-      <Card className="space-y-5">
+      {amend && <input type="hidden" name="amend" value="1" />}
+      <Card className={`space-y-5 ${amend ? "border-2 border-sun" : ""}`}>
         <div>
-          <CardTitle>Lodestar UTI Test{attempt > 1 ? ` (run ${attempt})` : ""}</CardTitle>
-          <p className="text-sm text-slate-500">Tick every uropathogen that is positive, then record the controls exactly as the analyser shows them.</p>
+          <CardTitle>{amend ? "Amend results" : `Lodestar UTI Test${attempt > 1 ? ` (run ${attempt})` : ""}`}</CardTitle>
+          <p className="text-sm text-slate-500">
+            {amend
+              ? "Correct the sheet and save. The clinic is emailed that the results changed; the original is kept on file."
+              : "Tick every uropathogen that is positive, then record the controls exactly as the analyser shows them."}
+          </p>
         </div>
 
         {lastInvalid && (
@@ -132,7 +149,7 @@ export function SheetForm({
           <div className="grid gap-2 sm:grid-cols-2">
             {UROPATHOGENS.map((u) => (
               <label key={u.key} className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700">
-                <input type="checkbox" name="organism" value={u.key} className={checkClass} />
+                <input type="checkbox" name="organism" value={u.key} defaultChecked={initial?.organisms.includes(u.key)} className={checkClass} />
                 <span>
                   <span className="font-semibold text-midnight">{u.label}</span>
                   {u.label !== u.formal && <span className="block text-xs text-slate-500">{u.formal}</span>}
@@ -145,21 +162,21 @@ export function SheetForm({
         <fieldset className="rounded-2xl border border-slate-200 p-4 space-y-2.5">
           <legend className="px-1 text-sm font-semibold text-slate-700">Controls</legend>
           <label className="flex items-start gap-3 text-sm text-slate-700">
-            <input type="checkbox" name="control_positive" className={`${checkClass} mt-0.5`} />
+            <input type="checkbox" name="control_positive" defaultChecked={initial?.controls.positive} className={`${checkClass} mt-0.5`} />
             <span>
               <span className="font-semibold text-midnight">Positive control</span>
               <span className="block text-xs text-slate-500">Positive control passed. Box must be ticked for a valid result.</span>
             </span>
           </label>
           <label className="flex items-start gap-3 text-sm text-slate-700">
-            <input type="checkbox" name="control_negative" className={`${checkClass} mt-0.5`} />
+            <input type="checkbox" name="control_negative" defaultChecked={initial?.controls.negative} className={`${checkClass} mt-0.5`} />
             <span>
               <span className="font-semibold text-midnight">Negative control</span>
               <span className="block text-xs text-slate-500">Negative control passed. Box must be ticked for a valid result.</span>
             </span>
           </label>
           <label className="flex items-start gap-3 text-sm text-slate-700">
-            <input type="checkbox" name="control_error" className={`${checkClass} mt-0.5`} />
+            <input type="checkbox" name="control_error" defaultChecked={initial?.controls.error} className={`${checkClass} mt-0.5`} />
             <span>
               <span className="font-semibold text-midnight">Error</span>
               <span className="block text-xs text-slate-500">Tick if the analyser reported an error. The run is invalid.</span>
@@ -168,7 +185,7 @@ export function SheetForm({
         </fieldset>
 
         <Field label="Comments" hint="Anything the clinic should know about this run.">
-          <textarea name="comments" rows={3} className={inputClass} />
+          <textarea name="comments" rows={3} defaultValue={initial?.comments ?? ""} className={inputClass} />
         </Field>
 
         <Field label="Analyser printout or lab PDF (optional)" hint="Max 10 MB">
@@ -192,15 +209,76 @@ export function SheetForm({
 
         {error && <p className="text-sm text-rose-600">{error}</p>}
 
-        <p className="text-xs text-slate-500">
-          A run is invalid if either control did not pass or an error was reported. The first invalid run is re-run quietly; a second
-          one parks the specimen as a problem for Utee.
-        </p>
-        <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : "Record results"}
-        </Button>
+        {!amend && (
+          <p className="text-xs text-slate-500">
+            A run is invalid if either control did not pass or an error was reported. The first invalid run is re-run quietly; a second
+            one parks the specimen as a problem for Utee.
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" disabled={pending}>
+            {pending ? "Saving…" : amend ? "Save amended results" : "Record results"}
+          </Button>
+          {amend && onCancel && (
+            <Button type="button" variant="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
+        </div>
       </Card>
     </form>
+  );
+}
+
+/** Results already sent to the clinic, with a way back in while the clinic has not picked the case up. */
+export function CompletedResults({
+  code,
+  outcome,
+  organism,
+  comments,
+  recordedAt,
+  runs,
+  canAmend,
+  initial,
+}: {
+  code: string;
+  outcome: string;
+  organism: string | null;
+  comments: string | null;
+  recordedAt: string;
+  runs: number;
+  canAmend: boolean;
+  initial: SheetInitial;
+}) {
+  const [amending, setAmending] = useState(false);
+  if (amending) {
+    return <SheetForm code={code} attempt={runs} lastInvalid={null} amend initial={initial} onCancel={() => setAmending(false)} onSaved={() => setAmending(false)} />;
+  }
+  return (
+    <Card data-testid="results-on-file">
+      <CardTitle>Results on file</CardTitle>
+      <div className="space-y-2 text-sm text-slate-700">
+        <p>
+          Outcome:{" "}
+          <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[.12em] ${outcome === "positive" ? "bg-peach-50 text-maroon" : outcome === "negative" ? "bg-mint text-emerald-800" : "bg-sun text-amber-800"}`}>
+            {outcome}
+          </span>
+        </p>
+        {organism && <p>Positive for: {organism}</p>}
+        {comments && <p>Comments: {comments}</p>}
+        {runs > 1 && <p className="text-xs text-slate-500">Run {runs}; earlier runs are kept on file.</p>}
+        <p className="text-xs text-slate-400">Recorded {recordedAt}</p>
+      </div>
+      <div className="mt-4">
+        {canAmend ? (
+          <Button variant="secondary" onClick={() => setAmending(true)}>
+            Amend results
+          </Button>
+        ) : (
+          <p className="text-xs text-slate-500">The clinic has picked this case up, so results can no longer be amended here. Ask Utee to roll the case back if something is wrong.</p>
+        )}
+      </div>
+    </Card>
   );
 }
 
