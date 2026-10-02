@@ -54,7 +54,7 @@ export default async function LabHome({ searchParams }: { searchParams: Promise<
               : `Activated ${formatDateTime(kit.activated_at)}`}
           </p>
         </div>
-        <StatusBadge status={kit.status as KitStatus} />
+        {kit.status !== "received_by_lab" && <StatusBadge status={kit.status as KitStatus} />}
       </Link>
     </li>
   );
@@ -101,7 +101,6 @@ export default async function LabHome({ searchParams }: { searchParams: Promise<
                         {issue ? ` · ${formatDateTime(issue.created_at)}` : ""}
                       </p>
                     </div>
-                    <StatusBadge status={kit.status as KitStatus} />
                   </Link>
                 </li>
               );
