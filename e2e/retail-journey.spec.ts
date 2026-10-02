@@ -164,6 +164,7 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
     await expect(labPage).toHaveURL(`/lab/specimen/${code}`);
     expect(await labPage.content()).not.toContain(buyerEmail);
     await labPage.getByRole("button", { name: "Confirm specimen received" }).click();
+    await expect(labPage).toHaveURL(`/lab?received=${code}`);
     await expectKitStatus(code, "received_by_lab");
     await labCtx.close();
   });

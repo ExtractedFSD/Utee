@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -35,7 +36,9 @@ export async function markReceived(code: string) {
 
   revalidatePath(`/lab/specimen/${code}`);
   revalidatePath("/lab");
-  return { ok: true };
+  // Back to the queue: a technician receiving a batch scans the next bag
+  // now and records each sheet when its run has finished.
+  redirect(`/lab?received=${code}`);
 }
 
 const organismKeys = UROPATHOGENS.map((u) => u.key) as [UropathogenKey, ...UropathogenKey[]];
