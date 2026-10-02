@@ -131,7 +131,8 @@ test.describe("Dispatch validation", () => {
     await page.goto("/admin/kits");
     const dispatch = card(page, "1 · Dispatch a kit");
     await dispatch.getByLabel("Kit code").fill(fresh.code);
-    await dispatch.locator("select").selectOption(`#E2E${orderId}`);
+    await dispatch.getByRole("combobox", { name: "Order" }).fill(`E2E${orderId}`);
+    await dispatch.getByRole("option", { name: new RegExp(`#E2E${orderId}`) }).click();
 
     const same = trackingNumber("SAME");
     await dispatch.getByLabel("Outbound tracking no.").fill(same);
@@ -318,8 +319,9 @@ test.describe("Fulfilment role", () => {
     await expect(page).toHaveURL(`/fulfilment?code=${kit.code}`);
     const dispatch = card(page, "1 · Dispatch a kit");
     await expect(dispatch.getByLabel("Kit code")).toHaveValue(`UT-${kit.code.slice(0, 4)}-${kit.code.slice(4)}`);
-    await dispatch.getByLabel("Find order").fill(`E2E${orderId}`);
-    await dispatch.locator("select").selectOption(`#E2E${orderId}`);
+    await dispatch.getByRole("combobox", { name: "Order" }).fill(`E2E${orderId}`);
+    await dispatch.getByRole("option", { name: new RegExp(`#E2E${orderId}`) }).click();
+    await expect(dispatch.getByTestId("chosen-order")).toContainText(`#E2E${orderId}`);
     await dispatch.getByLabel("Outbound tracking no.").fill(trackingNumber("FOUT"));
     await dispatch.getByLabel("Return tracking no.").fill(trackingNumber("FRET"));
     await dispatch.getByRole("button", { name: "Dispatch kit" }).click();

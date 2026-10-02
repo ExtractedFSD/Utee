@@ -65,7 +65,8 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
     await adminPage.goto("/admin/kits");
     const dispatch = card(adminPage, "1 · Dispatch a kit");
     await dispatch.getByLabel("Kit code").fill(code);
-    await dispatch.locator("select").selectOption(`#E2E${orderId}`);
+    await dispatch.getByRole("combobox", { name: "Order" }).fill(`E2E${orderId}`);
+    await dispatch.getByRole("option", { name: new RegExp(`#E2E${orderId}`) }).click();
     await dispatch.getByLabel("Outbound tracking no.").fill(trackingNumber("X"));
     await dispatch.getByLabel("Return tracking no.").fill(trackingNumber("Y"));
     await dispatch.getByRole("button", { name: "Dispatch kit" }).click();

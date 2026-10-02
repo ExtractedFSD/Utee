@@ -81,8 +81,9 @@ test("store kit: order to report", async ({ browser, request }) => {
     const dispatch = card(adminPage, "1 · Dispatch a kit");
     // Typed the way it is printed on the label, dashes and all.
     await dispatch.getByLabel("Kit code").fill(formatKitCode(code));
-    await dispatch.getByLabel("Find order").fill(`E2E${orderId}`);
-    await dispatch.locator("select").selectOption(`#E2E${orderId}`);
+    await dispatch.getByRole("combobox", { name: "Order" }).fill(`E2E${orderId}`);
+    await dispatch.getByRole("option", { name: new RegExp(`#E2E${orderId}`) }).click();
+    await expect(dispatch.getByTestId("chosen-order")).toContainText(`#E2E${orderId}`);
     await dispatch.getByLabel("Outbound tracking no.").fill(outbound);
     await dispatch.getByLabel("Return tracking no.").fill(returnTrk);
     await dispatch.getByRole("button", { name: "Dispatch kit" }).click();
