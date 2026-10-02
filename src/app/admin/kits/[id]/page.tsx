@@ -6,6 +6,8 @@ import { Card, CardTitle, PageHeader, StatusBadge, Pill } from "@/components/ui"
 import { Timeline, type TimelineEvent } from "@/components/Timeline";
 import { formatDateTime, KIT_REVERT_MAP, type KitStatus } from "@/lib/status";
 import { formatKitCode } from "@/lib/kit-code";
+import { SAMPLE_FAULT_LABELS } from "@/lib/lab-sheet";
+import { LabIssueControls } from "./LabIssueControls";
 import { EmailLogTable } from "@/components/EmailLogTable";
 import { KitAdminControls } from "./KitAdminControls";
 
@@ -43,6 +45,17 @@ export default async function AdminKitPage({
       admin.from("lab_results").select("outcome, uploaded_at").eq("kit_id", id).maybeSingle(),
       admin.from("clinic_reports").select("status, completed_at").eq("kit_id", id).maybeSingle(),
     ]);
+  const { data: labIssue } =
+    kit.status === "lab_query"
+      ? await admin
+          .from("lab_issues")
+          .select("kind, fault, note, created_at")
+          .eq("kit_id", id)
+          .is("resolved_at", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
   const { data: emailLog } =
     user.role === "super_admin"
       ? await admin
@@ -92,7 +105,12 @@ export default async function AdminKitPage({
           </Link>
         )}
         {triage && <Pill tone="brand">Triage {formatDateTime(triage.submitted_at)}</Pill>}
-        {labResult && <Pill tone={status === "lab_query" ? "red" : "amber"}>Lab: {status === "lab_query" ? "invalid run" : labResult.outcome}</Pill>}
+        {labResult && status !== "lab_query" && <Pill tone="amber">Lab: {labResult.outcome}</Pill>}
+        {status === "lab_query" && (
+          <Pill tone="red">
+            Lab problem: {labIssue?.kind === "sample_problem" ? SAMPLE_FAULT_LABELS[labIssue.fault ?? ""] ?? labIssue.fault : "test failed twice"}
+          </Pill>
+        )}
         {report && <Pill tone={report.status === "complete" ? "green" : "slate"}>Report {report.status}</Pill>}
       </div>
 
@@ -115,6 +133,24 @@ export default async function AdminKitPage({
           )}
         </div>
         <div className="space-y-6">
+          {status === "lab_query" && (
+            <Card className="border-2 border-maroon/30">
+              <CardTitle>Lab problem</CardTitle>
+              <p className="text-sm text-slate-700">
+                {labIssue?.kind === "sample_problem"
+                  ? `The sample arrived unusable: ${SAMPLE_FAULT_LABELS[labIssue.fault ?? ""] ?? labIssue.fault}.`
+                  : "The test failed twice."}
+                {labIssue?.note && <span className="block mt-1 text-slate-600">Lab note: {labIssue.note}</span>}
+              </p>
+              <p className="text-xs text-slate-500 mt-2">
+                The customer has been told we are looking into a problem. Decide what happens next: ask the lab to test again, or close the
+                kit below and arrange a replacement.
+              </p>
+              <div className="mt-3">
+                <LabIssueControls kitId={kit.id} />
+              </div>
+            </Card>
+          )}
           {shipments?.map((shipment) => (
             <Card key={shipment.direction}>
               <CardTitle>{shipment.direction === "outbound" ? "Outbound" : "Return"}</CardTitle>

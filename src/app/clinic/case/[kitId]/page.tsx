@@ -94,8 +94,8 @@ export default async function CasePage({
               {labResult.organism && <p>Positive for: {labResult.organism}</p>}
               {labResult.controls && (
                 <p className="text-xs text-slate-500">
-                  Controls: positive {(labResult.controls as { positive?: boolean }).positive ? "confirmed" : "NOT confirmed"},
-                  negative {(labResult.controls as { negative?: boolean }).negative ? "reacted" : "clear"},
+                  Controls: positive {(labResult.controls as { positive?: boolean }).positive ? "passed" : "FAILED"},
+                  negative {(labResult.controls as { negative?: boolean }).negative ? "passed" : "FAILED"},
                   error {(labResult.controls as { error?: boolean }).error ? "reported" : "none"}
                   {((labResult.previous_attempts as unknown[]) ?? []).length > 0 &&
                     ` · run ${((labResult.previous_attempts as unknown[]) ?? []).length + 1}`}

@@ -216,25 +216,46 @@ export const emails = {
     ),
   }),
 
-  adminLabQuery: (kitCode: string, reasons: string[], note?: string) => ({
-    subject: `Lab query on specimen ${kitCode}`,
+  adminLabIssue: (kitCode: string, summary: string, reasons: string[], note?: string) => ({
+    subject: `Lab problem on specimen ${kitCode}: ${summary}`,
     html: wrap(
-      "Test invalid, lab is troubleshooting",
+      summary,
+      p(`The laboratory has parked specimen <strong>${kitCode}</strong> as a problem:`) +
+        `<ul style="font-size:15px;line-height:1.55;color:${MIDNIGHT};margin:0 0 12px 20px;padding:0;">${reasons.map((r) => `<li>${r}</li>`).join("")}</ul>` +
+        (note ? p(`Lab note: ${note}`) : "") +
+        p("The customer has been told we are looking into a problem with their test. Decide what happens next from the kit's admin page: ask the lab to test again, or close the kit and arrange a replacement.") +
+        button(`${APP_URL}/admin`, "Open admin")
+    ),
+  }),
+
+  customerLabProblem: (kitCode: string) => ({
+    subject: "A problem with your Utee test",
+    html: wrap(
+      "We're looking into a problem with your test",
+      p(`We've hit a problem testing your sample (kit <strong>${kitCode}</strong>). This can happen when a sample is damaged in the post or a test needs repeating.`) +
+        p("You don't need to do anything right now. The Utee team will be in touch shortly about what happens next.") +
+        button(`${APP_URL}/portal`, "View my timeline")
+    ),
+  }),
+
+  adminLabQuery: (kitCode: string, reasons: string[], note?: string) => ({
+    subject: `Lab problem on specimen ${kitCode}`,
+    html: wrap(
+      "Test failed",
       p(`The laboratory recorded an invalid run for specimen <strong>${kitCode}</strong>:`) +
         `<ul style="font-size:15px;line-height:1.55;color:${MIDNIGHT};margin:0 0 12px 20px;padding:0;">${reasons.map((r) => `<li>${r}</li>`).join("")}</ul>` +
         (note ? p(`Lab note: ${note}`) : "") +
-        p("The kit is held in the lab query state. The lab can re-run the test, or escalate it to Utee if the sample can't be re-tested.") +
         button(`${APP_URL}/admin`, "Open admin")
     ),
   }),
 
   adminLabEscalation: (kitCode: string, note: string) => ({
-    subject: `Lab escalation on specimen ${kitCode}`,
+    subject: `Note from the lab on specimen ${kitCode}`,
     html: wrap(
-      "Specimen escalated by the lab",
-      p(`The laboratory could not complete the test for specimen <strong>${kitCode}</strong> and has escalated it to Utee.`) +
-        p(`Lab note: ${note}`) +
-        p("Decide whether to send the patient a replacement kit or close the case, then update the kit from the admin page.") +
+      "Note from the lab",
+      p(`The laboratory has added a note on parked specimen <strong>${kitCode}</strong>:`) +
+        p(`<em>${note}</em>`) +
+        p("Decide whether the lab should test the sample again or the kit should be closed and a replacement arranged, then update the kit from the admin page.") +
         button(`${APP_URL}/admin`, "Open admin")
     ),
   }),

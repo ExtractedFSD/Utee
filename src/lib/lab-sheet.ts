@@ -1,7 +1,7 @@
 /**
- * The Lodestar Rapid Culture Test sheet (Llusern Scientific), as the lab
- * fills it in: six uropathogens ticked if positive, plus three controls that
- * say whether the run can be trusted at all.
+ * The Lodestar UTI Test sheet (Llusern Scientific), as the lab fills it in:
+ * six uropathogens ticked if positive (more than one is common), plus the
+ * controls that say whether the run can be trusted at all.
  */
 export const UROPATHOGENS = [
   { key: "e_coli", label: "E. coli", formal: "Escherichia coli" },
@@ -17,11 +17,11 @@ export type UropathogenKey = (typeof UROPATHOGENS)[number]["key"];
 export const ORGANISM_LABELS: Record<string, string> = Object.fromEntries(UROPATHOGENS.map((u) => [u.key, u.formal]));
 
 export type Controls = {
-  /** Confirms the test performed correctly. Must be ticked. */
+  /** Positive control passed (green). Must be ticked for a valid result. */
   positive: boolean;
-  /** Ticked means the negative control reacted: the run is invalid. */
+  /** Negative control passed (green). Must be ticked for a valid result; red means the test failed. */
   negative: boolean;
-  /** The device reported an error: the run is invalid. */
+  /** The analyser reported an error: the run is invalid. */
   error: boolean;
 };
 
@@ -37,9 +37,9 @@ export type SheetVerdict =
 /** What the controls say about the run, and the outcome when it is sound. */
 export function judgeSheet(reading: SheetReading): SheetVerdict {
   const reasons: string[] = [];
-  if (!reading.controls.positive) reasons.push("Positive control not confirmed, so the test may not have run correctly");
-  if (reading.controls.negative) reasons.push("Negative control reacted");
-  if (reading.controls.error) reasons.push("Error reported by the device");
+  if (!reading.controls.positive) reasons.push("Positive control did not pass");
+  if (!reading.controls.negative) reasons.push("Negative control did not pass");
+  if (reading.controls.error) reasons.push("Error reported by the analyser");
   if (reasons.length) return { valid: false, outcome: "inconclusive", reasons };
   return { valid: true, outcome: reading.organisms.length ? "positive" : "negative" };
 }
@@ -47,3 +47,19 @@ export function judgeSheet(reading: SheetReading): SheetVerdict {
 export function organismNames(keys: readonly string[]): string[] {
   return keys.map((k) => ORGANISM_LABELS[k] ?? k);
 }
+
+/** How many invalid runs the lab absorbs before the kit is parked as a problem. */
+export const FAILED_RUNS_BEFORE_ISSUE = 2;
+
+/** What can be wrong with a sample when the bag is opened. */
+export const SAMPLE_FAULTS = [
+  { key: "leaked_tube", label: "Sample tube has leaked" },
+  { key: "no_sample", label: "Tube has no sample in it" },
+  { key: "damaged_tube", label: "Sample tube is damaged" },
+  { key: "damaged_packaging", label: "Packaging is damaged" },
+  { key: "other", label: "Something else (describe below)" },
+] as const;
+
+export type SampleFaultKey = (typeof SAMPLE_FAULTS)[number]["key"];
+
+export const SAMPLE_FAULT_LABELS: Record<string, string> = Object.fromEntries(SAMPLE_FAULTS.map((f) => [f.key, f.label]));

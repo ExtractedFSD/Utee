@@ -169,9 +169,14 @@ test("store kit: order to report", async ({ browser, request }) => {
     expect(html).not.toContain(customerEmail);
     expect(html).not.toContain("E2E test submission");
     await labPage.getByRole("button", { name: "Confirm specimen received" }).click();
+    await expect(labPage).toHaveURL(`/lab?received=${code}`);
+    await expect(labPage.getByText("received and moved to Awaiting results")).toBeVisible();
     await expectKitStatus(code, "received_by_lab");
+    // Back to the specimen once the run has finished.
+    await labPage.goto(`/lab/specimen/${code}`);
     await labPage.locator('input[name="organism"][value="e_coli"]').check();
     await labPage.locator('input[name="control_positive"]').check();
+    await labPage.locator('input[name="control_negative"]').check();
     await labPage.locator('textarea[name="comments"]').fill("Clear positive band");
     await labPage.locator('input[name="report"]').setInputFiles({
       name: "lab.pdf",
