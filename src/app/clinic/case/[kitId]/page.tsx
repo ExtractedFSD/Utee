@@ -6,6 +6,8 @@ import { Card, CardTitle, PageHeader, StatusBadge, Pill } from "@/components/ui"
 import { formatDateTime, type KitStatus } from "@/lib/status";
 import { CaseActions } from "./CaseActions";
 import { TriageSummary } from "@/components/TriageSummary";
+import { RunHistory, runsFrom, type LabResultRow } from "@/components/RunHistory";
+import { labUserNames } from "@/lib/lab-users";
 import type { StoredTriage } from "@/lib/triage/questions";
 
 export default async function CasePage({
@@ -28,7 +30,7 @@ export default async function CasePage({
     admin.from("triage_submissions").select("symptoms, consent_given, research_consent, submitted_at").eq("kit_id", kitId).maybeSingle(),
     admin
       .from("lab_results")
-      .select("outcome, organism, colony_count, sensitivities, comments, report_path, uploaded_at, controls, previous_attempts")
+      .select("outcome, organism, colony_count, sensitivities, comments, report_path, uploaded_at, controls, previous_attempts, valid, lab_user_id")
       .eq("kit_id", kitId)
       .maybeSingle(),
     admin.from("clinic_reports").select("status, summary, completed_at").eq("kit_id", kitId).maybeSingle(),
@@ -93,13 +95,17 @@ export default async function CasePage({
               </p>
               {labResult.organism && <p>Positive for: {labResult.organism}</p>}
               {labResult.controls && (
-                <p className="text-xs text-slate-500">
-                  Controls: positive {(labResult.controls as { positive?: boolean }).positive ? "passed" : "FAILED"},
-                  negative {(labResult.controls as { negative?: boolean }).negative ? "passed" : "FAILED"},
-                  error {(labResult.controls as { error?: boolean }).error ? "reported" : "none"}
-                  {((labResult.previous_attempts as unknown[]) ?? []).length > 0 &&
-                    ` · run ${((labResult.previous_attempts as unknown[]) ?? []).length + 1}`}
-                </p>
+                <details className="text-xs text-slate-500">
+                  <summary className="cursor-pointer select-none">
+                    Controls: positive {(labResult.controls as { positive?: boolean }).positive ? "passed" : "FAILED"},
+                    negative {(labResult.controls as { negative?: boolean }).negative ? "passed" : "FAILED"},
+                    error {(labResult.controls as { error?: boolean }).error ? "reported" : "none"}
+                    {((labResult.previous_attempts as unknown[]) ?? []).length > 0 && ` · ${((labResult.previous_attempts as unknown[]) ?? []).length + 1} entries, see run history`}
+                  </summary>
+                  <div className="mt-3">
+                    <RunHistory runs={runsFrom(labResult as unknown as LabResultRow, await labUserNames(admin, labResult as unknown as LabResultRow))} />
+                  </div>
+                </details>
               )}
               {labResult.colony_count && <p>Colony count: {labResult.colony_count}</p>}
               {(labResult.sensitivities as { text?: string } | null)?.text && (
