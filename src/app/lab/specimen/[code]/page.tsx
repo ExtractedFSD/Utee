@@ -2,10 +2,10 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatKitCode } from "@/lib/kit-code";
-import { Card, CardTitle, PageHeader, StatusBadge, Pill } from "@/components/ui";
+import { Card, PageHeader, StatusBadge } from "@/components/ui";
 import { formatDateTime, type KitStatus } from "@/lib/status";
 import { SAMPLE_FAULT_LABELS, judgeSheet, type Controls, type UropathogenKey } from "@/lib/lab-sheet";
-import { ParkedActions, ReceiveActions, SheetForm } from "./SpecimenActions";
+import { CompletedResults, ParkedActions, ReceiveActions, SheetForm } from "./SpecimenActions";
 
 /**
  * One specimen as the lab sees it: code, state, the sheet or the problem.
@@ -69,20 +69,20 @@ export default async function SpecimenPage({ params }: { params: Promise<{ code:
     );
   } else if (result) {
     body = (
-      <Card>
-        <CardTitle>Results on file</CardTitle>
-        <div className="space-y-2 text-sm text-slate-700">
-          <p>
-            Outcome:{" "}
-            <Pill tone={result.outcome === "positive" ? "red" : result.outcome === "negative" ? "green" : "amber"}>{result.outcome}</Pill>
-          </p>
-          {result.organism && <p>Positive for: {result.organism}</p>}
-          {result.comments && <p>Comments: {result.comments}</p>}
-          {result.report_path && <p>PDF attached.</p>}
-          {attempts > 1 && <p className="text-xs text-slate-500">Run {attempts}; earlier runs are kept on file.</p>}
-          <p className="text-xs text-slate-400">Recorded {formatDateTime(result.uploaded_at)}</p>
-        </div>
-      </Card>
+      <CompletedResults
+        code={kit.code}
+        outcome={result.outcome}
+        organism={result.organism}
+        comments={result.comments}
+        recordedAt={formatDateTime(result.uploaded_at)}
+        runs={attempts}
+        canAmend={status === "lab_complete"}
+        initial={{
+          organisms: (result.organisms as string[]) ?? [],
+          controls: (result.controls as { positive: boolean; negative: boolean; error: boolean }) ?? { positive: false, negative: false, error: false },
+          comments: result.comments,
+        }}
+      />
     );
   } else {
     body = (

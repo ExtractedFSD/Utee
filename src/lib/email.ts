@@ -269,6 +269,15 @@ export const emails = {
     ),
   }),
 
+  clinicResultsAmended: (kitCode: string) => ({
+    subject: `Lab results amended for case ${kitCode}`,
+    html: wrap(
+      "Lab results amended",
+      p(`The laboratory has corrected the results for specimen <strong>${kitCode}</strong> before you picked the case up. Please review the case again before writing the report.`) +
+        button(`${APP_URL}/clinic`, "Open clinic portal")
+    ),
+  }),
+
   subscriptionChanged: (action: string, productTitle: string, detail: string) => ({
     subject: `Subscription ${action}: ${productTitle}`,
     html: wrap(

@@ -266,6 +266,10 @@ test.describe("Lab sheet", () => {
     await expect(page.getByTestId("last-invalid")).toContainText("Run 1 was invalid: Negative control did not pass");
     await expect(page.getByTestId("lab-sheet")).toContainText("run 2");
     expect((await kitByCode(kit.code))?.status).toBe("received_by_lab");
+    // On the queue it sits in its own Re-run needed area, not Awaiting results.
+    await page.goto("/lab");
+    await expect(page.getByTestId("rerun-queue")).toContainText("Negative control did not pass");
+    await page.goto(`/lab/specimen/${kit.code}`);
     const { data: afterFirst } = await admin().from("email_log").select("kind").eq("kit_id", kit.id);
     expect(afterFirst ?? []).toHaveLength(0);
 
@@ -313,6 +317,25 @@ test.describe("Lab sheet", () => {
     expect((final?.previous_attempts as unknown[]).length).toBe(2);
     const { data: resolved } = await admin().from("lab_issues").select("resolution").eq("kit_id", kit.id).single();
     expect(resolved?.resolution).toBe("rerun");
+
+    // A slip is corrected from Recently completed while the clinic has not picked the case up.
+    await page.goto("/lab");
+    await expect(page.getByTestId("recent-completed")).toContainText(kit.code.slice(0, 4));
+    await page.goto(`/lab/specimen/${kit.code}`);
+    await page.getByRole("button", { name: "Amend results" }).click();
+    await expect(page.locator('input[name="organism"][value="e_coli"]')).toBeChecked();
+    await page.locator('input[name="organism"][value="klebsiella_pneumoniae"]').uncheck();
+    await page.locator('input[name="confirmCode"]').fill(kit.code);
+    await page.getByRole("button", { name: "Save amended results" }).click();
+    await expect(page.getByTestId("results-on-file")).toContainText("Positive for: Escherichia coli");
+    expect((await kitByCode(kit.code))?.status).toBe("lab_complete");
+    const { data: amended } = await admin().from("lab_results").select("organism, previous_attempts").eq("kit_id", kit.id).single();
+    expect(amended?.organism).toBe("Escherichia coli");
+    const history = amended?.previous_attempts as { amended?: boolean; organisms: string[] }[];
+    expect(history).toHaveLength(3);
+    expect(history[2]).toMatchObject({ amended: true, organisms: ["e_coli", "klebsiella_pneumoniae"] });
+    const { data: clinicMail } = await admin().from("email_log").select("kind").eq("kit_id", kit.id).eq("kind", "clinicResultsAmended");
+    expect(clinicMail?.length).toBe(1);
     await ctx.close();
   });
 

@@ -152,7 +152,12 @@ export async function recordSheet(code: string, formData: FormData) {
   const user = await requireRole(["lab"]);
   const { admin, kit } = await loadKit(code);
   if (!kit) return { error: "Specimen not found" };
-  if (kit.status !== "received_by_lab") {
+  // A mistake can be corrected until the clinic picks the case up.
+  const amending = formData.get("amend") === "1";
+  if (amending && kit.status !== "lab_complete") {
+    return { error: "These results can no longer be amended here. Ask Utee to roll the case back." };
+  }
+  if (!amending && kit.status !== "received_by_lab") {
     return { error: "Mark the specimen as received before recording results" };
   }
 
@@ -178,6 +183,7 @@ export async function recordSheet(code: string, formData: FormData) {
   if (!parsed.success) return { error: "Please check the sheet" };
   const reading = parsed.data;
   const verdict = judgeSheet(reading);
+  if (amending && !verdict.valid) return { error: `An amended result must be a valid run: ${verdict.reasons.join("; ")}` };
 
   // Optional PDF attachment.
   let reportPath: string | null = null;
@@ -209,10 +215,12 @@ export async function recordSheet(code: string, formData: FormData) {
           comments: existing.comments,
           uploaded_at: existing.uploaded_at,
           lab_user_id: existing.lab_user_id,
+          ...(amending ? { amended: true } : {}),
         },
       ]
     : [];
-  const attempt = previous.length + 1;
+  // An amendment corrects the record; it is not another run of the test.
+  const attempt = amending ? previous.length : previous.length + 1;
 
   const { error: saveError } = await admin.from("lab_results").upsert(
     {
@@ -233,6 +241,26 @@ export async function recordSheet(code: string, formData: FormData) {
     { onConflict: "kit_id" }
   );
   if (saveError) return { error: `Could not save results: ${saveError.message}` };
+
+  if (amending) {
+    await logKitEvent(admin, {
+      kitId: kit.id,
+      type: "lab",
+      label: "Lab results amended",
+      detail: `Corrected by the laboratory. Now ${verdict.outcome}${reading.organisms.length ? `: ${organismNames(reading.organisms).join(", ")}` : ""}.`,
+      actorRole: "lab",
+      actorId: user.id,
+      visibleToCustomer: false,
+    });
+    const clinicEmail = process.env.CLINIC_NOTIFICATION_EMAIL;
+    if (clinicEmail) {
+      await sendEmail({ to: clinicEmail, kitId: kit.id, kind: "clinicResultsAmended", ...emails.clinicResultsAmended(formatKitCode(code)) });
+    }
+    revalidatePath(`/lab/specimen/${code}`);
+    revalidatePath("/lab");
+    revalidatePath(`/clinic/case/${kit.id}`);
+    return { ok: true, valid: true as const, amended: true };
+  }
 
   if (verdict.valid) {
     // Visible to the customer as "analysis complete", never the result itself.
