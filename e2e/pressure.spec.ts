@@ -409,3 +409,42 @@ test.describe("TrackShip webhook", () => {
     expect(ping.status()).toBe(200);
   });
 });
+
+test.describe("Users (super admin)", () => {
+  test("lists accounts, creates a staff user and changes a role; admins are kept out", async ({ browser }) => {
+    const su = await createUser("super_admin", "users-super");
+    const plainAdmin = await createUser("admin", "users-admin");
+    const target = await createUser("lab", "users-target");
+    const newEmail = emailFor("users-created");
+
+    const adminCtx = await browser.newContext();
+    await loginAs(adminCtx, plainAdmin.email);
+    const adminPage = await adminCtx.newPage();
+    await adminPage.goto("/admin/users");
+    await expect(adminPage).toHaveURL("/admin");
+    await expect(adminPage.getByText("Super admin", { exact: true })).toHaveCount(0);
+    await adminCtx.close();
+
+    const ctx = await browser.newContext();
+    await loginAs(ctx, su.email);
+    const page = await ctx.newPage();
+    await page.goto("/admin/users");
+    await expect(page.getByText("Super admin", { exact: true }).first()).toBeVisible();
+    await page.getByLabel("Email").fill(newEmail);
+    await page.getByLabel("Name (optional)").fill("New Clinic Person");
+    await page.locator("select").first().selectOption("clinic");
+    await page.getByRole("button", { name: "Create user" }).click();
+    await expect(page.getByText(`Created ${newEmail} as clinic.`)).toBeVisible();
+    const { data: created } = await admin().from("profiles").select("role, full_name").eq("email", newEmail).single();
+    expect(created).toEqual({ role: "clinic", full_name: "New Clinic Person" });
+
+    await page.goto(`/admin/users?q=${encodeURIComponent(target.email)}`);
+    const row = page.getByTestId("users-table").locator("tr", { hasText: target.email });
+    page.once("dialog", (d) => d.accept());
+    await row.getByLabel("Role").selectOption("fulfilment");
+    await expect
+      .poll(async () => (await admin().from("profiles").select("role").eq("id", target.id).single()).data?.role)
+      .toBe("fulfilment");
+    await ctx.close();
+  });
+});
