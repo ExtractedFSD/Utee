@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { UROPATHOGENS, judgeSheet, organismNames } from "./lab-sheet";
+import { SAMPLE_FAULTS, UROPATHOGENS, judgeSheet, organismNames } from "./lab-sheet";
 
-describe("Lodestar sheet", () => {
+describe("Lodestar UTI Test sheet", () => {
   it("lists the six uropathogens from the sheet", () => {
     expect(UROPATHOGENS.map((u) => u.formal)).toEqual([
       "Escherichia coli",
@@ -13,26 +13,27 @@ describe("Lodestar sheet", () => {
     ]);
   });
 
-  it("is positive when an organism is ticked and the controls pass", () => {
-    expect(judgeSheet({ organisms: ["e_coli"], controls: { positive: true, negative: false, error: false } })).toEqual({
-      valid: true,
-      outcome: "positive",
-    });
-    expect(judgeSheet({ organisms: [], controls: { positive: true, negative: false, error: false } })).toEqual({
-      valid: true,
-      outcome: "negative",
-    });
+  it("is valid only when both controls passed and no error was reported", () => {
+    const passed = { positive: true, negative: true, error: false };
+    expect(judgeSheet({ organisms: ["e_coli", "enterococcus"], controls: passed })).toEqual({ valid: true, outcome: "positive" });
+    expect(judgeSheet({ organisms: [], controls: passed })).toEqual({ valid: true, outcome: "negative" });
   });
 
-  it("is invalid when the positive control is missing, the negative control reacts, or an error is reported", () => {
-    const bad = judgeSheet({ organisms: ["e_coli"], controls: { positive: false, negative: true, error: true } });
-    expect(bad.valid).toBe(false);
-    expect(bad.outcome).toBe("inconclusive");
+  it("is invalid when either control failed or an error was reported", () => {
+    expect(judgeSheet({ organisms: ["e_coli"], controls: { positive: false, negative: true, error: false } })).toMatchObject({
+      valid: false,
+      reasons: ["Positive control did not pass"],
+    });
+    expect(judgeSheet({ organisms: [], controls: { positive: true, negative: false, error: false } })).toMatchObject({
+      valid: false,
+      reasons: ["Negative control did not pass"],
+    });
+    const bad = judgeSheet({ organisms: [], controls: { positive: false, negative: false, error: true } });
     if (!bad.valid) expect(bad.reasons).toHaveLength(3);
-    expect(judgeSheet({ organisms: [], controls: { positive: true, negative: false, error: true } }).valid).toBe(false);
   });
 
-  it("names organisms for the clinic", () => {
+  it("names organisms for the clinic and offers the sample faults", () => {
     expect(organismNames(["e_coli", "klebsiella_pneumoniae"])).toEqual(["Escherichia coli", "Klebsiella pneumoniae"]);
+    expect(SAMPLE_FAULTS.map((f) => f.key)).toEqual(["leaked_tube", "no_sample", "damaged_tube", "damaged_packaging", "other"]);
   });
 });

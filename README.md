@@ -48,14 +48,20 @@ tracking.
    still works for any other carrier feed. Events appear on the customer's timeline for both
    directions, and the lab is emailed when the return parcel is delivered.
 5. **Lab** — The lab scans the QR on the bag → sees the *specimen number only*
-   (never patient identity), confirms receipt, runs the Lodestar rapid
-   culture test and records the sheet (`src/lib/lab-sheet.ts`): six
-   uropathogens ticked if positive, plus the positive, negative and error
-   controls. A valid run goes to the clinic as positive or negative. A run
-   with the positive control unticked, the negative control ticked or an
-   error holds the kit in `lab_query`: Utee is emailed, the customer sees
-   "Lab is checking your sample", and the lab either re-runs (earlier
-   attempts are kept on the result) or escalates to Utee with a note.
+   (never patient identity), confirms receipt (which returns them to the
+   queue so a batch can be scanned in) and later records the Lodestar UTI
+   Test sheet (`src/lib/lab-sheet.ts`): six uropathogens ticked if positive
+   (several at once is common), plus the positive and negative controls,
+   both of which must have passed, and an error tick. A valid run goes to
+   the clinic as positive or negative. The first invalid run is kept on the
+   result and the sheet is offered again, with nothing said to the
+   customer. A second invalid run, or a sample that arrives unusable
+   (leaked, empty, damaged tube or packaging, or something else with a
+   note), creates a `lab_issues` row, parks the kit in `lab_query` (the
+   lab's "Error queue"), emails `ADMIN_NOTIFICATION_EMAIL`, and tells the
+   customer "We're looking into a problem with your test". Utee resolves it
+   from the admin kit page: ask the lab to test again, or close the kit
+   and arrange a replacement. The lab can add a note for Utee at any time.
 6. **Clinic** — Clinic is notified, marks the case received, reviews symptoms +
    lab results, and publishes the final patient report (PDF).
 7. **Report** — Customer is emailed, sees "report ready" on their timeline, and

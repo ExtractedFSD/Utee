@@ -176,6 +176,7 @@ test("store kit: order to report", async ({ browser, request }) => {
     await labPage.goto(`/lab/specimen/${code}`);
     await labPage.locator('input[name="organism"][value="e_coli"]').check();
     await labPage.locator('input[name="control_positive"]').check();
+    await labPage.locator('input[name="control_negative"]').check();
     await labPage.locator('textarea[name="comments"]').fill("Clear positive band");
     await labPage.locator('input[name="report"]').setInputFiles({
       name: "lab.pdf",

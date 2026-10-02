@@ -3,57 +3,102 @@
 import { useState, useTransition } from "react";
 import { Card, CardTitle, Button, Field, inputClass } from "@/components/ui";
 import { formatKitCode } from "@/lib/kit-code";
-import { UROPATHOGENS } from "@/lib/lab-sheet";
-import { escalateToUtee, markReceived, recordSheet, rerunTest } from "./actions";
+import { SAMPLE_FAULTS, UROPATHOGENS } from "@/lib/lab-sheet";
+import { escalateToUtee, markReceived, recordSheet, reportSampleProblem, rerunTest } from "./actions";
 
 const checkClass = "h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500";
 
-export function SpecimenActions({
+/** Receive the bag, or report that what is inside can't be tested. */
+export function ReceiveActions({ code, canReceive }: { code: string; canReceive: boolean }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
+  const [fault, setFault] = useState("");
+  const [note, setNote] = useState("");
+
+  return (
+    <Card className="space-y-4">
+      {canReceive && (
+        <div className="text-center py-4">
+          <p className="text-sm text-slate-600 mb-4">
+            Confirm that specimen <span className="font-mono font-semibold">{formatKitCode(code)}</span> has physically
+            arrived at the laboratory.
+          </p>
+          <Button
+            disabled={pending}
+            onClick={() => {
+              setError(null);
+              startTransition(async () => {
+                const result = await markReceived(code);
+                if (result?.error) setError(result.error);
+              });
+            }}
+          >
+            {pending && !reporting ? "Confirming…" : "Confirm specimen received"}
+          </Button>
+        </div>
+      )}
+      <div className={canReceive ? "border-t border-slate-100 pt-4" : ""} data-testid="sample-problem">
+        {!reporting ? (
+          <button type="button" onClick={() => setReporting(true)} className="text-sm font-semibold text-maroon hover:underline">
+            Report a problem with this sample
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-slate-700">What is wrong with the sample?</p>
+            <div className="space-y-2">
+              {SAMPLE_FAULTS.map((f) => (
+                <label key={f.key} className="flex items-center gap-3 text-sm text-slate-700">
+                  <input type="radio" name="fault" value={f.key} checked={fault === f.key} onChange={() => setFault(f.key)} className="h-4 w-4 border-slate-300 text-brand-600 focus:ring-brand-500" />
+                  {f.label}
+                </label>
+              ))}
+            </div>
+            <Field label="Details" hint="Anything Utee should know. Required for 'something else'.">
+              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={inputClass} />
+            </Field>
+            <p className="text-xs text-slate-500">
+              This parks the specimen as a problem, emails Utee, and tells the customer we are looking into a problem with their test.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="danger"
+                disabled={pending || !fault}
+                onClick={() => {
+                  setError(null);
+                  startTransition(async () => {
+                    const result = await reportSampleProblem(code, { fault, note });
+                    if (result?.error) setError(result.error);
+                  });
+                }}
+              >
+                {pending ? "Reporting…" : "Report problem"}
+              </Button>
+              <Button variant="secondary" type="button" onClick={() => setReporting(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+    </Card>
+  );
+}
+
+/** The sheet, offered again after a first invalid run. */
+export function SheetForm({
   code,
-  canReceive,
-  canRecord,
   attempt,
+  lastInvalid,
 }: {
   code: string;
-  canReceive: boolean;
-  canRecord: boolean;
-  /** 1 for the first run, 2 for the first re-run, and so on. */
+  /** 1 for the first run, 2 for the re-run, and so on. */
   attempt: number;
+  lastInvalid: string[] | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-
-  if (canReceive) {
-    return (
-      <Card className="text-center py-10">
-        <p className="text-sm text-slate-600 mb-4">
-          Confirm that specimen <span className="font-mono font-semibold">{formatKitCode(code)}</span> has
-          physically arrived at the laboratory.
-        </p>
-        <Button
-          disabled={pending}
-          onClick={() => {
-            setError(null);
-            startTransition(async () => {
-              const result = await markReceived(code);
-              if (result?.error) setError(result.error);
-            });
-          }}
-        >
-          {pending ? "Confirming…" : "Confirm specimen received"}
-        </Button>
-        {error && <p className="text-sm text-rose-600 mt-3">{error}</p>}
-      </Card>
-    );
-  }
-
-  if (!canRecord) {
-    return (
-      <Card className="text-center py-10">
-        <p className="text-sm text-slate-500">No lab action required for this specimen.</p>
-      </Card>
-    );
-  }
 
   function onSubmit(formData: FormData) {
     setError(null);
@@ -67,12 +112,23 @@ export function SpecimenActions({
     <form action={onSubmit} data-testid="lab-sheet">
       <Card className="space-y-5">
         <div>
-          <CardTitle>Lodestar Rapid Culture Test{attempt > 1 ? ` (run ${attempt})` : ""}</CardTitle>
-          <p className="text-sm text-slate-500">Tick each uropathogen that is positive, then record the controls exactly as the device shows them.</p>
+          <CardTitle>Lodestar UTI Test{attempt > 1 ? ` (run ${attempt})` : ""}</CardTitle>
+          <p className="text-sm text-slate-500">Tick every uropathogen that is positive, then record the controls exactly as the analyser shows them.</p>
         </div>
 
+        {lastInvalid && (
+          <div className="rounded-2xl border border-sun bg-sun-50 p-4 text-sm text-amber-900" data-testid="last-invalid">
+            <p className="font-semibold">Run {attempt - 1} was invalid: {lastInvalid.join("; ")}.</p>
+            <p className="mt-1 text-amber-800">
+              Re-run the test and record the sheet again. The customer has not been told. If this run is also invalid, the specimen is
+              parked as a problem for Utee.
+            </p>
+          </div>
+        )}
+
         <fieldset>
-          <legend className="text-sm font-semibold text-slate-700 mb-2">Uropathogen, tick if positive</legend>
+          <legend className="text-sm font-semibold text-slate-700 mb-1">Uropathogen, tick if positive</legend>
+          <p className="text-xs text-slate-500 mb-2">Tick more than one if more than one is positive. Polymicrobial infections are common.</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {UROPATHOGENS.map((u) => (
               <label key={u.key} className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700">
@@ -92,21 +148,21 @@ export function SpecimenActions({
             <input type="checkbox" name="control_positive" className={`${checkClass} mt-0.5`} />
             <span>
               <span className="font-semibold text-midnight">Positive control</span>
-              <span className="block text-xs text-slate-500">Confirms the test performed correctly. Must be ticked for a valid result.</span>
+              <span className="block text-xs text-slate-500">Positive control passed. Box must be ticked for a valid result.</span>
             </span>
           </label>
           <label className="flex items-start gap-3 text-sm text-slate-700">
             <input type="checkbox" name="control_negative" className={`${checkClass} mt-0.5`} />
             <span>
               <span className="font-semibold text-midnight">Negative control</span>
-              <span className="block text-xs text-slate-500">Tick only if it reacted. Test invalid, commence troubleshooting.</span>
+              <span className="block text-xs text-slate-500">Negative control passed. Box must be ticked for a valid result.</span>
             </span>
           </label>
           <label className="flex items-start gap-3 text-sm text-slate-700">
             <input type="checkbox" name="control_error" className={`${checkClass} mt-0.5`} />
             <span>
               <span className="font-semibold text-midnight">Error</span>
-              <span className="block text-xs text-slate-500">Tick if the device reported an error. Test invalid, commence troubleshooting.</span>
+              <span className="block text-xs text-slate-500">Tick if the analyser reported an error. The run is invalid.</span>
             </span>
           </label>
         </fieldset>
@@ -115,7 +171,7 @@ export function SpecimenActions({
           <textarea name="comments" rows={3} className={inputClass} />
         </Field>
 
-        <Field label="Device printout or lab PDF (optional)" hint="Max 10 MB">
+        <Field label="Analyser printout or lab PDF (optional)" hint="Max 10 MB">
           <input type="file" name="report" accept="application/pdf" className="text-sm" />
         </Field>
 
@@ -137,8 +193,8 @@ export function SpecimenActions({
         {error && <p className="text-sm text-rose-600">{error}</p>}
 
         <p className="text-xs text-slate-500">
-          A run with the positive control unticked, the negative control ticked, or an error is recorded as invalid: the kit is held for
-          troubleshooting instead of going to the clinic.
+          A run is invalid if either control did not pass or an error was reported. The first invalid run is re-run quietly; a second
+          one parks the specimen as a problem for Utee.
         </p>
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Record results"}
@@ -148,27 +204,32 @@ export function SpecimenActions({
   );
 }
 
-export function LabQueryActions({ code, reasons }: { code: string; reasons: string[] }) {
+/** A parked specimen: what went wrong, and what the lab can still do. */
+export function ParkedActions({ code, summary, details }: { code: string; summary: string; details: string[] }) {
   const [pending, startTransition] = useTransition();
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [escalated, setEscalated] = useState(false);
+  const [sent, setSent] = useState(false);
 
   return (
     <Card className="space-y-4 border-2 border-maroon/30" data-testid="lab-query">
       <div>
-        <CardTitle>Test invalid, commence troubleshooting</CardTitle>
-        <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
-          {reasons.map((r) => (
-            <li key={r}>{r}</li>
-          ))}
-        </ul>
+        <CardTitle>{summary}</CardTitle>
+        {details.length > 0 && (
+          <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
+            {details.map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+          </ul>
+        )}
         <p className="text-sm text-slate-500 mt-3">
-          Utee has been notified. Re-run the test on the same sample if you can, or escalate if the sample can&apos;t be tested again.
+          Utee and the customer have been told. Utee will decide what happens next. If Utee asks you to test the sample again, use the
+          button below.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Button
+          variant="secondary"
           disabled={pending}
           onClick={() => {
             setError(null);
@@ -178,26 +239,26 @@ export function LabQueryActions({ code, reasons }: { code: string; reasons: stri
             });
           }}
         >
-          {pending ? "Working…" : "Re-run the test"}
+          {pending ? "Working…" : "Test this sample again"}
         </Button>
       </div>
       <div className="space-y-2 border-t border-slate-100 pt-4">
-        <Field label="Escalate to Utee" hint="Say what went wrong and what you need.">
+        <Field label="Note for Utee" hint="Anything that helps decide what to do next.">
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={inputClass} />
         </Field>
         <Button
           variant="secondary"
-          disabled={pending || escalated}
+          disabled={pending || sent}
           onClick={() => {
             setError(null);
             startTransition(async () => {
               const result = await escalateToUtee(code, note);
               if (result?.error) setError(result.error);
-              else setEscalated(true);
+              else setSent(true);
             });
           }}
         >
-          {escalated ? "Escalated" : "Escalate to Utee"}
+          {sent ? "Note sent" : "Send note to Utee"}
         </Button>
       </div>
       {error && <p className="text-sm text-rose-600">{error}</p>}

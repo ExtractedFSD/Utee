@@ -248,49 +248,91 @@ test.describe("QR landing", () => {
 });
 
 test.describe("Lab sheet", () => {
-  test("an invalid run holds the kit for troubleshooting until a valid re-run", async ({ browser }) => {
+  test("first invalid run is re-run quietly; a second parks the kit as a problem", async ({ browser }) => {
     const lab = await createUser("lab", "sheet-lab");
+    const patient = await createUser("customer", "sheet-patient");
     const kit = await insertKit("received_by_lab");
+    await admin().from("kits").update({ customer_id: patient.id }).eq("id", kit.id);
     const ctx = await browser.newContext();
     await loginAs(ctx, lab.email);
     const page = await ctx.newPage();
 
-    // Error ticked and positive control missing: invalid, Utee notified, kit held.
+    // Run 1: negative control failed. Kept with the lab, customer not told.
     await page.goto(`/lab/specimen/${kit.code}`);
     await page.locator('input[name="organism"][value="e_coli"]').check();
+    await page.locator('input[name="control_positive"]').check();
+    await page.locator('input[name="confirmCode"]').fill(kit.code);
+    await page.getByRole("button", { name: "Record results" }).click();
+    await expect(page.getByTestId("last-invalid")).toContainText("Run 1 was invalid: Negative control did not pass");
+    await expect(page.getByTestId("lab-sheet")).toContainText("run 2");
+    expect((await kitByCode(kit.code))?.status).toBe("received_by_lab");
+    const { data: afterFirst } = await admin().from("email_log").select("kind").eq("kit_id", kit.id);
+    expect(afterFirst ?? []).toHaveLength(0);
+
+    // Run 2: analyser error. Parked: issue recorded, Utee and the customer emailed.
+    await page.locator('input[name="control_positive"]').check();
+    await page.locator('input[name="control_negative"]').check();
     await page.locator('input[name="control_error"]').check();
     await page.locator('input[name="confirmCode"]').fill(kit.code);
     await page.getByRole("button", { name: "Record results" }).click();
-    await expect(page.getByTestId("lab-query")).toBeVisible();
-    await expect(page.getByTestId("lab-query")).toContainText("Positive control not confirmed");
-    await expect(page.getByTestId("lab-query")).toContainText("Error reported by the device");
+    await expect(page.getByTestId("lab-query")).toContainText("Test failed 2 times");
+    await expect(page.getByTestId("lab-query")).toContainText("Error reported by the analyser");
     expect((await kitByCode(kit.code))?.status).toBe("lab_query");
-    await expect(page.getByTestId("lab-sheet")).toHaveCount(0);
-    const { data: held } = await admin().from("lab_results").select("valid, outcome").eq("kit_id", kit.id).single();
-    expect(held).toEqual({ valid: false, outcome: "inconclusive" });
-    const { data: adminMail } = await admin().from("email_log").select("kind").eq("kit_id", kit.id).eq("kind", "adminLabQuery");
-    expect(adminMail?.length).toBe(1);
+    const { data: issue } = await admin().from("lab_issues").select("kind, resolved_at").eq("kit_id", kit.id).single();
+    expect(issue).toEqual({ kind: "failed_runs", resolved_at: null });
+    const { data: mails } = await admin().from("email_log").select("kind, to_email").eq("kit_id", kit.id);
+    expect((mails ?? []).map((m) => m.kind).sort()).toEqual(["adminLabIssue", "customerLabProblem"]);
+    expect((mails ?? []).find((m) => m.kind === "customerLabProblem")?.to_email).toBe(patient.email);
+    const { data: held } = await admin().from("lab_results").select("valid, outcome, previous_attempts").eq("kit_id", kit.id).single();
+    expect(held?.valid).toBe(false);
+    expect((held?.previous_attempts as unknown[]).length).toBe(1);
 
-    // Escalating keeps it held and tells Utee why.
-    await page.getByLabel("Escalate to Utee").fill("Device error twice; sample volume low");
-    await page.getByRole("button", { name: "Escalate to Utee" }).click();
-    await expect(page.getByRole("button", { name: "Escalated" })).toBeVisible();
-    expect((await kitEvents(kit.id)).map((e) => e.label)).toContain("Escalated to Utee by the lab");
+    // The queue shows it in the error queue, not awaiting results.
+    await page.goto("/lab");
+    await expect(page.getByTestId("error-queue")).toContainText("Test failed twice");
 
-    // Re-run: back to awaiting results, then a valid sheet goes to the clinic.
-    await page.getByRole("button", { name: "Re-run the test" }).click();
+    // A note for Utee, then Utee asks for another run and a valid sheet goes through.
+    await page.goto(`/lab/specimen/${kit.code}`);
+    await page.getByLabel("Note for Utee").fill("Sample looked heavily infected; diluted and ready to retry");
+    await page.getByRole("button", { name: "Send note to Utee" }).click();
+    await expect(page.getByRole("button", { name: "Note sent" })).toBeVisible();
+    await page.getByRole("button", { name: "Test this sample again" }).click();
     await expectKitStatus(kit.code, "received_by_lab");
-    await expect(page.getByTestId("lab-sheet")).toContainText("run 2");
+    await expect(page.getByTestId("lab-sheet")).toContainText("run 3");
+    await page.locator('input[name="organism"][value="e_coli"]').check();
     await page.locator('input[name="organism"][value="klebsiella_pneumoniae"]').check();
     await page.locator('input[name="control_positive"]').check();
+    await page.locator('input[name="control_negative"]').check();
     await page.locator('input[name="confirmCode"]').fill(kit.code);
     await page.getByRole("button", { name: "Record results" }).click();
     await expectKitStatus(kit.code, "lab_complete");
     const { data: final } = await admin().from("lab_results").select("valid, outcome, organism, previous_attempts").eq("kit_id", kit.id).single();
     expect(final?.valid).toBe(true);
     expect(final?.outcome).toBe("positive");
-    expect(final?.organism).toBe("Klebsiella pneumoniae");
-    expect((final?.previous_attempts as unknown[]).length).toBe(1);
+    expect(final?.organism).toBe("Escherichia coli, Klebsiella pneumoniae");
+    expect((final?.previous_attempts as unknown[]).length).toBe(2);
+    const { data: resolved } = await admin().from("lab_issues").select("resolution").eq("kit_id", kit.id).single();
+    expect(resolved?.resolution).toBe("rerun");
+    await ctx.close();
+  });
+
+  test("a damaged sample is reported on arrival and parked for Utee", async ({ browser }) => {
+    const lab = await createUser("lab", "fault-lab");
+    const kit = await insertKit();
+    await admin().from("kits").update({ status: "in_transit_to_lab" }).eq("id", kit.id);
+    const ctx = await browser.newContext();
+    await loginAs(ctx, lab.email);
+    const page = await ctx.newPage();
+    await page.goto(`/lab/specimen/${kit.code}`);
+    await page.getByRole("button", { name: "Report a problem with this sample" }).click();
+    await page.locator('input[name="fault"][value="leaked_tube"]').check();
+    await page.getByLabel("Details").fill("Tube cap loose, most of the sample in the bag");
+    await page.getByRole("button", { name: "Report problem" }).click();
+    await expect(page).toHaveURL(`/lab?problem=${kit.code}`);
+    await expect(page.getByTestId("error-queue")).toContainText("Sample tube has leaked");
+    expect((await kitByCode(kit.code))?.status).toBe("lab_query");
+    const { data: issue } = await admin().from("lab_issues").select("kind, fault, note").eq("kit_id", kit.id).single();
+    expect(issue).toEqual({ kind: "sample_problem", fault: "leaked_tube", note: "Tube cap loose, most of the sample in the bag" });
     await ctx.close();
   });
 });

@@ -346,6 +346,32 @@ async function registerTracking(admin: ReturnType<typeof createAdminClient>, kit
   }
 }
 
+/** Utee's answer to a parked specimen: the lab should test the same sample again. */
+export async function sendBackToLab(kitId: string) {
+  const user = await requireRole(["admin"]);
+  const admin = createAdminClient();
+  const { data: kit } = await admin.from("kits").select("id, status").eq("id", kitId).single();
+  if (!kit) return { error: "Kit not found" };
+  if (kit.status !== "lab_query") return { error: "Only a kit parked by the lab can be sent back" };
+  await admin
+    .from("lab_issues")
+    .update({ resolved_at: new Date().toISOString(), resolved_by: user.id, resolution: "rerun_requested" })
+    .eq("kit_id", kitId)
+    .is("resolved_at", null);
+  await logKitEvent(admin, {
+    kitId,
+    type: "lab",
+    label: "Utee asked the lab to test the sample again",
+    actorRole: user.role,
+    actorId: user.id,
+    visibleToCustomer: false,
+    newStatus: "received_by_lab",
+  });
+  revalidatePath(`/admin/kits/${kitId}`);
+  revalidatePath("/lab");
+  return { ok: true };
+}
+
 /** Pulls the current state of both parcels from TrackShip and records anything new. */
 export async function refreshTracking(kitId: string) {
   await requireRole(["admin"]);
