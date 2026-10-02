@@ -336,6 +336,14 @@ test.describe("Lab sheet", () => {
     expect(history[2]).toMatchObject({ amended: true, organisms: ["e_coli", "klebsiella_pneumoniae"] });
     const { data: clinicMail } = await admin().from("email_log").select("kind").eq("kit_id", kit.id).eq("kind", "clinicResultsAmended");
     expect(clinicMail?.length).toBe(1);
+
+    // Every run can be read back: why run 1 failed, the error on run 2, the amendment, the current result.
+    const runLog = page.getByTestId("run-history");
+    await expect(runLog).toContainText("Run 1");
+    await expect(runLog).toContainText("Negative control did not pass");
+    await expect(runLog).toContainText("Error reported by the analyser");
+    await expect(runLog).toContainText("Superseded by amendment");
+    await expect(runLog).toContainText(lab.fullName);
     await ctx.close();
   });
 

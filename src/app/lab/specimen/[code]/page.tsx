@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatKitCode } from "@/lib/kit-code";
-import { Card, PageHeader, StatusBadge } from "@/components/ui";
+import { Card, CardTitle, PageHeader, StatusBadge } from "@/components/ui";
 import { formatDateTime, type KitStatus } from "@/lib/status";
 import { SAMPLE_FAULT_LABELS, judgeSheet, type Controls, type UropathogenKey } from "@/lib/lab-sheet";
 import { CompletedResults, ParkedActions, ReceiveActions, SheetForm } from "./SpecimenActions";
+import { RunHistory, runsFrom, type LabResultRow } from "@/components/RunHistory";
+import { labUserNames } from "@/lib/lab-users";
 
 /**
  * One specimen as the lab sees it: code, state, the sheet or the problem.
@@ -26,7 +28,7 @@ export default async function SpecimenPage({ params }: { params: Promise<{ code:
   const [{ data: result }, { data: issue }] = await Promise.all([
     admin
       .from("lab_results")
-      .select("outcome, organism, organisms, controls, valid, comments, uploaded_at, report_path, previous_attempts")
+      .select("outcome, organism, organisms, controls, valid, comments, uploaded_at, report_path, previous_attempts, lab_user_id")
       .eq("kit_id", kit.id)
       .maybeSingle(),
     admin
@@ -38,6 +40,8 @@ export default async function SpecimenPage({ params }: { params: Promise<{ code:
       .limit(1)
       .maybeSingle(),
   ]);
+
+  const runs = result ? runsFrom(result as LabResultRow, await labUserNames(admin, result as LabResultRow)) : [];
 
   const status = kit.status as KitStatus;
   const canReceive = ["activated", "in_transit_to_lab"].includes(status);
@@ -100,6 +104,12 @@ export default async function SpecimenPage({ params }: { params: Promise<{ code:
         action={<StatusBadge status={status} />}
       />
       {body}
+      {runs.length > 0 && (
+        <Card>
+          <CardTitle>Run history ({runs.filter((r) => r.verdict !== "amended").length})</CardTitle>
+          <RunHistory runs={runs} />
+        </Card>
+      )}
     </div>
   );
 }
