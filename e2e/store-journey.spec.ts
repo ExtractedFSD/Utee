@@ -221,14 +221,49 @@ test("store kit: order to report", async ({ browser, request }) => {
     await expect(clinicPage.getByText("Pain or burning sensation when you are urinating.")).toBeVisible();
     await clinicPage.getByRole("button", { name: "Mark case as received" }).click();
     await expectKitStatus(code, "clinic_received");
-    await clinicPage.locator('textarea[name="summary"]').fill("Uncomplicated UTI. See report.");
-    await clinicPage.locator('input[name="report"]').setInputFiles({
-      name: "final.pdf",
-      mimeType: "application/pdf",
-      buffer: samplePdf("Final report"),
-    });
+
+    // The report is generated from the sheet: suggested wording, a drawn
+    // signature saved once, applied to the report, then published.
+    await clinicPage.getByRole("link", { name: "Prepare the report" }).click();
+    await expect(clinicPage).toHaveURL(`/clinic/case/${kitId}/report`);
+    await expect(clinicPage.getByTestId("report-headline")).toHaveValue("Escherichia coli (E. coli) detected");
+    await expect(clinicPage.getByText("Suggested wording")).toBeVisible();
+    await expect(clinicPage.getByRole("button", { name: "Publish report to patient" })).toBeDisabled();
+
+    const pad = clinicPage.getByTestId("signature-pad");
+    const box = (await pad.boundingBox())!;
+    await clinicPage.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.6);
+    await clinicPage.mouse.down();
+    await clinicPage.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.3, { steps: 8 });
+    await clinicPage.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.7, { steps: 8 });
+    await clinicPage.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.4, { steps: 8 });
+    await clinicPage.mouse.up();
+    await clinicPage.getByLabel("Name under the signature").fill("Professor Test Clinician");
+    await clinicPage.getByLabel("Title (optional)").fill("Consultant Urologist");
+    await clinicPage.getByLabel("On behalf of (optional)").fill("the UTI Institute");
+    await clinicPage.getByRole("button", { name: "Save my signature" }).click();
+    await expect(clinicPage.getByRole("button", { name: "Sign as Professor Test Clinician" })).toBeVisible();
+
+    await clinicPage.getByTestId("report-note").fill("Please take this report to your GP.");
+    await clinicPage.getByRole("button", { name: "Sign as Professor Test Clinician" }).click();
+    await expect(clinicPage.getByTestId("report-signatures")).toContainText("Professor Test Clinician");
+    await expect(clinicPage.getByTestId("report-signatures")).toContainText("on behalf of the UTI Institute");
+    await expect(clinicPage.getByText("Edited by clinician")).toBeVisible();
+
+    const preview = await clinicPage.request.get(`/clinic/case/${kitId}/report/preview`);
+    expect(preview.status()).toBe(200);
+    expect((await preview.body()).subarray(0, 5).toString()).toBe("%PDF-");
+
+    await clinicPage.getByTestId("report-confirm").check();
     await clinicPage.getByRole("button", { name: "Publish report to patient" }).click();
+    await expect(clinicPage).toHaveURL(`/clinic/case/${kitId}`);
+    await expect(clinicPage.getByText("signed by Professor Test Clinician")).toBeVisible();
     await expectKitStatus(code, "report_ready");
+    expect((await listStorage("clinic-reports", code)).length).toBe(1);
+    const { data: published } = await admin().from("clinic_reports").select("status, content, signatures").eq("kit_id", kitId).single();
+    expect(published?.status).toBe("complete");
+    expect((published?.content as { overridden: boolean; clinicianNote: string }).clinicianNote).toBe("Please take this report to your GP.");
+    expect((published?.signatures as { name: string }[]).map((s) => s.name)).toEqual(["Professor Test Clinician"]);
   });
 
   await test.step("Customer downloads the PDF", async () => {
@@ -236,7 +271,10 @@ test("store kit: order to report", async ({ browser, request }) => {
     await expect(customerPage.getByText("Your report is ready").first()).toBeVisible();
     const res = await customerPage.request.get(`/portal/tests/${kitId}/report`);
     expect(res.status()).toBe(200);
-    expect((await res.body()).subarray(0, 5).toString()).toBe("%PDF-");
+    const body = await res.body();
+    expect(body.subarray(0, 5).toString()).toBe("%PDF-");
+    // A generated report with the brand fonts and signature, not a stub.
+    expect(body.length).toBeGreaterThan(100_000);
   });
 
   await test.step("Other roles and other customers are kept out", async () => {
