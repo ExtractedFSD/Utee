@@ -61,6 +61,9 @@ export default async function globalTeardown() {
   if (orderError) console.error("[e2e] order cleanup failed", orderError.message);
 
   for (const id of testUserIds) {
+    // Signatures drawn during the run live under the user's id.
+    const { data: sigs } = await db.storage.from("signatures").list(id);
+    if (sigs?.length) await db.storage.from("signatures").remove(sigs.map((f) => `${id}/${f.name}`));
     const { error } = await db.auth.admin.deleteUser(id);
     if (error && !/not found/i.test(error.message)) {
       console.error(`[e2e] deleteUser ${id} failed`, error.message);

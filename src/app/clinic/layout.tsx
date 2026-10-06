@@ -7,7 +7,7 @@ export default async function ClinicLayout({ children }: { children: React.React
     <Shell
       areaLabel="Clinic"
       userEmail={user.email}
-      nav={[{ href: "/clinic", label: "Cases" }]}
+      nav={[{ href: "/clinic", label: "Cases" }, { href: "/clinic/signature", label: "My signature" }]}
     >
       {children}
     </Shell>

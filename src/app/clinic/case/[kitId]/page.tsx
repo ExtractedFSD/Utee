@@ -33,7 +33,7 @@ export default async function CasePage({
       .select("outcome, organism, colony_count, sensitivities, comments, report_path, uploaded_at, controls, previous_attempts, valid, lab_user_id")
       .eq("kit_id", kitId)
       .maybeSingle(),
-    admin.from("clinic_reports").select("status, summary, completed_at").eq("kit_id", kitId).maybeSingle(),
+    admin.from("clinic_reports").select("status, summary, completed_at, signatures").eq("kit_id", kitId).maybeSingle(),
   ]);
 
   let labPdfUrl: string | null = null;
@@ -138,6 +138,7 @@ export default async function CasePage({
         status={status}
         reportComplete={report?.status === "complete"}
         completedAt={report?.completed_at ?? null}
+        signedBy={((report?.signatures as { name: string }[] | null) ?? []).map((s) => s.name)}
       />
     </div>
   );
