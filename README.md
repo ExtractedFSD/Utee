@@ -120,19 +120,13 @@ service role behind explicit role checks (`src/lib/auth.ts`).
    schema, RLS, storage buckets, the auth→profile trigger; later files are
    incremental). In Auth settings, enable the **Email** provider and
    turn OFF "Confirm email" double opt-in for OTP logins to work smoothly.
-   Then edit the **Magic Link** email template so it carries both the code
-   and a link that works from any browser (the link goes through
-   `/auth/confirm`, which verifies the token hash server-side and sets the
-   session cookies, so it does not depend on the browser that asked for it):
-
-   ```html
-   <p>Your Utee sign-in code is <strong>{{ .Token }}</strong></p>
-   <p>Or tap to sign in:
-     <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&redirect_to={{ .RedirectTo }}">
-       Sign in to Utee
-     </a>
-   </p>
-   ```
+   Then set the **Magic Link** email template (Authentication → Emails) to
+   the contents of `supabase/templates/magic-link.html`, with the subject
+   "Your Utee sign-in code". It is styled like the portal's own emails and
+   carries both the code and a link that works from any browser (the link
+   goes through `/auth/confirm`, which verifies the token hash server-side
+   and sets the session cookies, so it does not depend on the browser that
+   asked for it).
 
    Set the Site URL to the portal's public URL and add
    `https://<portal-domain>/**` to the redirect allow list so `redirect_to`

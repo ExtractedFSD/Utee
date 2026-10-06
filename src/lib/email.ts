@@ -4,15 +4,22 @@ const BRAND = "#91193b"; // Utee maroon
 const MIDNIGHT = "#1d003a";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+/**
+ * Headings are Cooper Light, as everywhere else in the brand. Mail clients
+ * don't have it installed, so it is served from the portal as a web font;
+ * clients that ignore @font-face (Gmail) fall back to Georgia.
+ */
+const FONT_FACE = `@font-face{font-family:'Cooper Light';font-style:normal;font-weight:300;src:url('${APP_URL}/fonts/CooperLight.ttf') format('truetype');}`;
+
 function wrap(title: string, bodyHtml: string) {
   return `<!doctype html>
-<html><body style="margin:0;padding:0;background:#ffe5f2;font-family:Poppins,Helvetica,Arial,sans-serif;color:${MIDNIGHT};">
+<html><head><meta charset="utf-8"><style>${FONT_FACE}</style></head><body style="margin:0;padding:0;background:#ffe5f2;font-family:Poppins,Helvetica,Arial,sans-serif;color:${MIDNIGHT};">
   <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
     <div style="text-align:center;padding-bottom:24px;">
       <img src="${APP_URL}/logo-maroon.png" alt="Utee" width="96" height="36" style="display:inline-block;width:96px;height:auto;border:0;" />
     </div>
     <div style="background:#ffffff;border-radius:24px;padding:32px;box-shadow:0 10px 30px rgba(29,0,58,.14);">
-      <h1 style="font-family:Cooper,Georgia,serif;font-weight:300;font-size:26px;line-height:1.15;margin:0 0 16px;color:${MIDNIGHT};">${title}</h1>
+      <h1 style="font-family:'Cooper Light',Georgia,serif;font-weight:300;font-size:26px;line-height:1.15;margin:0 0 16px;color:${MIDNIGHT};">${title}</h1>
       ${bodyHtml}
     </div>
     <p style="text-align:center;color:#6f6188;font-size:12px;padding-top:24px;">
