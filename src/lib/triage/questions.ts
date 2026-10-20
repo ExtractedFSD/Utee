@@ -101,6 +101,12 @@ export const ANTIBIOTIC_UNKNOWN = "dont_know";
 
 export type PastAntibiotic = { id: string; name: string; worked: Worked };
 
+export const PREVENTION_QUESTION = "Are you taking anything to help prevent UTIs (not antibiotics)?";
+export const PREVENTION_HINT = "Tick everything that applies, for example D-mannose, cranberry, probiotics, vaginal oestrogen or a UTI vaccine such as Uromune. Leave it empty if nothing.";
+
+/** A preventive treatment ticked on the questionnaire: the tracker's option key and its label. */
+export type TriagePrevention = { key: string; name: string };
+
 /** What the form saves into triage_submissions.symptoms (version 3). */
 export type TriageAnswers = {
   version: 3;
@@ -115,6 +121,8 @@ export type TriageAnswers = {
     episodes12m: number | null;
   };
   antibiotics: PastAntibiotic[];
+  /** Non-antibiotic preventive treatments ticked. Absent on forms saved before the question existed. */
+  preventions?: TriagePrevention[];
   /** Symptoms ticked, in question order. Empty when "none of these". */
   selected: SymptomKey[];
   change24h: number;

@@ -169,6 +169,22 @@ export function TriageSummary({ answers, audience }: { answers: StoredTriage; au
             )}
           </div>
         )}
+        {answers.preventions && (
+          <div className="mt-2">
+            <p className="font-medium text-slate-600">Preventive treatments (not antibiotics):</p>
+            {answers.preventions.length === 0 ? (
+              <p className="text-slate-500">None listed.</p>
+            ) : (
+              <ul className="mt-1 flex flex-wrap gap-x-2 gap-y-1" data-testid="triage-preventions">
+                {answers.preventions.map((p) => (
+                  <li key={p.key} className="rounded-full bg-pink-25 px-2.5 py-0.5 text-xs font-semibold text-midnight">
+                    {p.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </section>
 
       <section>

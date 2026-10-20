@@ -3,6 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { Card, Button, inputClass } from "@/components/ui";
 import { AntibioticPicker } from "@/app/(customer)/portal/tracker/components/AntibioticPicker";
+import { PreventionPicker } from "@/app/(customer)/portal/tracker/components/PreventionPicker";
+import { ANTIBIOTIC_PREVENTIONS, PREVENTION_OTHER, preventionName } from "@/lib/tracker/prevention";
 import { antibioticName } from "@/lib/tracker/search";
 import {
   ANTIBIOTIC_UNKNOWN,
@@ -13,6 +15,8 @@ import {
   HISTORY,
   HISTORY_INTRO,
   INTRO,
+  PREVENTION_HINT,
+  PREVENTION_QUESTION,
   RESEARCH,
   SAFETY_INTRO,
   SAFETY_QUESTIONS,
@@ -154,6 +158,8 @@ export function TriageForm({ code }: { code: string }) {
   const [episodes12m, setEpisodes12m] = useState("");
   const [antibiotics, setAntibiotics] = useState<Chosen[]>([]);
   const [addingAntibiotic, setAddingAntibiotic] = useState(false);
+  const [preventions, setPreventions] = useState<Set<string>>(new Set());
+  const [preventionOther, setPreventionOther] = useState("");
   const [selected, setSelected] = useState<Set<SymptomKey>>(new Set());
   const [noneOfThese, setNoneOfThese] = useState(false);
   const [change24h, setChange24h] = useState<number | undefined>();
@@ -235,6 +241,10 @@ export function TriageForm({ code }: { code: string }) {
         episodes12m: hadUti ? Number(episodes12m) : null,
       },
       antibiotics: hadUti ? (antibiotics as PastAntibiotic[]) : [],
+      preventions: [...preventions].map((key) => ({
+        key,
+        name: key === PREVENTION_OTHER.key ? preventionOther : preventionName({ option_key: key, other_name: null, antibiotic_id: null }),
+      })),
       selected: [...selected],
       change24h: change24h!,
       duration,
@@ -460,6 +470,27 @@ export function TriageForm({ code }: { code: string }) {
               </div>
             </>
           )}
+          <div className="space-y-2 border-t border-slate-100 pt-5" data-testid="preventions">
+            <p className="text-sm text-slate-700">{PREVENTION_QUESTION}</p>
+            <p className="text-xs text-slate-500">{PREVENTION_HINT}</p>
+            <PreventionPicker
+              selected={preventions}
+              onToggle={(key, on) =>
+                setPreventions((prev) => {
+                  const next = new Set(prev);
+                  if (on) next.add(key);
+                  else next.delete(key);
+                  return next;
+                })
+              }
+              otherName={preventionOther}
+              onOtherName={setPreventionOther}
+              antibioticId={null}
+              antibioticOther=""
+              onAntibiotic={() => undefined}
+              exclude={ANTIBIOTIC_PREVENTIONS}
+            />
+          </div>
         </Card>
       )}
 
