@@ -14,6 +14,7 @@ import {
   HISTORY_INTRO,
   INTRO,
   RESEARCH,
+  SAFETY_INTRO,
   SAFETY_QUESTIONS,
   SYMPTOM_QUESTIONS,
   WORKED_OPTIONS,
@@ -315,7 +316,7 @@ export function TriageForm({ code }: { code: string }) {
           <StepHeader
             step={0}
             title="Safety check"
-            intro="First, a few quick questions. Some symptoms can mean an infection needs attention today rather than a test."
+            intro={SAFETY_INTRO}
           />
           <div className="divide-y divide-slate-100">
             {SAFETY_QUESTIONS.map((q, i) => (
@@ -426,9 +427,22 @@ export function TriageForm({ code }: { code: string }) {
                     ))}
                   </ul>
                 )}
+                {!unknownAntibiotics && antibiotics.length === 0 && (
+                  <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-sm text-slate-700">Not sure which antibiotics you had?</p>
+                    <button
+                      type="button"
+                      onClick={() => addAntibiotic(ANTIBIOTIC_UNKNOWN)}
+                      className="inline-flex min-h-[40px] items-center rounded-full border border-midnight/15 bg-white px-4 py-2 text-sm font-semibold text-midnight hover:bg-pink-25"
+                    >
+                      I don&apos;t know / can&apos;t remember
+                    </button>
+                  </div>
+                )}
                 {!unknownAntibiotics && (antibiotics.length === 0 || addingAntibiotic) && (
                   <>
-                    <AntibioticPicker value={null} exclude={antibiotics.map((a) => a.id).filter((id) => id !== "other")} onChange={addAntibiotic} autoFocus={addingAntibiotic} />
+                    <p className="text-xs font-semibold uppercase tracking-[.14em] text-slate-400">Or search for each antibiotic</p>
+                    <AntibioticPicker value={null} exclude={[...antibiotics.map((a) => a.id).filter((id) => id !== "other"), ANTIBIOTIC_UNKNOWN]} onChange={addAntibiotic} autoFocus={addingAntibiotic} />
                     {antibiotics.length === 0 ? (
                       <p className="text-xs text-slate-500">Leave this empty if you have not had antibiotics for a UTI.</p>
                     ) : (

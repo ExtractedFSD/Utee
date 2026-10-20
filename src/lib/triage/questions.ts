@@ -18,12 +18,15 @@ export const SAFETY_QUESTIONS = [
   { key: "d3", label: "Do you feel dizzy, faint, or notice your heart racing?" },
   { key: "d4", label: "Does your skin look unusually pale, mottled or grey?" },
   { key: "d5", label: "Have you been vomiting, or are you feeling too nauseous to keep fluids down?" },
-  { key: "d6", label: "Have you (or the person you are caring for) become newly confused, unusually drowsy, or agitated?" },
+  { key: "d6", label: "Have you become newly confused, unusually drowsy, or agitated?" },
   { key: "d7", label: "Can you see visible blood or blood clots in your urine?" },
   { key: "d8", label: "Have you stopped passing urine entirely, or is the amount a lot less than normal?" },
 ] as const;
 
 export type SafetyKey = (typeof SAFETY_QUESTIONS)[number]["key"];
+
+export const SAFETY_INTRO =
+  "First, a few quick questions. Answer them for the person who will be taking the test, whether that is you or someone you are caring for. Some symptoms can mean an infection needs attention today rather than a test.";
 
 export const SYMPTOM_QUESTIONS = [
   { key: "frequency", label: "Needing to urinate more frequently than normal." },
@@ -169,7 +172,7 @@ export function changeLabel(value: number): string {
 
 /** Optional research consent on the questionnaire, worded like the tracker's. */
 export const RESEARCH = {
-  title: "Optional: help other women with UTIs",
-  text: "I also consent to Utee using my answers and my test result, with anything that could identify me removed, in combined figures for research and reporting. Recurrent UTIs are under-researched, and most of what is known comes from a handful of small studies. Real records of symptoms matched to real test results are what change that. Combined with others', mine could help improve testing, treatment and care for women like me. This is optional and does not affect my test.",
-  label: "Yes, use my anonymised answers and result to help research that could improve care for women with UTIs (optional)",
+  title: "Optional: help other people with UTIs",
+  text: "I also consent to Utee storing my urine sample after it has been tested, and using the sample, my answers and my test result, with anything that could identify me removed, for research and reporting. Recurrent UTIs are under-researched, and most of what is known comes from a handful of small studies. Real samples and real records of symptoms matched to real test results are what change that. Combined with others', mine could help improve testing, treatment and care for people like me. This is optional and does not affect my test.",
+  label: "Yes, Utee may store my sample and use my anonymised sample, answers and result for research that could improve care for people with UTIs (optional)",
 } as const;

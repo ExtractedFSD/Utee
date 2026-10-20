@@ -158,8 +158,8 @@ export default async function PortalHome({
       <div className="grid gap-6 md:grid-cols-2 md:items-start">
         <Callout data-testid="urologist">
           <div className="flex flex-col gap-5 sm:flex-row">
-            <div className="relative h-44 w-44 shrink-0 self-start overflow-hidden rounded-2xl">
-              <Image src="/images/urologist.jpg" alt="Consultant urologist" fill unoptimized className="object-cover object-[50%_25%]" />
+            <div className="flex h-44 w-44 shrink-0 items-center justify-center self-start rounded-2xl bg-white p-5">
+              <Image src="/images/uti-institute-logo.png" alt="UTI Institute" width={444} height={170} unoptimized className="h-auto w-full" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
