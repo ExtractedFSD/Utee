@@ -43,6 +43,11 @@ export function AntibioticPicker({
   };
   const yoursBefore = previous.filter((id) => !exclude.includes(id) && id !== "other" && id !== "dont_know");
   const groups = ANTIBIOTIC_GROUPS.filter((g) => showAll || g.id === "common");
+  // "Other" sits with the common antibiotics; anything else pinned (the
+  // "don't know" chip, where the caller wants it) stays in a row at the end.
+  const pinned = PINNED_ANTIBIOTICS.filter((p) => !exclude.includes(p.id));
+  const other = pinned.find((p) => p.id === "other");
+  const pinnedExtras = pinned.filter((p) => p.id !== "other");
 
   if (value) {
     return (
@@ -88,9 +93,11 @@ export function AntibioticPicker({
             </li>
           ))}
           {!hits.length && <li className="text-sm text-slate-600 px-1">{copy.antibiotics.noMatch}</li>}
-          <li className="flex flex-wrap gap-2 pt-2">
-            {PINNED_ANTIBIOTICS.map((p) => <Chip key={p.id} onClick={() => pick(p.id)}>{p.name}</Chip>)}
-          </li>
+          {pinned.length > 0 && (
+            <li className="flex flex-wrap gap-2 pt-2">
+              {pinned.map((p) => <Chip key={p.id} onClick={() => pick(p.id)}>{p.name}</Chip>)}
+            </li>
+          )}
         </ul>
       ) : (
         <div className="space-y-4">
@@ -109,15 +116,18 @@ export function AntibioticPicker({
                 {antibioticsInGroup(g.id).filter((a) => !yoursBefore.includes(a.id) && !exclude.includes(a.id)).map((a) => (
                   <Chip key={a.id} onClick={() => pick(a.id)}>{a.name}</Chip>
                 ))}
+                {g.id === "common" && other && <Chip onClick={() => pick(other.id)}>{other.name}</Chip>}
               </div>
             </div>
           ))}
-          {!showAll && (
-            <button type="button" onClick={() => setShowAll(true)} className="text-sm font-semibold text-maroon">{copy.episode.showAll}</button>
+          <button type="button" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll} className="text-sm font-semibold text-maroon">
+            {showAll ? copy.episode.showLess : copy.episode.showAll}
+          </button>
+          {pinnedExtras.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {pinnedExtras.map((p) => <Chip key={p.id} onClick={() => pick(p.id)}>{p.name}</Chip>)}
+            </div>
           )}
-          <div className="flex flex-wrap gap-2">
-            {PINNED_ANTIBIOTICS.map((p) => <Chip key={p.id} onClick={() => pick(p.id)}>{p.name}</Chip>)}
-          </div>
           <p className="text-xs text-slate-500">{copy.antibiotics.groupNote}</p>
         </div>
       )}
