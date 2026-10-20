@@ -46,6 +46,18 @@ export type SymptomKey = (typeof SYMPTOM_QUESTIONS)[number]["key"];
 
 export const SEVERITY_MIN = 0;
 export const SEVERITY_MAX = 10;
+
+/** Each ticked symptom is rated 1 (mild) to 10 (as bad as it could be). */
+export const SYMPTOM_RATING_MIN = 1;
+export const SYMPTOM_RATING_MAX = 10;
+export const SYMPTOM_RATING_PROMPT = "How bad is it right now? 1 is mild, 10 is as bad as it could be.";
+
+export function ratingLabel(v: number): string {
+  if (v <= 3) return "Mild";
+  if (v <= 6) return "Moderate";
+  if (v <= 8) return "Severe";
+  return "As bad as it could be";
+}
 export const CHANGE_MIN = -5;
 export const CHANGE_MAX = 5;
 
@@ -117,6 +129,8 @@ export type TriageAnswers = {
   antibiotics: PastAntibiotic[];
   /** Symptoms ticked, in question order. Empty when "none of these". */
   selected: SymptomKey[];
+  /** 1 to 10 for each ticked symptom. Absent on forms saved before the rating was asked. */
+  severity?: Partial<Record<SymptomKey, number>>;
   change24h: number;
   duration: string;
   pregnant: string;

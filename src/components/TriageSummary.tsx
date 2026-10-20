@@ -4,6 +4,7 @@ import {
   SYMPTOM_QUESTIONS,
   WORKED_LABELS,
   changeLabel,
+  ratingLabel,
   type StoredTriage,
 } from "@/lib/triage/questions";
 
@@ -177,12 +178,20 @@ export function TriageSummary({ answers, audience }: { answers: StoredTriage; au
           <p>None of the listed symptoms.</p>
         ) : (
           <ul className="space-y-1">
-            {answers.selected.map((key) => (
-              <li key={key} className="flex gap-2">
-                <Tick />
-                {SYMPTOM_LABELS[key] ?? key}
-              </li>
-            ))}
+            {answers.selected.map((key) => {
+              const score = answers.severity?.[key];
+              return (
+                <li key={key} className="flex items-start gap-2">
+                  <Tick />
+                  <span className="flex-1">{SYMPTOM_LABELS[key] ?? key}</span>
+                  {score !== undefined && (
+                    <span className="shrink-0 rounded-full bg-pink-25 px-2 py-0.5 text-xs font-semibold text-maroon" title={ratingLabel(score)}>
+                      {score}/10
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
         <Change value={answers.change24h} />

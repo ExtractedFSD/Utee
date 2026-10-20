@@ -17,8 +17,12 @@ import {
   SAFETY_INTRO,
   SAFETY_QUESTIONS,
   SYMPTOM_QUESTIONS,
+  SYMPTOM_RATING_MAX,
+  SYMPTOM_RATING_MIN,
+  SYMPTOM_RATING_PROMPT,
   WORKED_OPTIONS,
   changeLabel,
+  ratingLabel,
   type PastAntibiotic,
   type PreviousUti,
   type SafetyKey,
@@ -155,6 +159,7 @@ export function TriageForm({ code }: { code: string }) {
   const [antibiotics, setAntibiotics] = useState<Chosen[]>([]);
   const [addingAntibiotic, setAddingAntibiotic] = useState(false);
   const [selected, setSelected] = useState<Set<SymptomKey>>(new Set());
+  const [severity, setSeverity] = useState<Partial<Record<SymptomKey, number>>>({});
   const [noneOfThese, setNoneOfThese] = useState(false);
   const [change24h, setChange24h] = useState<number | undefined>();
   const [duration, setDuration] = useState("");
@@ -177,7 +182,8 @@ export function TriageForm({ code }: { code: string }) {
     previousUti !== undefined &&
     (!hadUti || (countOk(episodes6m) && countOk(episodes12m) && antibioticsComplete));
   const symptomsAnswered = selected.size > 0 || noneOfThese;
-  const symptomsComplete = symptomsAnswered && change24h !== undefined && duration !== "" && pregnant !== undefined;
+  const symptomsRated = [...selected].every((k) => severity[k] !== undefined);
+  const symptomsComplete = symptomsAnswered && symptomsRated && change24h !== undefined && duration !== "" && pregnant !== undefined;
 
   function fail(message: string) {
     setAttempted(true);
@@ -209,8 +215,14 @@ export function TriageForm({ code }: { code: string }) {
     setNoneOfThese(false);
     setSelected((prev) => {
       const nextSet = new Set(prev);
-      if (nextSet.has(key)) nextSet.delete(key);
-      else nextSet.add(key);
+      if (nextSet.has(key)) {
+        nextSet.delete(key);
+        setSeverity((s) => {
+          const next = { ...s };
+          delete next[key];
+          return next;
+        });
+      } else nextSet.add(key);
       return nextSet;
     });
   }
@@ -236,6 +248,7 @@ export function TriageForm({ code }: { code: string }) {
       },
       antibiotics: hadUti ? (antibiotics as PastAntibiotic[]) : [],
       selected: [...selected],
+      severity: Object.fromEntries([...selected].map((k) => [k, severity[k]!])),
       change24h: change24h!,
       duration,
       pregnant: pregnant!,
@@ -468,19 +481,40 @@ export function TriageForm({ code }: { code: string }) {
           <Card className="space-y-5">
             <StepHeader step={2} title="Your symptoms" intro="Tick everything you have right now." />
             <div className="space-y-2.5">
-              {SYMPTOM_QUESTIONS.map((q) => (
-                <label key={q.key} className="flex items-start gap-3 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    name="symptom"
-                    value={q.key}
-                    checked={selected.has(q.key)}
-                    onChange={() => toggleSymptom(q.key)}
-                    className={checkClass}
-                  />
-                  {q.label}
-                </label>
-              ))}
+              {SYMPTOM_QUESTIONS.map((q) => {
+                const on = selected.has(q.key);
+                return (
+                  <div key={q.key} className={on ? "rounded-2xl bg-pink-25/60 p-3 -mx-3" : ""}>
+                    <label className="flex items-start gap-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        name="symptom"
+                        value={q.key}
+                        checked={on}
+                        onChange={() => toggleSymptom(q.key)}
+                        className={checkClass}
+                      />
+                      {q.label}
+                    </label>
+                    {on && (
+                      <div className="mt-3 pl-7" data-testid={`rating-${q.key}`}>
+                        <p className="mb-2 text-xs text-slate-600">
+                          {SYMPTOM_RATING_PROMPT}
+                          {missing(severity[q.key] !== undefined)}
+                        </p>
+                        <Scale
+                          name={`severity-${q.key}`}
+                          min={SYMPTOM_RATING_MIN}
+                          max={SYMPTOM_RATING_MAX}
+                          value={severity[q.key]}
+                          onChange={(v) => setSeverity((s) => ({ ...s, [q.key]: v }))}
+                          labelFor={ratingLabel}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               <label className="flex items-start gap-3 border-t border-slate-100 pt-3 text-sm text-slate-700">
                 <input
                   type="checkbox"

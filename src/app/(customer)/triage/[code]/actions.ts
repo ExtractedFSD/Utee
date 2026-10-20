@@ -13,6 +13,8 @@ import {
   RESEARCH,
   SAFETY_QUESTIONS,
   SYMPTOM_QUESTIONS,
+  SYMPTOM_RATING_MAX,
+  SYMPTOM_RATING_MIN,
   orderedSymptoms,
   safetyFlagsIn,
   type SafetyKey,
@@ -46,6 +48,7 @@ const triageSchema = z
       )
       .max(30),
     selected: z.array(z.enum(symptomKeys)).max(SYMPTOM_QUESTIONS.length),
+    severity: z.record(z.number().int().min(SYMPTOM_RATING_MIN).max(SYMPTOM_RATING_MAX)).default({}),
     change24h: z.number().int().min(CHANGE_MIN).max(CHANGE_MAX),
     duration: z.string().min(1, "Tell us how long you've had these symptoms"),
     pregnant: z.enum(["yes", "no", "not_applicable"]),
@@ -54,6 +57,12 @@ const triageSchema = z
     research: z.boolean(),
   })
   .superRefine((value, ctx) => {
+    for (const key of value.selected) {
+      if (value.severity[key] === undefined) {
+        ctx.addIssue({ code: "custom", message: "Rate each symptom you ticked from 1 to 10" });
+        break;
+      }
+    }
     if (value.history.previousUti === "yes") {
       if (value.history.episodes6m === null) {
         ctx.addIssue({ code: "custom", message: "Tell us roughly how many episodes in the past 6 months" });
@@ -109,6 +118,7 @@ export async function submitTriage(code: string, input: TriageInput) {
         }))
       : [],
     selected: orderedSymptoms(answers.selected),
+    severity: Object.fromEntries(orderedSymptoms(answers.selected).map((k) => [k, answers.severity[k]])),
     change24h: answers.change24h,
     duration: answers.duration,
     pregnant: answers.pregnant,
