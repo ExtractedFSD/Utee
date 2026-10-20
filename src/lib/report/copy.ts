@@ -218,6 +218,10 @@ export const NEXT_STEPS = {
         term: "Lactobacilli Probiotics",
         text: "Specifically for women, these targeted probiotics help to restore healthy vaginal flora and maintain a natural, protective environment.",
       },
+      {
+        term: "Uromune vaccination",
+        text: "A sublingual (under the tongue) spray vaccine, taken daily for three months, that trains the immune system to recognise the bacteria most often responsible for UTIs. It is used in specialist clinics for people with recurrent infections and is available privately in the UK; a healthcare professional can advise whether it is suitable for you.",
+      },
     ],
     outro: "Often, a carefully balanced combination of these ingredients is the most effective way to create a beneficial effect and keep infections at bay.",
   },

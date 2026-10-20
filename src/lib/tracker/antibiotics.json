@@ -186,6 +186,22 @@
       "route": "oral"
     },
     {
+      "id": "uromune",
+      "name": "Uromune (MV140) vaccine spray",
+      "brands": ["Uromune"],
+      "aliases": ["mv140", "mv-140", "uti vaccine", "sublingual vaccine", "vaccine spray", "uromune spray"],
+      "group": "preventive_non_antibiotic",
+      "route": "sublingual"
+    },
+    {
+      "id": "urovaxom",
+      "name": "Uro-Vaxom (OM-89) capsules",
+      "brands": ["Uro-Vaxom"],
+      "aliases": ["om-89", "om89", "urovaxom", "uro vaxom", "uti vaccine capsules"],
+      "group": "preventive_non_antibiotic",
+      "route": "oral"
+    },
+    {
       "id": "other",
       "name": "Other (type the name)",
       "brands": [],

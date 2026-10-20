@@ -408,6 +408,10 @@ export async function completeTriage(
     antibiotics?: { search: string; worked?: "yes" | "no" | "partly" | "taking" }[];
     /** Picks "I don't know / can't remember" instead of naming antibiotics. */
     antibioticsUnknown?: boolean;
+    /** Rating given to every ticked symptom (1 to 10). */
+    severity?: number;
+    /** Skip the symptoms step through its confirmation. */
+    skipSymptoms?: boolean;
     symptoms?: string[];
     change?: number;
     duration?: string;
@@ -456,14 +460,26 @@ export async function completeTriage(
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(form).toHaveAttribute("data-step", "2");
 
-  const symptoms = opts.symptoms ?? [];
-  if (symptoms.length === 0) await page.locator('input[name="symptom"][value="none"]').check();
-  for (const key of symptoms) await page.locator(`input[name="symptom"][value="${key}"]`).check();
-  await page.locator(`input[name="change24h"][value="${opts.change ?? 0}"]`).check({ force: true });
-  await page.locator('select[name="duration"]').selectOption(opts.duration ?? "1–3 days");
-  await page.locator(`input[name="pregnant"][value="${opts.pregnant ?? "no"}"]`).check();
-  await page.getByRole("button", { name: "Continue" }).click();
+  if (opts.skipSymptoms) {
+    await page.getByRole("button", { name: "Skip this step" }).click();
+    await expect(page.getByText("Skip the symptom questions?")).toBeVisible();
+    await page.getByRole("button", { name: "Skip anyway" }).click();
+  } else {
+    const symptoms = opts.symptoms ?? [];
+    if (symptoms.length === 0) await page.locator('input[name="symptom"][value="none"]').check();
+    for (const key of symptoms) {
+      await page.locator(`input[name="symptom"][value="${key}"]`).check();
+      // The 1 to 10 rating appears under a ticked symptom and must be answered.
+      await expect(page.getByTestId(`rating-${key}`)).toBeVisible();
+      await page.locator(`input[name="severity-${key}"][value="${opts.severity ?? 6}"]`).check({ force: true });
+    }
+    await page.locator(`input[name="change24h"][value="${opts.change ?? 0}"]`).check({ force: true });
+    await page.locator('select[name="duration"]').selectOption(opts.duration ?? "1–3 days");
+    await page.getByRole("button", { name: "Continue" }).click();
+  }
   await expect(form).toHaveAttribute("data-step", "3");
+  if (opts.skipSymptoms) await expect(page.getByTestId("symptoms-skipped")).toBeVisible();
+  await page.locator(`input[name="pregnant"][value="${opts.pregnant ?? "no"}"]`).check();
 
   if (opts.notes) await page.locator('textarea[name="notes"]').fill(opts.notes);
   await page.locator('input[name="consent"]').check();

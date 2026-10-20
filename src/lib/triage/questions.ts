@@ -18,12 +18,15 @@ export const SAFETY_QUESTIONS = [
   { key: "d3", label: "Do you feel dizzy, faint, or notice your heart racing?" },
   { key: "d4", label: "Does your skin look unusually pale, mottled or grey?" },
   { key: "d5", label: "Have you been vomiting, or are you feeling too nauseous to keep fluids down?" },
-  { key: "d6", label: "Have you (or the person you are caring for) become newly confused, unusually drowsy, or agitated?" },
+  { key: "d6", label: "Have you become newly confused, unusually drowsy, or agitated?" },
   { key: "d7", label: "Can you see visible blood or blood clots in your urine?" },
   { key: "d8", label: "Have you stopped passing urine entirely, or is the amount a lot less than normal?" },
 ] as const;
 
 export type SafetyKey = (typeof SAFETY_QUESTIONS)[number]["key"];
+
+export const SAFETY_INTRO =
+  "First, a few quick questions. Answer them for the person who will be taking the test, whether that is you or someone you are caring for. Some symptoms can mean an infection needs attention today rather than a test.";
 
 export const SYMPTOM_QUESTIONS = [
   { key: "frequency", label: "Needing to urinate more frequently than normal." },
@@ -43,6 +46,18 @@ export type SymptomKey = (typeof SYMPTOM_QUESTIONS)[number]["key"];
 
 export const SEVERITY_MIN = 0;
 export const SEVERITY_MAX = 10;
+
+/** Each ticked symptom is rated 1 (mild) to 10 (as bad as it could be). */
+export const SYMPTOM_RATING_MIN = 1;
+export const SYMPTOM_RATING_MAX = 10;
+export const SYMPTOM_RATING_PROMPT = "How bad is it right now? 1 is mild, 10 is as bad as it could be.";
+
+export function ratingLabel(v: number): string {
+  if (v <= 3) return "Mild";
+  if (v <= 6) return "Moderate";
+  if (v <= 8) return "Severe";
+  return "As bad as it could be";
+}
 export const CHANGE_MIN = -5;
 export const CHANGE_MAX = 5;
 
@@ -55,6 +70,14 @@ export const HISTORY_INTRO =
 export const HISTORY = {
   episodes6m: "Approximately how many episodes of UTI symptoms have you had in the past 6 months?",
   episodes12m: "Approximately how many episodes of UTI symptoms have you had in the past 12 months?",
+} as const;
+
+export const SKIP_SYMPTOMS = {
+  link: "Skip this step",
+  title: "Skip the symptom questions?",
+  text: "These questions are optional. Your test goes ahead without them, but your answers help the clinician reviewing your result understand what you are experiencing and can shape advice further down the line.",
+  confirm: "Skip anyway",
+  cancel: "Go back and answer",
 } as const;
 
 export const CHANGE_QUESTION =
@@ -114,7 +137,16 @@ export type TriageAnswers = {
   antibiotics: PastAntibiotic[];
   /** Symptoms ticked, in question order. Empty when "none of these". */
   selected: SymptomKey[];
-  change24h: number;
+  /** 1 to 10 for each ticked symptom. Absent on forms saved before the rating was asked. */
+  severity?: Partial<Record<SymptomKey, number>>;
+  /**
+   * True when the patient chose to skip the symptoms step. The symptom
+   * fields are then empty: no symptoms, no change, no duration.
+   */
+  symptomsSkipped?: boolean;
+  /** Null when the symptoms step was skipped. */
+  change24h: number | null;
+  /** Empty when the symptoms step was skipped. */
   duration: string;
   pregnant: string;
   notes: string;
@@ -169,7 +201,7 @@ export function changeLabel(value: number): string {
 
 /** Optional research consent on the questionnaire, worded like the tracker's. */
 export const RESEARCH = {
-  title: "Optional: help other women with UTIs",
-  text: "I also consent to Utee using my answers and my test result, with anything that could identify me removed, in combined figures for research and reporting. Recurrent UTIs are under-researched, and most of what is known comes from a handful of small studies. Real records of symptoms matched to real test results are what change that. Combined with others', mine could help improve testing, treatment and care for women like me. This is optional and does not affect my test.",
-  label: "Yes, use my anonymised answers and result to help research that could improve care for women with UTIs (optional)",
+  title: "Optional: help other people with UTIs",
+  text: "I also consent to Utee storing my urine sample after it has been tested, and using the sample, my answers and my test result, with anything that could identify me removed, for research and reporting. Recurrent UTIs are under-researched, and most of what is known comes from a handful of small studies. Real samples and real records of symptoms matched to real test results are what change that. Combined with others', mine could help improve testing, treatment and care for people like me. This is optional and does not affect my test.",
+  label: "Yes, Utee may store my sample and use my anonymised sample, answers and result for research that could improve care for people with UTIs (optional)",
 } as const;

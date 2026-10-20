@@ -13,6 +13,8 @@ import {
   RESEARCH,
   SAFETY_QUESTIONS,
   SYMPTOM_QUESTIONS,
+  SYMPTOM_RATING_MAX,
+  SYMPTOM_RATING_MIN,
   orderedSymptoms,
   safetyFlagsIn,
   type SafetyKey,
@@ -46,14 +48,26 @@ const triageSchema = z
       )
       .max(30),
     selected: z.array(z.enum(symptomKeys)).max(SYMPTOM_QUESTIONS.length),
-    change24h: z.number().int().min(CHANGE_MIN).max(CHANGE_MAX),
-    duration: z.string().min(1, "Tell us how long you've had these symptoms"),
+    severity: z.record(z.number().int().min(SYMPTOM_RATING_MIN).max(SYMPTOM_RATING_MAX)).default({}),
+    symptomsSkipped: z.boolean().default(false),
+    change24h: z.number().int().min(CHANGE_MIN).max(CHANGE_MAX).nullable(),
+    duration: z.string().max(60),
     pregnant: z.enum(["yes", "no", "not_applicable"]),
     notes: z.string().max(2000),
     consent: z.literal(true, { errorMap: () => ({ message: "Consent is required" }) }),
     research: z.boolean(),
   })
   .superRefine((value, ctx) => {
+    if (!value.symptomsSkipped) {
+      if (value.change24h === null) ctx.addIssue({ code: "custom", message: "Tell us how your symptoms have changed over the past 24 hours" });
+      if (!value.duration.trim()) ctx.addIssue({ code: "custom", message: "Tell us how long you've had these symptoms" });
+      for (const key of value.selected) {
+        if (value.severity[key] === undefined) {
+          ctx.addIssue({ code: "custom", message: "Rate each symptom you ticked from 1 to 10" });
+          break;
+        }
+      }
+    }
     if (value.history.previousUti === "yes") {
       if (value.history.episodes6m === null) {
         ctx.addIssue({ code: "custom", message: "Tell us roughly how many episodes in the past 6 months" });
@@ -108,9 +122,11 @@ export async function submitTriage(code: string, input: TriageInput) {
           worked: a.id === ANTIBIOTIC_UNKNOWN ? "unknown" : a.worked,
         }))
       : [],
-    selected: orderedSymptoms(answers.selected),
-    change24h: answers.change24h,
-    duration: answers.duration,
+    symptomsSkipped: answers.symptomsSkipped,
+    selected: answers.symptomsSkipped ? [] : orderedSymptoms(answers.selected),
+    severity: answers.symptomsSkipped ? {} : Object.fromEntries(orderedSymptoms(answers.selected).map((k) => [k, answers.severity[k]])),
+    change24h: answers.symptomsSkipped ? null : answers.change24h,
+    duration: answers.symptomsSkipped ? "" : answers.duration,
     pregnant: answers.pregnant,
     notes: answers.notes,
   };
@@ -145,7 +161,7 @@ export async function submitTriage(code: string, input: TriageInput) {
       actorRole: "customer",
       actorId: user.id,
       newStatus: "activated",
-      metadata: { safetyFlags: symptoms.safetyFlags },
+      metadata: { safetyFlags: symptoms.safetyFlags, symptomsSkipped: symptoms.symptomsSkipped },
     });
   } catch (err) {
     console.error("[triage] activation failed after saving answers", err);

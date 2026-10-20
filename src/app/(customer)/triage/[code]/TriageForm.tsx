@@ -14,10 +14,16 @@ import {
   HISTORY_INTRO,
   INTRO,
   RESEARCH,
+  SAFETY_INTRO,
   SAFETY_QUESTIONS,
+  SKIP_SYMPTOMS,
   SYMPTOM_QUESTIONS,
+  SYMPTOM_RATING_MAX,
+  SYMPTOM_RATING_MIN,
+  SYMPTOM_RATING_PROMPT,
   WORKED_OPTIONS,
   changeLabel,
+  ratingLabel,
   type PastAntibiotic,
   type PreviousUti,
   type SafetyKey,
@@ -154,7 +160,10 @@ export function TriageForm({ code }: { code: string }) {
   const [antibiotics, setAntibiotics] = useState<Chosen[]>([]);
   const [addingAntibiotic, setAddingAntibiotic] = useState(false);
   const [selected, setSelected] = useState<Set<SymptomKey>>(new Set());
+  const [severity, setSeverity] = useState<Partial<Record<SymptomKey, number>>>({});
   const [noneOfThese, setNoneOfThese] = useState(false);
+  const [symptomsSkipped, setSymptomsSkipped] = useState(false);
+  const [confirmSkip, setConfirmSkip] = useState(false);
   const [change24h, setChange24h] = useState<number | undefined>();
   const [duration, setDuration] = useState("");
   const [pregnant, setPregnant] = useState<"yes" | "no" | "not_applicable" | undefined>();
@@ -176,7 +185,8 @@ export function TriageForm({ code }: { code: string }) {
     previousUti !== undefined &&
     (!hadUti || (countOk(episodes6m) && countOk(episodes12m) && antibioticsComplete));
   const symptomsAnswered = selected.size > 0 || noneOfThese;
-  const symptomsComplete = symptomsAnswered && change24h !== undefined && duration !== "" && pregnant !== undefined;
+  const symptomsRated = [...selected].every((k) => severity[k] !== undefined);
+  const symptomsComplete = symptomsAnswered && symptomsRated && change24h !== undefined && duration !== "";
 
   function fail(message: string) {
     setAttempted(true);
@@ -191,8 +201,23 @@ export function TriageForm({ code }: { code: string }) {
     }
     if (step === 1 && !historyComplete) return fail("Please answer every question.");
     if (step === 2 && !symptomsComplete) return fail("Please answer every question.");
+    if (step === 2) setSymptomsSkipped(false);
     setAttempted(false);
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  }
+
+  /** Leaves the symptoms step blank and moves on. Answering later clears it. */
+  function skipSymptoms() {
+    setConfirmSkip(false);
+    setError(null);
+    setAttempted(false);
+    setSelected(new Set());
+    setSeverity({});
+    setNoneOfThese(false);
+    setChange24h(undefined);
+    setDuration("");
+    setSymptomsSkipped(true);
+    setStep(3);
   }
 
   function back() {
@@ -208,8 +233,14 @@ export function TriageForm({ code }: { code: string }) {
     setNoneOfThese(false);
     setSelected((prev) => {
       const nextSet = new Set(prev);
-      if (nextSet.has(key)) nextSet.delete(key);
-      else nextSet.add(key);
+      if (nextSet.has(key)) {
+        nextSet.delete(key);
+        setSeverity((s) => {
+          const next = { ...s };
+          delete next[key];
+          return next;
+        });
+      } else nextSet.add(key);
       return nextSet;
     });
   }
@@ -225,6 +256,7 @@ export function TriageForm({ code }: { code: string }) {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (pregnant === undefined) return fail("Please answer the pregnancy question.");
     if (!consent) return fail("Please tick the consent box.");
     const input: TriageInput = {
       safety: safety as Record<SafetyKey, YesNo>,
@@ -235,7 +267,9 @@ export function TriageForm({ code }: { code: string }) {
       },
       antibiotics: hadUti ? (antibiotics as PastAntibiotic[]) : [],
       selected: [...selected],
-      change24h: change24h!,
+      severity: Object.fromEntries([...selected].map((k) => [k, severity[k]!])),
+      symptomsSkipped,
+      change24h: change24h ?? null,
       duration,
       pregnant: pregnant!,
       notes,
@@ -315,7 +349,7 @@ export function TriageForm({ code }: { code: string }) {
           <StepHeader
             step={0}
             title="Safety check"
-            intro="First, a few quick questions. Some symptoms can mean an infection needs attention today rather than a test."
+            intro={SAFETY_INTRO}
           />
           <div className="divide-y divide-slate-100">
             {SAFETY_QUESTIONS.map((q, i) => (
@@ -426,9 +460,22 @@ export function TriageForm({ code }: { code: string }) {
                     ))}
                   </ul>
                 )}
+                {!unknownAntibiotics && antibiotics.length === 0 && (
+                  <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-sm text-slate-700">Not sure which antibiotics you had?</p>
+                    <button
+                      type="button"
+                      onClick={() => addAntibiotic(ANTIBIOTIC_UNKNOWN)}
+                      className="inline-flex min-h-[40px] items-center rounded-full border border-midnight/15 bg-white px-4 py-2 text-sm font-semibold text-midnight hover:bg-pink-25"
+                    >
+                      I don&apos;t know / can&apos;t remember
+                    </button>
+                  </div>
+                )}
                 {!unknownAntibiotics && (antibiotics.length === 0 || addingAntibiotic) && (
                   <>
-                    <AntibioticPicker value={null} exclude={antibiotics.map((a) => a.id).filter((id) => id !== "other")} onChange={addAntibiotic} autoFocus={addingAntibiotic} />
+                    <p className="text-xs font-semibold uppercase tracking-[.14em] text-slate-400">Or search for each antibiotic</p>
+                    <AntibioticPicker value={null} exclude={[...antibiotics.map((a) => a.id).filter((id) => id !== "other"), ANTIBIOTIC_UNKNOWN]} onChange={addAntibiotic} autoFocus={addingAntibiotic} />
                     {antibiotics.length === 0 ? (
                       <p className="text-xs text-slate-500">Leave this empty if you have not had antibiotics for a UTI.</p>
                     ) : (
@@ -454,19 +501,40 @@ export function TriageForm({ code }: { code: string }) {
           <Card className="space-y-5">
             <StepHeader step={2} title="Your symptoms" intro="Tick everything you have right now." />
             <div className="space-y-2.5">
-              {SYMPTOM_QUESTIONS.map((q) => (
-                <label key={q.key} className="flex items-start gap-3 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    name="symptom"
-                    value={q.key}
-                    checked={selected.has(q.key)}
-                    onChange={() => toggleSymptom(q.key)}
-                    className={checkClass}
-                  />
-                  {q.label}
-                </label>
-              ))}
+              {SYMPTOM_QUESTIONS.map((q) => {
+                const on = selected.has(q.key);
+                return (
+                  <div key={q.key} className={on ? "rounded-2xl bg-pink-25/60 p-3 -mx-3" : ""}>
+                    <label className="flex items-start gap-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        name="symptom"
+                        value={q.key}
+                        checked={on}
+                        onChange={() => toggleSymptom(q.key)}
+                        className={checkClass}
+                      />
+                      {q.label}
+                    </label>
+                    {on && (
+                      <div className="mt-3 pl-7" data-testid={`rating-${q.key}`}>
+                        <p className="mb-2 text-xs text-slate-600">
+                          {SYMPTOM_RATING_PROMPT}
+                          {missing(severity[q.key] !== undefined)}
+                        </p>
+                        <Scale
+                          name={`severity-${q.key}`}
+                          min={SYMPTOM_RATING_MIN}
+                          max={SYMPTOM_RATING_MAX}
+                          value={severity[q.key]}
+                          onChange={(v) => setSeverity((s) => ({ ...s, [q.key]: v }))}
+                          labelFor={ratingLabel}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               <label className="flex items-start gap-3 border-t border-slate-100 pt-3 text-sm text-slate-700">
                 <input
                   type="checkbox"
@@ -523,6 +591,46 @@ export function TriageForm({ code }: { code: string }) {
                 <option>More than a week</option>
               </select>
             </div>
+          </Card>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-dashed border-slate-300 px-5 py-4" data-testid="skip-symptoms">
+            {confirmSkip ? (
+              <div className="w-full space-y-3">
+                <p className="font-display text-xl font-light text-midnight">{SKIP_SYMPTOMS.title}</p>
+                <p className="text-sm text-slate-700 leading-relaxed">{SKIP_SYMPTOMS.text}</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button type="button" variant="secondary" onClick={() => setConfirmSkip(false)}>
+                    {SKIP_SYMPTOMS.cancel}
+                  </Button>
+                  <button type="button" onClick={skipSymptoms} className="text-sm font-semibold text-maroon underline-offset-2 hover:underline">
+                    {SKIP_SYMPTOMS.confirm}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600">These questions are optional, but they help the clinician reviewing your result.</p>
+                <button type="button" onClick={() => setConfirmSkip(true)} className="text-sm font-semibold text-slate-500 hover:text-midnight">
+                  {SKIP_SYMPTOMS.link}
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+
+      {step === 3 && (
+        <>
+          {symptomsSkipped && (
+            <div className="rounded-card border border-sun bg-sun-50 px-5 py-4 text-sm text-amber-800" data-testid="symptoms-skipped">
+              You skipped the symptom questions. Your test still goes ahead.{" "}
+              <button type="button" onClick={() => { setSymptomsSkipped(false); setStep(2); }} className="font-semibold underline underline-offset-2">
+                Answer them now
+              </button>
+            </div>
+          )}
+          <Card className="space-y-5">
+            <StepHeader step={3} title="Anything else" />
             <div>
               <span className="block text-sm font-medium text-slate-700 mb-2">
                 Are you currently pregnant?
@@ -530,14 +638,6 @@ export function TriageForm({ code }: { code: string }) {
               </span>
               <RadioRow name="pregnant" value={pregnant} options={PREGNANT} onChange={setPregnant} />
             </div>
-          </Card>
-        </>
-      )}
-
-      {step === 3 && (
-        <>
-          <Card className="space-y-5">
-            <StepHeader step={3} title="Anything else" />
             <div>
               <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">
                 Anything else we should know? (optional)

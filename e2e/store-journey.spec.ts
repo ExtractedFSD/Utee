@@ -133,6 +133,9 @@ test("store kit: order to report", async ({ browser, request }) => {
     expect((saved?.symptoms as { antibiotics: unknown[] }).antibiotics).toEqual([
       { id: "dont_know", name: "I don't know / can't remember", worked: "unknown" },
     ]);
+    const severity = (saved?.symptoms as { severity: Record<string, number>; selected: string[] }).severity;
+    expect(Object.keys(severity).sort()).toEqual([...(saved?.symptoms as { selected: string[] }).selected].sort());
+    expect(new Set(Object.values(severity))).toEqual(new Set([6]));
     await expect(customerPage.getByText("Symptoms submitted").first()).toBeVisible();
     await expect(customerPage.getByText("Pain or burning sensation when you are urinating.")).toBeVisible();
     await expect(customerPage.getByText("Needing to urinate more frequently than normal.")).toBeVisible();
