@@ -10,6 +10,8 @@ import { MonthStrip } from "./components/MonthStrip";
 import { QuickCheckin } from "./QuickCheckin";
 import { PreventionPills } from "./components/PreventionPills";
 import { PatternsCard } from "./components/PatternsCard";
+import { PassportCard } from "./components/PassportCard";
+import { passportGlance } from "@/lib/tracker/passport";
 
 export default async function TrackerHome() {
   const { supabase, user, profile } = await requireTracker();
@@ -30,6 +32,8 @@ export default async function TrackerHome() {
   const feelingToday = data.checkins.find((c) => c.on_date === today)?.feeling ?? null;
   // "Edit today" once something has been logged for today on the open UTI; "Log today" on a new day.
   const loggedToday = !!open && (openRows.some((x) => x.logged_on === today) || feelingToday !== null);
+  const glance = passportGlance({ utis6m: s.episodes6m, utis12m: s.episodes12m }, profile, data.preventions, data.investigations);
+  const passportStarted = !!(profile.local_hospital || profile.first_uti_onset || profile.medical_history.length || data.investigations.length);
 
   return (
     <div className="space-y-6">
@@ -71,6 +75,8 @@ export default async function TrackerHome() {
           </div>
         </Card>
       )}
+
+      <PassportCard glance={glance} started={passportStarted} />
 
       <Card data-testid="prevention-card">
         <div className="flex flex-wrap items-start justify-between gap-3">

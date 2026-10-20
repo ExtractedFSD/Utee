@@ -5,6 +5,7 @@ import { useEffect, useOptimistic, useRef, useState, useTransition } from "react
 import { Button, Card, LinkButton, StatusBadge, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { COURSE_DAYS, COURSE_TYPES, SOURCES, SYMPTOMS, TEST_KINDS, TEST_RESULTS, TRIGGERS, WORKED, labelFor } from "@/lib/tracker/options";
+import { FREQUENCIES, ROUTES } from "@/lib/tracker/passport";
 import { redFlagFor } from "@/lib/tracker/redflags";
 import { antibioticName } from "@/lib/tracker/search";
 import { askDateFor, episodeLength, formatDay, formatDayShort, isoToday } from "@/lib/tracker/stats";
@@ -21,7 +22,7 @@ import {
 } from "../../actions";
 
 type Item = { key: string; other: string | null };
-type Treatment = { id: string; antibiotic_id: string; other_name: string | null; started_on: string | null; days: number | null; course_type: string | null; source: string | null; worked: string | null };
+type Treatment = { id: string; antibiotic_id: string; other_name: string | null; started_on: string | null; days: number | null; course_type: string | null; source: string | null; worked: string | null; dose?: string | null; frequency?: string | null; route?: string | null; reaction?: string | null };
 type TestItem = { id: string; kind: string; tested_on: string | null; result: string | null; notes: string | null; kit_id: string | null; kitCode: string | null; kitStatus: string | null; kitReportReady: boolean };
 type Kit = { id: string; code: string; status: string; reportReady: boolean };
 /** Runs a server action in a transition. `optimistic` applies the expected result immediately. */
@@ -367,7 +368,7 @@ function TreatmentSection({ episodeId, today, treatments, previous, onThisUti, l
 
 function TreatmentForm({ initial, previous, exclude, lastSource, pending, onCancel, onSubmit, onRemove }: {
   initial: Treatment | null; previous: string[]; exclude: string[]; lastSource: string | null; pending: boolean;
-  onCancel: () => void; onSubmit: (input: { antibiotic_id: string; other_name: string; started_on: string; days: number | null; course_type: string; source: string }) => void; onRemove?: () => void;
+  onCancel: () => void; onSubmit: (input: { antibiotic_id: string; other_name: string; started_on: string; days: number | null; course_type: string; source: string; dose: string; frequency: string; route: string; reaction: string }) => void; onRemove?: () => void;
 }) {
   const [antibiotic, setAntibiotic] = useState<string | null>(initial?.antibiotic_id ?? null);
   const [otherName, setOtherName] = useState(initial?.other_name ?? "");
@@ -377,6 +378,12 @@ function TreatmentForm({ initial, previous, exclude, lastSource, pending, onCanc
   // Course type is no longer asked; an existing value is kept, new courses are treatment courses.
   const courseType = initial?.course_type ?? "treatment";
   const [source, setSource] = useState(initial?.source ?? lastSource ?? "");
+  // Passport detail, all optional: folded away until wanted.
+  const [dose, setDose] = useState(initial?.dose ?? "");
+  const [frequency, setFrequency] = useState(initial?.frequency ?? "");
+  const [route, setRoute] = useState(initial?.route ?? "oral");
+  const [reaction, setReaction] = useState(initial?.reaction ?? "");
+  const [moreOpen, setMoreOpen] = useState(!!(initial?.dose || initial?.frequency || initial?.reaction || (initial?.route && initial.route !== "oral")));
   return (
     <div className="space-y-4">
       <AntibioticPicker value={antibiotic} otherName={otherName} previous={previous} exclude={exclude} autoFocus={!initial} onChange={(id, other) => { setAntibiotic(id); if (other !== undefined) setOtherName(other); }} />
@@ -396,8 +403,33 @@ function TreatmentForm({ initial, previous, exclude, lastSource, pending, onCanc
             <p className="text-sm font-semibold text-slate-700 mb-2">Where it came from</p>
             <div className="flex flex-wrap gap-2">{SOURCES.map((s) => <Chip key={s.key} selected={source === s.key} onClick={() => setSource(s.key)}>{s.label}</Chip>)}</div>
           </div>
+          <details open={moreOpen} onToggle={(e) => setMoreOpen((e.target as HTMLDetailsElement).open)} className="rounded-2xl border border-slate-200 px-4 py-3" data-testid="treatment-detail">
+            <summary className="cursor-pointer select-none text-sm font-semibold text-maroon min-h-[32px] inline-flex items-center">Dose, how often and how it went (optional)</summary>
+            <div className="mt-3 space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="treatment-dose" className="block text-sm font-semibold text-slate-700 mb-1">{copy.treatmentDetail.dose}</label>
+                  <p className="text-xs text-slate-500 mb-2">{copy.treatmentDetail.doseHint}</p>
+                  <input id="treatment-dose" value={dose} onChange={(e) => setDose(e.target.value)} className={inputClass} maxLength={60} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-700 mb-2">{copy.treatmentDetail.route}</p>
+                  <div className="flex flex-wrap gap-2">{ROUTES.map((r) => <Chip key={r.key} selected={route === r.key} onClick={() => setRoute(r.key)}>{r.label}</Chip>)}</div>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-700 mb-2">{copy.treatmentDetail.frequency}</p>
+                <div className="flex flex-wrap gap-2">{FREQUENCIES.filter((f) => !["twice_weekly", "weekly", "monthly"].includes(f.key)).map((f) => <Chip key={f.key} selected={frequency === f.key} onClick={() => setFrequency(frequency === f.key ? "" : f.key)}>{f.label}</Chip>)}</div>
+              </div>
+              <div>
+                <label htmlFor="treatment-reaction" className="block text-sm font-semibold text-slate-700 mb-1">{copy.treatmentDetail.reaction}</label>
+                <p className="text-xs text-slate-500 mb-2">{copy.treatmentDetail.reactionHint}</p>
+                <input id="treatment-reaction" value={reaction} onChange={(e) => setReaction(e.target.value)} className={inputClass} maxLength={300} placeholder="For example rash, nausea, none" />
+              </div>
+            </div>
+          </details>
           <div className="flex flex-wrap items-center gap-3">
-            <Button disabled={pending} onClick={() => onSubmit({ antibiotic_id: antibiotic, other_name: otherName, started_on: startedOn, days, course_type: courseType, source })}>{initial ? copy.log.save : copy.episode.add}</Button>
+            <Button disabled={pending} onClick={() => onSubmit({ antibiotic_id: antibiotic, other_name: otherName, started_on: startedOn, days, course_type: courseType, source, dose, frequency, route, reaction })}>{initial ? copy.log.save : copy.episode.add}</Button>
             <button type="button" className={linkBtn} onClick={onCancel}>{copy.episode.cancel}</button>
             {onRemove && <button type="button" className={`${linkBtn} ml-auto`} disabled={pending} onClick={onRemove}>{copy.episode.remove}</button>}
           </div>

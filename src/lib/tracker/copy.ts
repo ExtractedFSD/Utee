@@ -5,7 +5,7 @@
  * claims, no treatment advice.
  */
 
-export const CONSENT_VERSION = "2026-09-30.2";
+export const CONSENT_VERSION = "2026-10-20.1";
 
 export const copy = {
   consent: {
@@ -13,7 +13,7 @@ export const copy = {
     intro:
       "The tracker keeps a private record of your UTIs so you can see your own history and share it with a GP or clinic if you choose. It records what you tell it and nothing more.",
     trackerText:
-      "I consent to Utee storing the symptoms, triggers, treatments, tests and notes I log in the tracker. This is health information. It is stored in the UK, only I can see it, and I can export or delete it at any time from the tracker settings. My chats with Una, the tracker helper, are kept with my record so I can reopen them. What I type to Una is sent to Utee's AI provider only to fill in the form, and I can turn that off and tap the options instead.",
+      "I consent to Utee storing the symptoms, triggers, treatments, tests, investigations, medical history, contact details and notes I log in the tracker. This is health information. It is stored in the UK, only I can see it, and I can export or delete it at any time from the tracker settings. My chats with Una, the tracker helper, are kept with my record so I can reopen them. What I type to Una is sent to Utee's AI provider only to fill in the form, and I can turn that off and tap the options instead.",
     trackerLabel: "I agree to Utee storing my tracker entries",
     researchTitle: "Optional: help other people with UTIs",
     researchText:
@@ -32,6 +32,86 @@ export const copy = {
     preventiveTitle: "Are you taking anything to help prevent UTIs?",
     preventiveHint: "Choose everything that applies. You can change this any time. Nothing here is a recommendation.",
     button: "Save and continue",
+    passportTitle: "For your UTI passport",
+    passportIntro:
+      "Optional. These details go on the summary you can hand to a GP or clinic. Leave anything blank and add it later.",
+    contact: "Contact details",
+    hospital: "Your local hospital",
+    hospitalHint: "The hospital you would be referred to. Type its name.",
+    nhsNumber: "NHS number (optional)",
+    nhsHint: "Ten digits, on any NHS letter or prescription.",
+    firstUti: "When was your first UTI?",
+    firstUtiYear: "Roughly which year? (optional)",
+    lifetime: "Roughly how many UTIs have you had in your life?",
+    lifetimeHint: "A best guess is fine.",
+    history: "Past medical history",
+    historyHint: "Tick anything that applies. A clinician reading your passport will want to know.",
+    historyOther: "Anything else",
+    allergies: "Allergies or bad reactions to antibiotics",
+    allergiesHint: "Add any antibiotic that gave you a reaction, and what happened.",
+    allergyReaction: "What happened?",
+    addAllergy: "Add an antibiotic",
+  },
+
+  passport: {
+    title: "My UTI passport",
+    intro: "Your UTI history in the shape a clinician reads. Everything here is what you have logged.",
+    glance: "At a glance",
+    utis6m: "UTIs, 6 months",
+    utis12m: "UTIs, 12 months",
+    lifetime: "Lifetime",
+    lifetimeUnknown: "Add in About you",
+    prophylaxis: "Taking to prevent UTIs",
+    prophylaxisNone: "Nothing logged",
+    lastInvestigation: "Last investigation",
+    investigationsNone: "None logged yet",
+    investigations: "Investigations",
+    timeline: "Timeline",
+    download: "Download my passport (PDF)",
+    aboutYou: "About you",
+    complete: "Complete your passport",
+    completeBody: "Add your local hospital, medical history and any tests you have had, so the summary is ready whenever you need it.",
+    empty: (what: string) => `No ${what} yet.`,
+  },
+
+  investigations: {
+    title: "Investigations",
+    intro: "Scans, camera tests and kidney blood tests you have had. One entry per test, with the date and whether it was normal.",
+    add: "Add a test or scan",
+    addButton: "Save",
+    describe: "Describe it in your own words",
+    describeHint: "For example: \"Ultrasound of my kidneys in August, all normal, 30 ml left after passing\". Una fills in the form and you check it.",
+    describeButton: "Fill in the form",
+    kind: "What was it?",
+    date: "When?",
+    dateHint: "The month and year is enough. Pick any day in that month.",
+    normal: "Was it normal?",
+    normalYes: "Normal",
+    normalNo: "Something was found",
+    normalUnknown: "Not sure",
+    findings: "What was found?",
+    bodyPart: "What was scanned?",
+    notes: "Anything else from the report",
+    empty: "Nothing logged yet. Add any scan, camera test or kidney blood test you have had, even from years ago.",
+    edit: "Edit",
+    remove: "Remove",
+    source: "Entered by you",
+    reviewHint: "Una read this from what you typed. Check it before saving.",
+  },
+
+  timeline: {
+    title: "Timeline",
+    intro: "Everything you have logged, on one line, newest first.",
+    empty: "Nothing logged yet.",
+    filterAll: "Everything",
+    kinds: {
+      uti: "UTI",
+      treatment: "Antibiotic",
+      test: "Test",
+      investigation: "Investigation",
+      prevention_started: "Started",
+      prevention_stopped: "Stopped",
+    } as Record<string, string>,
   },
 
   redFlag: {
@@ -246,6 +326,12 @@ export const copy = {
   },
 
   prevention: {
+    product: "Which product?",
+    dose: "Dose",
+    doseHint: "As written on the box or prescription, for example 1 g or 10 micrograms.",
+    frequency: "How often?",
+    course: "Course length (weeks)",
+    completed: "Did you finish the course?",
     title: "What I'm taking",
     intro: "Everything you take to help prevent UTIs, and whether you feel it helps. Only you can say. This is your record, not advice.",
     current: "Taking now",
@@ -287,6 +373,15 @@ export const copy = {
     tipsTitleGeneral: "A few ideas people find useful",
     tipsNote: "General information in plain words, not advice for you. Talk to your GP or pharmacist before changing anything.",
     readMore: (name: string) => `Read more at ${name}`,
+  },
+
+  treatmentDetail: {
+    dose: "Dose (optional)",
+    doseHint: "For example 100 mg or 3 g sachet.",
+    frequency: "How often? (optional)",
+    route: "How was it given?",
+    reaction: "Any side effects or reaction? (optional)",
+    reactionHint: "Kept on your record and shown on your passport.",
   },
 
   log: {
