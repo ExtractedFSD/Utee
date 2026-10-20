@@ -16,6 +16,7 @@ import {
   RESEARCH,
   SAFETY_INTRO,
   SAFETY_QUESTIONS,
+  SKIP_SYMPTOMS,
   SYMPTOM_QUESTIONS,
   SYMPTOM_RATING_MAX,
   SYMPTOM_RATING_MIN,
@@ -161,6 +162,8 @@ export function TriageForm({ code }: { code: string }) {
   const [selected, setSelected] = useState<Set<SymptomKey>>(new Set());
   const [severity, setSeverity] = useState<Partial<Record<SymptomKey, number>>>({});
   const [noneOfThese, setNoneOfThese] = useState(false);
+  const [symptomsSkipped, setSymptomsSkipped] = useState(false);
+  const [confirmSkip, setConfirmSkip] = useState(false);
   const [change24h, setChange24h] = useState<number | undefined>();
   const [duration, setDuration] = useState("");
   const [pregnant, setPregnant] = useState<"yes" | "no" | "not_applicable" | undefined>();
@@ -183,7 +186,7 @@ export function TriageForm({ code }: { code: string }) {
     (!hadUti || (countOk(episodes6m) && countOk(episodes12m) && antibioticsComplete));
   const symptomsAnswered = selected.size > 0 || noneOfThese;
   const symptomsRated = [...selected].every((k) => severity[k] !== undefined);
-  const symptomsComplete = symptomsAnswered && symptomsRated && change24h !== undefined && duration !== "" && pregnant !== undefined;
+  const symptomsComplete = symptomsAnswered && symptomsRated && change24h !== undefined && duration !== "";
 
   function fail(message: string) {
     setAttempted(true);
@@ -198,8 +201,23 @@ export function TriageForm({ code }: { code: string }) {
     }
     if (step === 1 && !historyComplete) return fail("Please answer every question.");
     if (step === 2 && !symptomsComplete) return fail("Please answer every question.");
+    if (step === 2) setSymptomsSkipped(false);
     setAttempted(false);
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  }
+
+  /** Leaves the symptoms step blank and moves on. Answering later clears it. */
+  function skipSymptoms() {
+    setConfirmSkip(false);
+    setError(null);
+    setAttempted(false);
+    setSelected(new Set());
+    setSeverity({});
+    setNoneOfThese(false);
+    setChange24h(undefined);
+    setDuration("");
+    setSymptomsSkipped(true);
+    setStep(3);
   }
 
   function back() {
@@ -238,6 +256,7 @@ export function TriageForm({ code }: { code: string }) {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (pregnant === undefined) return fail("Please answer the pregnancy question.");
     if (!consent) return fail("Please tick the consent box.");
     const input: TriageInput = {
       safety: safety as Record<SafetyKey, YesNo>,
@@ -249,7 +268,8 @@ export function TriageForm({ code }: { code: string }) {
       antibiotics: hadUti ? (antibiotics as PastAntibiotic[]) : [],
       selected: [...selected],
       severity: Object.fromEntries([...selected].map((k) => [k, severity[k]!])),
-      change24h: change24h!,
+      symptomsSkipped,
+      change24h: change24h ?? null,
       duration,
       pregnant: pregnant!,
       notes,
@@ -571,6 +591,46 @@ export function TriageForm({ code }: { code: string }) {
                 <option>More than a week</option>
               </select>
             </div>
+          </Card>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-dashed border-slate-300 px-5 py-4" data-testid="skip-symptoms">
+            {confirmSkip ? (
+              <div className="w-full space-y-3">
+                <p className="font-display text-xl font-light text-midnight">{SKIP_SYMPTOMS.title}</p>
+                <p className="text-sm text-slate-700 leading-relaxed">{SKIP_SYMPTOMS.text}</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button type="button" variant="secondary" onClick={() => setConfirmSkip(false)}>
+                    {SKIP_SYMPTOMS.cancel}
+                  </Button>
+                  <button type="button" onClick={skipSymptoms} className="text-sm font-semibold text-maroon underline-offset-2 hover:underline">
+                    {SKIP_SYMPTOMS.confirm}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600">These questions are optional, but they help the clinician reviewing your result.</p>
+                <button type="button" onClick={() => setConfirmSkip(true)} className="text-sm font-semibold text-slate-500 hover:text-midnight">
+                  {SKIP_SYMPTOMS.link}
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+
+      {step === 3 && (
+        <>
+          {symptomsSkipped && (
+            <div className="rounded-card border border-sun bg-sun-50 px-5 py-4 text-sm text-amber-800" data-testid="symptoms-skipped">
+              You skipped the symptom questions. Your test still goes ahead.{" "}
+              <button type="button" onClick={() => { setSymptomsSkipped(false); setStep(2); }} className="font-semibold underline underline-offset-2">
+                Answer them now
+              </button>
+            </div>
+          )}
+          <Card className="space-y-5">
+            <StepHeader step={3} title="Anything else" />
             <div>
               <span className="block text-sm font-medium text-slate-700 mb-2">
                 Are you currently pregnant?
@@ -578,14 +638,6 @@ export function TriageForm({ code }: { code: string }) {
               </span>
               <RadioRow name="pregnant" value={pregnant} options={PREGNANT} onChange={setPregnant} />
             </div>
-          </Card>
-        </>
-      )}
-
-      {step === 3 && (
-        <>
-          <Card className="space-y-5">
-            <StepHeader step={3} title="Anything else" />
             <div>
               <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">
                 Anything else we should know? (optional)

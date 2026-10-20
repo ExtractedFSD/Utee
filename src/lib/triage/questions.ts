@@ -72,6 +72,14 @@ export const HISTORY = {
   episodes12m: "Approximately how many episodes of UTI symptoms have you had in the past 12 months?",
 } as const;
 
+export const SKIP_SYMPTOMS = {
+  link: "Skip this step",
+  title: "Skip the symptom questions?",
+  text: "These questions are optional. Your test goes ahead without them, but your answers help the clinician reviewing your result understand what you are experiencing and can shape advice further down the line.",
+  confirm: "Skip anyway",
+  cancel: "Go back and answer",
+} as const;
+
 export const CHANGE_QUESTION =
   "Please consider how you typically experience UTI symptoms. To what extent have your UTI symptoms over the past 24 hours been better or worse than your typical experience?";
 
@@ -131,7 +139,14 @@ export type TriageAnswers = {
   selected: SymptomKey[];
   /** 1 to 10 for each ticked symptom. Absent on forms saved before the rating was asked. */
   severity?: Partial<Record<SymptomKey, number>>;
-  change24h: number;
+  /**
+   * True when the patient chose to skip the symptoms step. The symptom
+   * fields are then empty: no symptoms, no change, no duration.
+   */
+  symptomsSkipped?: boolean;
+  /** Null when the symptoms step was skipped. */
+  change24h: number | null;
+  /** Empty when the symptoms step was skipped. */
   duration: string;
   pregnant: string;
   notes: string;

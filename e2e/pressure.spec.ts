@@ -3,6 +3,7 @@ import {
   admin,
   BASE_URL,
   card,
+  completeTriage,
   createUser,
   emailFor,
   expectKitStatus,
@@ -243,6 +244,29 @@ test.describe("QR landing", () => {
     await page.getByRole("button", { name: "Continue" }).click();
     // A printed, unassigned kit is claimed by whoever enters it: straight to the questionnaire.
     await expect(page).toHaveURL(`/triage/${real.code}`);
+    await ctx.close();
+  });
+});
+
+test.describe("Questionnaire", () => {
+  test("the symptoms step can be skipped after a warning, and the clinic sees that it was", async ({ browser }) => {
+    const user = await createUser("customer", "skip-symptoms");
+    const ctx = await browser.newContext();
+    await loginAs(ctx, user.email);
+    const page = await ctx.newPage();
+    const kit = await insertKit();
+    await page.goto(`/k/${kit.code}`);
+    await expect(page).toHaveURL(`/triage/${kit.code}`);
+    await completeTriage(page, { previousUti: "no", skipSymptoms: true, pregnant: "no" });
+    await expect(page).toHaveURL(new RegExp(`/portal/tests/`));
+    const { data: saved } = await admin().from("triage_submissions").select("symptoms").eq("kit_id", (await kitByCode(kit.code))!.id).single();
+    const answers = saved?.symptoms as { symptomsSkipped: boolean; selected: string[]; change24h: number | null; duration: string; pregnant: string };
+    expect(answers.symptomsSkipped).toBe(true);
+    expect(answers.selected).toEqual([]);
+    expect(answers.change24h).toBeNull();
+    expect(answers.duration).toBe("");
+    expect(answers.pregnant).toBe("no");
+    await expect(page.getByTestId("triage-symptoms-skipped")).toBeVisible();
     await ctx.close();
   });
 });

@@ -59,7 +59,8 @@ function SafetySection({ flagged }: { flagged: string[] }) {
   );
 }
 
-function Change({ value }: { value: number }) {
+function Change({ value }: { value: number | null }) {
+  if (value === null) return null;
   return (
     <p className="mt-2">
       <span className="font-medium text-slate-600">Past 24 hours:</span> {changeLabel(value)} ({value > 0 ? `+${value}` : value})
@@ -174,7 +175,9 @@ export function TriageSummary({ answers, audience }: { answers: StoredTriage; au
 
       <section>
         <Heading>Symptoms</Heading>
-        {answers.selected.length === 0 ? (
+        {answers.symptomsSkipped ? (
+          <p className="text-slate-500" data-testid="triage-symptoms-skipped">The symptom questions were skipped.</p>
+        ) : answers.selected.length === 0 ? (
           <p>None of the listed symptoms.</p>
         ) : (
           <ul className="space-y-1">
@@ -198,7 +201,7 @@ export function TriageSummary({ answers, audience }: { answers: StoredTriage; au
       </section>
 
       <dl className="space-y-1 border-t border-slate-100 pt-3">
-        <Row label="Duration" value={answers.duration} />
+        {answers.duration && <Row label="Duration" value={answers.duration} />}
         {clinic && <Row label="Pregnant" value={VALUE_LABELS[answers.pregnant] ?? answers.pregnant} />}
         {answers.notes && <Row label="Notes" value={answers.notes} />}
       </dl>
