@@ -58,6 +58,6 @@ describe("kit codes", () => {
     expect(kitCodeFromPath(`/k/${formatKitCode(code)}?x=1`)).toBe(code);
     expect(kitCodeFromPath("/k/nope")).toBeNull();
     expect(kitCodeFromPath("/portal")).toBeNull();
-    expect(kitQrUrl("https://portal.myutee.com/", code)).toBe(`https://portal.myutee.com/k/${code}`);
+    expect(kitQrUrl("https://portal.myutee.co.uk/", code)).toBe(`https://portal.myutee.co.uk/k/${code}`);
   });
 });
