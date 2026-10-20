@@ -408,8 +408,6 @@ export async function completeTriage(
     antibiotics?: { search: string; worked?: "yes" | "no" | "partly" | "taking" }[];
     /** Picks "I don't know / can't remember" instead of naming antibiotics. */
     antibioticsUnknown?: boolean;
-    /** Preventive treatments to tick, by search text (e.g. "uromune"). */
-    preventions?: string[];
     symptoms?: string[];
     change?: number;
     duration?: string;
@@ -454,10 +452,6 @@ export async function completeTriage(
       await page.getByRole("option").first().click();
       if (a.worked) await page.locator(`input[name="worked-${i}"][value="${a.worked}"]`).check();
     }
-  }
-  for (const search of opts.preventions ?? []) {
-    await page.getByTestId("prevention-search").fill(search);
-    await page.getByTestId("prevention-results").getByRole("button").first().click();
   }
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(form).toHaveAttribute("data-step", "2");

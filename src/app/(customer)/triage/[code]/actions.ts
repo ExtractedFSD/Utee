@@ -6,7 +6,6 @@ import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logKitEvent } from "@/lib/events";
 import { antibioticName } from "@/lib/tracker/search";
-import { ANTIBIOTIC_PREVENTIONS, PREVENTION_KEYS, PREVENTION_OTHER, preventionName } from "@/lib/tracker/prevention";
 import {
   ANTIBIOTIC_UNKNOWN,
   CHANGE_MAX,
@@ -46,10 +45,6 @@ const triageSchema = z
         })
       )
       .max(30),
-    preventions: z
-      .array(z.object({ key: z.string().min(1).max(60), name: z.string().max(120) }))
-      .max(30)
-      .default([]),
     selected: z.array(z.enum(symptomKeys)).max(SYMPTOM_QUESTIONS.length),
     change24h: z.number().int().min(CHANGE_MIN).max(CHANGE_MAX),
     duration: z.string().min(1, "Tell us how long you've had these symptoms"),
@@ -113,14 +108,6 @@ export async function submitTriage(code: string, input: TriageInput) {
           worked: a.id === ANTIBIOTIC_UNKNOWN ? "unknown" : a.worked,
         }))
       : [],
-    // Only options the tracker knows, never the antibiotic ones (asked above),
-    // with names resolved here rather than trusted from the browser.
-    preventions: answers.preventions
-      .filter((p) => PREVENTION_KEYS.includes(p.key) && !ANTIBIOTIC_PREVENTIONS.includes(p.key))
-      .map((p) => ({
-        key: p.key,
-        name: p.key === PREVENTION_OTHER.key ? p.name.trim().slice(0, 120) || "Other" : preventionName({ option_key: p.key, other_name: null, antibiotic_id: null }),
-      })),
     selected: orderedSymptoms(answers.selected),
     change24h: answers.change24h,
     duration: answers.duration,
