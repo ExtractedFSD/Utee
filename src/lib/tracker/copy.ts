@@ -355,6 +355,7 @@ export const copy = {
     addTest: "Add a test",
     yoursBefore: "Yours before",
     showAll: "Show all",
+    showLess: "Show less",
     willAskOn: (date: string) => `We'll ask how it went on ${date}`,
     willAskOnClose: "We'll ask how it went when you close this UTI",
     askToday: "We'll ask how it went in your check-in today",

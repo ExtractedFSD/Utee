@@ -201,7 +201,7 @@ export default async function PortalHome({
             <div className="min-w-0">
               <h3 className="font-display text-2xl font-light">The Utee range</h3>
               <span className="mt-2 inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[.12em] text-white">From £19.99</span>
-              <p className="text-sm font-semibold text-white mt-3 leading-relaxed">Urinary Tract Care, made for women.</p>
+              <p className="text-sm font-semibold text-white mt-3 leading-relaxed">Urinary Tract Care, made for people living with UTIs.</p>
               <p className="text-sm text-white/85 mt-1 mb-5 leading-relaxed">D-Mannose sachets, Vaginal Probiotics and the On-The-Go pack.</p>
               <LinkButton href={storeUrl} variant="white" external>
                 Shop supplements
@@ -219,7 +219,7 @@ export default async function PortalHome({
               <h3 className="font-display text-2xl font-light">Join the Utee Community</h3>
               <p className="text-sm font-semibold text-white mt-3 leading-relaxed">You are not the only one dealing with this.</p>
               <p className="text-sm text-white/85 mt-1 mb-5 leading-relaxed">
-                A private space for women living with UTIs to share what has helped, ask the questions you cannot ask anywhere else, and hear from people who understand. Members get early access to new Utee products and events.
+                A private space for people living with UTIs to share what has helped, ask the questions you cannot ask anywhere else, and hear from people who understand. Members get early access to new Utee products and events.
               </p>
               <LinkButton href="#" variant="white">
                 Coming soon
