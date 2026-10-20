@@ -15,7 +15,7 @@ export const REPORT_LINKS = {
   utiInstituteBooking: process.env.NEXT_PUBLIC_UTI_INSTITUTE_BOOKING_URL ?? "https://www.theutiinstitute.com/utee",
   uteeShop: process.env.NEXT_PUBLIC_UTEE_SHOP_URL ?? "https://myutee.com/collections/all",
   pharmacyFirst: "https://www.nhs.uk/nhs-services/pharmacies/how-pharmacies-can-help/",
-  portal: process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.myutee.com",
+  portal: process.env.NEXT_PUBLIC_APP_URL ?? "https://portal.myutee.co.uk",
 } as const;
 
 export type Paragraphs = readonly string[];
