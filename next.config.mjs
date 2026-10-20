@@ -20,6 +20,7 @@ const nextConfig = {
     "/clinic/case/[kitId]/report": ["./design-system/fonts/**", "./public/logo-*.png"],
     "/clinic/case/[kitId]/report/preview": ["./design-system/fonts/**", "./public/logo-*.png"],
     "/clinic/case/[kitId]": ["./design-system/fonts/**", "./public/logo-*.png"],
+    "/portal/tracker/passport": ["./design-system/fonts/**", "./public/logo-*.png"],
   },
 };
 

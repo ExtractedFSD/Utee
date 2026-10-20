@@ -581,3 +581,69 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   expect(log?.filter((l) => l.action === "guided_uti_saved")).toHaveLength(3);
   await ctx.close();
 });
+
+test("tracker: passport details, an investigation and the passport PDF", async ({ browser }) => {
+  const user = await createUser("customer", "tracker-passport");
+  const ctx = await browser.newContext({ viewport: PHONE });
+  await loginAs(ctx, user.email);
+  const page = await ctx.newPage();
+  await page.goto("/portal/tracker/consent");
+  await page.getByLabel(/I agree to Utee storing/).check();
+  await page.getByRole("button", { name: "Start tracking" }).click();
+  await page.getByRole("link", { name: "Prefer a form?" }).click();
+  await expect(page).toHaveURL(/\/portal\/tracker\/about-me/);
+
+  await test.step("About you takes the passport fields, all optional", async () => {
+    await page.getByRole("radiogroup", { name: "first_uti_onset" }).getByRole("button", { name: "As an adult" }).click();
+    await page.getByLabel("Roughly which year? (optional)").fill("2015");
+    await page.getByLabel(/Roughly how many UTIs/).fill("20");
+    await page.getByTestId("medical-history").getByRole("button", { name: "Diabetes" }).click();
+    await page.getByRole("button", { name: "+ Add an antibiotic" }).click();
+    await page.getByTestId("allergy-form").getByRole("combobox", { name: "Search by name or brand" }).fill("trimeth");
+    await page.getByTestId("allergy-form").getByRole("option").first().click();
+    await page.getByLabel("What happened?").fill("Rash");
+    await page.getByTestId("allergy-form").getByRole("button", { name: "Add", exact: true }).click();
+    await expect(page.getByTestId("allergy-list")).toContainText("Trimethoprim");
+    await page.getByLabel("Your local hospital").fill("Royal Berkshire Hospital");
+    await page.getByLabel("NHS number (optional)").fill("123 456 7890");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await expect(page).toHaveURL(/\/portal\/tracker$/);
+    const { data: profile } = await admin().from("tracker_profiles").select("local_hospital, nhs_number, first_uti_onset, first_uti_year, lifetime_utis, medical_history, allergies").eq("user_id", user.id).single();
+    expect(profile).toMatchObject({ local_hospital: "Royal Berkshire Hospital", nhs_number: "1234567890", first_uti_onset: "adult", first_uti_year: 2015, lifetime_utis: 20, medical_history: ["diabetes"] });
+    expect(profile?.allergies).toEqual([{ antibiotic_id: "trimethoprim", other_name: null, reaction: "Rash" }]);
+    const card = page.getByTestId("passport-card");
+    await expect(card).toContainText("20");
+    await expect(card).toContainText("Trimethoprim: Rash");
+    await expect(card).toContainText("Diabetes");
+  });
+
+  await test.step("An investigation is described in a sentence, checked and saved", async () => {
+    await page.goto("/portal/tracker/investigations");
+    await page.getByRole("button", { name: "Add a test or scan" }).click();
+    const sheet = page.getByTestId("sheet-investigation");
+    await sheet.getByLabel("Describe it in your own words").fill("Ultrasound of my kidneys on 12 August 2025, all normal, 30 ml left after passing");
+    await sheet.getByRole("button", { name: "Fill in the form" }).click();
+    await expect(sheet.getByTestId("investigation-kind").getByRole("button", { name: "USS KUB" })).toHaveAttribute("aria-pressed", "true");
+    await expect(sheet.getByLabel("When?")).toHaveValue("2025-08-12");
+    await expect(sheet.getByTestId("investigation-normal").getByRole("button", { name: "Normal", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(sheet.getByLabel(/post-void residual/)).toHaveValue("30");
+    await sheet.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByTestId("investigations-list")).toContainText("USS KUB");
+    await expect(page.getByTestId("investigations-list")).toContainText("PVR 30 ml");
+    const { data: rows } = await admin().from("tracker_investigations").select("kind, performed_on, normal, values").eq("user_id", user.id);
+    expect(rows).toEqual([{ kind: "uss_kub", performed_on: "2025-08-12", normal: true, values: { pvr_ml: 30 } }]);
+  });
+
+  await test.step("The home card, the timeline and the PDF show it", async () => {
+    await page.goto("/portal/tracker");
+    await expect(page.getByTestId("passport-card")).toContainText("USS KUB");
+    await page.goto("/portal/tracker/timeline");
+    await expect(page.getByTestId("timeline-month").first()).toContainText("USS KUB");
+    const pdf = await page.request.get("/portal/tracker/passport");
+    expect(pdf.status()).toBe(200);
+    const body = await pdf.body();
+    expect(body.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(body.length).toBeGreaterThan(50_000);
+  });
+  await ctx.close();
+});

@@ -14,6 +14,10 @@ export type TreatmentRow = {
   course_type: string | null;
   source: string | null;
   worked: string | null;
+  dose?: string | null;
+  frequency?: string | null;
+  route?: string | null;
+  reaction?: string | null;
 };
 
 const DAY = 86_400_000;

@@ -13,6 +13,7 @@ import {
 } from "@/lib/tracker/options";
 import { antibioticById } from "@/lib/tracker/search";
 import { ANTIBIOTIC_PREVENTIONS, HELPING, PREVENTION_KEYS, diffPreventions } from "@/lib/tracker/prevention";
+import { FIRST_UTI_ONSET, FREQUENCIES, INSTILLATION_PRODUCTS, MEDICAL_HISTORY, ROUTES, VAGINAL_OESTROGEN_PRODUCTS, type Allergy } from "@/lib/tracker/passport";
 import { extract } from "@/lib/tracker/guided/extract";
 import { utiSaveSchema, type GuidedStep, type TestExtract, type TreatmentExtract, type UtiSave } from "@/lib/tracker/guided/schema";
 import { ageBandFor, formatDay, isoToday } from "@/lib/tracker/stats";
@@ -77,6 +78,24 @@ export async function setConsent(kind: "tracker" | "research", on: boolean) {
 
 // ----------------------------------------------------------------- about me
 
+const optionalText = (max: number) => z.string().trim().max(max).transform((v) => v || null);
+const optionalInt = (min: number, max: number) =>
+  z.string().trim().transform((v, ctx) => {
+    if (!v) return null;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < min || n > max) {
+      ctx.addIssue({ code: "custom", message: `Enter a whole number between ${min} and ${max}` });
+      return z.NEVER;
+    }
+    return n;
+  });
+
+const allergySchema = z.object({
+  antibiotic_id: z.string().min(1).max(80),
+  other_name: z.string().max(120).nullable(),
+  reaction: z.string().max(300).nullable(),
+});
+
 const aboutMeSchema = z.object({
   menopause_stage: z.enum(keys(MENOPAUSE_STAGES)),
   contraception: z.enum(keys(CONTRACEPTION)),
@@ -85,7 +104,35 @@ const aboutMeSchema = z.object({
   prevention_other: z.string().max(120).optional(),
   prevention_antibiotic_id: z.string().max(80).optional(),
   prevention_antibiotic_other: z.string().max(120).optional(),
+  // Passport fields, all optional.
+  phone: optionalText(40),
+  address_line1: optionalText(120),
+  address_line2: optionalText(120),
+  city: optionalText(80),
+  postcode: optionalText(12),
+  local_hospital: optionalText(120),
+  nhs_number: z.string().trim().transform((v, ctx) => {
+    const digits = v.replace(/\D/g, "");
+    if (!digits) return null;
+    if (digits.length !== 10) {
+      ctx.addIssue({ code: "custom", message: "An NHS number has ten digits" });
+      return z.NEVER;
+    }
+    return digits;
+  }),
+  first_uti_onset: z.enum(["", ...keys(FIRST_UTI_ONSET)]).transform((v) => v || null),
+  first_uti_year: optionalInt(1900, 2100),
+  lifetime_utis: optionalInt(0, 10000),
+  medical_history: z.array(z.enum(keys(MEDICAL_HISTORY))).max(MEDICAL_HISTORY.length),
+  medical_history_other: optionalText(300),
+  allergies: z.array(allergySchema).max(30),
 });
+
+function cleanAllergies(list: Allergy[]): Allergy[] {
+  return list
+    .filter((a) => a.antibiotic_id === "other" ? !!a.other_name?.trim() : !!antibioticById(a.antibiotic_id))
+    .map((a) => ({ antibiotic_id: a.antibiotic_id, other_name: a.antibiotic_id === "other" ? a.other_name?.trim() || null : null, reaction: a.reaction?.trim() || null }));
+}
 
 /** Which antibiotic to store against an antibiotic-type prevention, if any. */
 function preventionAntibiotic(id?: string, other?: string): { antibiotic_id: string | null; other_name: string | null } {
@@ -142,6 +189,26 @@ export async function saveAboutMe(formData: FormData) {
     prevention_other: String(formData.get("prevention_other") ?? ""),
     prevention_antibiotic_id: String(formData.get("prevention_antibiotic_id") ?? ""),
     prevention_antibiotic_other: String(formData.get("prevention_antibiotic_other") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
+    address_line1: String(formData.get("address_line1") ?? ""),
+    address_line2: String(formData.get("address_line2") ?? ""),
+    city: String(formData.get("city") ?? ""),
+    postcode: String(formData.get("postcode") ?? "").toUpperCase(),
+    local_hospital: String(formData.get("local_hospital") ?? ""),
+    nhs_number: String(formData.get("nhs_number") ?? ""),
+    first_uti_onset: String(formData.get("first_uti_onset") ?? ""),
+    first_uti_year: String(formData.get("first_uti_year") ?? ""),
+    lifetime_utis: String(formData.get("lifetime_utis") ?? ""),
+    medical_history: String(formData.get("medical_history") ?? "").split(",").map((k) => k.trim()).filter(Boolean),
+    medical_history_other: String(formData.get("medical_history_other") ?? ""),
+    allergies: (() => {
+      try {
+        const raw = JSON.parse(String(formData.get("allergies") ?? "[]"));
+        return Array.isArray(raw) ? raw : [];
+      } catch {
+        return [];
+      }
+    })(),
   });
   if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Please check the form" };
   const d = parsed.data;
@@ -152,6 +219,19 @@ export async function saveAboutMe(formData: FormData) {
     menopause_stage: d.menopause_stage,
     contraception: d.contraception,
     pregnant_or_trying: d.pregnant_or_trying,
+    phone: d.phone,
+    address_line1: d.address_line1,
+    address_line2: d.address_line2,
+    city: d.city,
+    postcode: d.postcode,
+    local_hospital: d.local_hospital,
+    nhs_number: d.nhs_number,
+    first_uti_onset: d.first_uti_onset,
+    first_uti_year: d.first_uti_year,
+    lifetime_utis: d.lifetime_utis,
+    medical_history: d.medical_history,
+    medical_history_other: d.medical_history.includes("other") ? d.medical_history_other : null,
+    allergies: cleanAllergies(d.allergies),
     updated_at: new Date().toISOString(),
   });
   if (error) return { error: "Could not save. Please try again." };
@@ -452,7 +532,20 @@ const treatmentSchema = z.object({
   days: z.number().int().positive().max(365).nullable(),
   course_type: z.enum(keys(COURSE_TYPES)).optional().or(z.literal("")),
   source: z.enum(keys(SOURCES)).optional().or(z.literal("")),
+  dose: z.string().max(60).optional(),
+  frequency: z.enum(keys(FREQUENCIES)).optional().or(z.literal("")),
+  route: z.enum(keys(ROUTES)).optional().or(z.literal("")),
+  reaction: z.string().max(300).optional(),
 });
+
+function treatmentDetail(d: z.infer<typeof treatmentSchema>) {
+  return {
+    dose: d.dose?.trim() || null,
+    frequency: d.frequency || null,
+    route: d.route || null,
+    reaction: d.reaction?.trim() || null,
+  };
+}
 
 export async function addTreatment(episodeId: string, input: z.input<typeof treatmentSchema>) {
   const { user, supabase } = await session();
@@ -470,6 +563,7 @@ export async function addTreatment(episodeId: string, input: z.input<typeof trea
     days: d.days,
     course_type: d.course_type || null,
     source: d.source || null,
+    ...treatmentDetail(d),
   });
   if (error) return { error: "Could not save." };
   if (d.source) {
@@ -494,6 +588,7 @@ export async function updateTreatment(treatmentId: string, input: z.input<typeof
       days: d.days,
       course_type: d.course_type || null,
       source: d.source || null,
+      ...treatmentDetail(d),
     })
     .eq("id", treatmentId)
     .eq("user_id", user.id)
@@ -630,11 +725,38 @@ export async function stopPreventions(keys: string[]) {
   return { ok: true, stopped: n };
 }
 
-export async function updatePrevention(id: string, patch: { startedOn?: string | null; stoppedOn?: string | null; helping?: string | null; notes?: string }) {
+export async function updatePrevention(
+  id: string,
+  patch: {
+    startedOn?: string | null;
+    stoppedOn?: string | null;
+    helping?: string | null;
+    notes?: string;
+    product?: string | null;
+    dose?: string | null;
+    frequency?: string | null;
+    courseWeeks?: number | null;
+    completed?: boolean | null;
+  }
+) {
   const { user, supabase } = await session();
   if (!uuid.safeParse(id).success) return { error: "Not found" };
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   const today = isoToday();
+  if (patch.product !== undefined) {
+    const known = [...INSTILLATION_PRODUCTS, ...VAGINAL_OESTROGEN_PRODUCTS].some((p) => p.key === patch.product);
+    update.product = patch.product === null || patch.product === "" ? null : known ? patch.product : patch.product.slice(0, 80);
+  }
+  if (patch.dose !== undefined) update.dose = patch.dose?.trim().slice(0, 60) || null;
+  if (patch.frequency !== undefined) {
+    if (patch.frequency !== null && patch.frequency !== "" && !FREQUENCIES.some((f) => f.key === patch.frequency)) return { error: "Choose how often" };
+    update.frequency = patch.frequency || null;
+  }
+  if (patch.courseWeeks !== undefined) {
+    if (patch.courseWeeks !== null && (!Number.isInteger(patch.courseWeeks) || patch.courseWeeks < 1 || patch.courseWeeks > 520)) return { error: "Enter the course length in weeks" };
+    update.course_weeks = patch.courseWeeks;
+  }
+  if (patch.completed !== undefined) update.completed = patch.completed;
   if (patch.startedOn !== undefined) {
     if (patch.startedOn === null || patch.startedOn === "") update.started_on = null;
     else if (!isoDate.safeParse(patch.startedOn).success || patch.startedOn > today) return { error: "Choose a start date that isn't in the future." };

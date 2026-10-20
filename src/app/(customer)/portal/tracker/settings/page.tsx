@@ -13,7 +13,10 @@ export default async function TrackerSettingsPage() {
       <PageHeader eyebrow="Tracker" title={copy.settings.title} action={<Link href="/portal/tracker" className="text-sm font-semibold text-maroon">Back to tracker</Link>} />
       <Card>
         <CardTitle>{copy.settings.aboutMe}</CardTitle>
-        <LinkButton href="/portal/tracker/about-me?edit=1" variant="secondary">Edit my answers</LinkButton>
+        <div className="flex flex-wrap gap-2">
+          <LinkButton href="/portal/tracker/about-me?edit=1" variant="secondary">Edit my answers</LinkButton>
+          <LinkButton href="/portal/tracker/investigations" variant="secondary">{copy.investigations.title}</LinkButton>
+        </div>
       </Card>
       <Card>
         <CardTitle>{copy.settings.export}</CardTitle>

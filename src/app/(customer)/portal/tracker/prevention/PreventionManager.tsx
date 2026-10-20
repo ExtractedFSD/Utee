@@ -5,6 +5,7 @@ import { Button, Card, CardTitle, Pill, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import type { PreventionRow } from "@/lib/tracker/data";
 import { HELPING, preventionGroup, preventionName } from "@/lib/tracker/prevention";
+import { FREQUENCIES, PREVENTION_DETAIL, prophylaxisLine } from "@/lib/tracker/passport";
 import { formatDay, isoToday } from "@/lib/tracker/stats";
 import { Chip } from "../components/Chips";
 import { PreventionPicker } from "../components/PreventionPicker";
@@ -111,6 +112,53 @@ export function PreventionManager({ rows }: { rows: PreventionRow[] }) {
                 onBlur={(e) => { if ((e.target.value || null) !== open.started_on) run(() => updatePrevention(open.id, { startedOn: e.target.value || null })); }}
               />
             </div>
+            {PREVENTION_DETAIL[open.option_key] && (
+              <div className="space-y-4 rounded-2xl bg-pink-25 p-4" data-testid="prevention-detail">
+                {PREVENTION_DETAIL[open.option_key].product && (
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700 mb-2">{copy.prevention.product}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {PREVENTION_DETAIL[open.option_key].product!.map((o) => (
+                        <Chip key={o.key} selected={open.product === o.key} onClick={() => run(() => updatePrevention(open.id, { product: open.product === o.key ? null : o.key }))}>{o.label}</Chip>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {PREVENTION_DETAIL[open.option_key].dose && (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1" htmlFor="prevention-dose">{copy.prevention.dose}</label>
+                    <p className="text-xs text-slate-500 mb-2">{copy.prevention.doseHint}</p>
+                    <input id="prevention-dose" defaultValue={open.dose ?? ""} maxLength={60} className={`${inputClass} max-w-xs`} onBlur={(e) => { if ((e.target.value.trim() || null) !== (open.dose ?? null)) run(() => updatePrevention(open.id, { dose: e.target.value })); }} />
+                  </div>
+                )}
+                {PREVENTION_DETAIL[open.option_key].frequency && (
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700 mb-2">{copy.prevention.frequency}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {FREQUENCIES.map((f) => (
+                        <Chip key={f.key} selected={open.frequency === f.key} onClick={() => run(() => updatePrevention(open.id, { frequency: open.frequency === f.key ? null : f.key }))}>{f.label}</Chip>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {PREVENTION_DETAIL[open.option_key].course && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2" htmlFor="prevention-course">{copy.prevention.course}</label>
+                      <input id="prevention-course" type="number" min={1} max={520} defaultValue={open.course_weeks ?? ""} className={`${inputClass} max-w-[8rem]`} onBlur={(e) => { const n = e.target.value ? Number(e.target.value) : null; if (n !== (open.course_weeks ?? null)) run(() => updatePrevention(open.id, { courseWeeks: n })); }} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700 mb-2">{copy.prevention.completed}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Chip selected={open.completed === true} onClick={() => run(() => updatePrevention(open.id, { completed: open.completed === true ? null : true }))}>Yes</Chip>
+                        <Chip selected={open.completed === false} onClick={() => run(() => updatePrevention(open.id, { completed: open.completed === false ? null : false }))}>Not yet</Chip>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-slate-600">{prophylaxisLine(open)}</p>
+              </div>
+            )}
             <div>
               <p className="text-sm font-semibold text-slate-700 mb-1">{copy.prevention.helping}</p>
               <p className="text-xs text-slate-500 mb-2">{copy.prevention.helpingHint}</p>
