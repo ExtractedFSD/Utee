@@ -55,6 +55,10 @@ describe("passport PDF", () => {
           { id: "p2", option_key: "methenamine", other_name: null, antibiotic_id: null, started_on: "2026-04-01", stopped_on: null, helping: null, notes: null, product: null, dose: "1 g", frequency: "twice_daily", course_weeks: null, completed: null, created_at: "2026-04-01T00:00:00Z" },
           { id: "p3", option_key: "d_mannose", other_name: null, antibiotic_id: null, started_on: "2025-10-01", stopped_on: "2026-01-15", helping: "no", notes: "Made no difference", product: null, dose: null, frequency: "once_daily", course_weeks: null, completed: null, created_at: "2025-10-01T00:00:00Z" },
         ],
+        cultures: [
+          { id: "c1", episode_id: "e1", sample_on: "2026-03-01", method: "standard_culture", method_other: null, outcome: "pathogens", organisms: [{ key: "e_coli", name: null, count: ">10^8 cfu/L" }], sensitivities: { e_coli: { nitrofurantoin: "S", trimethoprim: "R", cefalexin: "S", amoxicillin: "R" } }, microscopy: { white_cells: 150 }, notes: null, source: "patient", created_at: "2026-03-01T00:00:00Z" },
+          { id: "utee:k1", episode_id: null, sample_on: "2026-07-12", method: "utee", method_other: null, outcome: "pathogens", organisms: [{ key: "e_coli", name: null, count: null }, { key: "enterococcus", name: null, count: null }], sensitivities: {}, microscopy: {}, notes: null, source: "utee", created_at: "2026-07-12T00:00:00Z" },
+        ],
         investigations: [
           { id: "i1", kind: "uss_kub", performed_on: "2025-08-12", normal: true, findings: [], body_part: null, values: { pvr_ml: 30 }, notes: null, source: "patient", created_at: "2025-08-12T00:00:00Z" },
           { id: "i2", kind: "bloods", performed_on: "2026-09-16", normal: true, findings: [], body_part: null, values: { egfr: 92, creatinine: 70 }, notes: null, source: "patient", created_at: "2026-09-16T00:00:00Z" },

@@ -178,6 +178,22 @@
       "route": "iv"
     },
     {
+      "id": "amikacin",
+      "name": "Amikacin",
+      "brands": [],
+      "aliases": ["amikacin", "amikin"],
+      "group": "hospital",
+      "route": "iv"
+    },
+    {
+      "id": "ampicillin",
+      "name": "Ampicillin",
+      "brands": [],
+      "aliases": ["ampicillin", "penbritin"],
+      "group": "other_tablets",
+      "route": "oral"
+    },
+    {
       "id": "methenamine_hippurate",
       "name": "Methenamine hippurate",
       "brands": ["Hiprex"],

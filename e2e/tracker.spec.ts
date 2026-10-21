@@ -634,11 +634,35 @@ test("tracker: passport details, an investigation and the passport PDF", async (
     expect(rows).toEqual([{ kind: "uss_kub", performed_on: "2025-08-12", normal: true, values: { pvr_ml: 30 } }]);
   });
 
+  await test.step("A culture result is described in a sentence, the grid is checked and saved", async () => {
+    await page.goto("/portal/passport/cultures");
+    await page.getByRole("button", { name: "Add a result" }).click();
+    const sheet = page.getByTestId("sheet-culture");
+    await sheet.getByLabel("Or describe it in your own words").fill("E. coli on 14 March 2026, sensitive to nitrofurantoin and cefalexin, resistant to trimethoprim, white cells 150");
+    await sheet.getByRole("button", { name: "Fill in the form" }).click();
+    await expect(sheet.getByTestId("culture-read-hint")).toBeVisible();
+    await expect(sheet.getByTestId("culture-organisms").getByRole("button", { name: "E. coli" })).toHaveAttribute("aria-pressed", "true");
+    await expect(sheet.getByLabel("Sample date")).toHaveValue("2026-03-14");
+    await expect(sheet.getByRole("radiogroup", { name: "Trimethoprim for E. coli" }).getByRole("button", { name: "R" })).toHaveAttribute("aria-pressed", "true");
+    await expect(sheet.getByRole("radiogroup", { name: "Nitrofurantoin for E. coli" }).getByRole("button", { name: "S" })).toHaveAttribute("aria-pressed", "true");
+    // Correct one by hand: the lab also tested gentamicin.
+    await sheet.getByRole("radiogroup", { name: "Gentamicin for E. coli" }).getByRole("button", { name: "S" }).click();
+    await sheet.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByTestId("cultures-list")).toContainText("E. coli");
+    await expect(page.getByTestId("cultures-list")).toContainText("resistant to Trimethoprim");
+    const { data: cultures } = await admin().from("tracker_cultures").select("sample_on, outcome, organisms, sensitivities, microscopy").eq("user_id", user.id);
+    expect(cultures).toHaveLength(1);
+    expect(cultures![0]).toMatchObject({ sample_on: "2026-03-14", outcome: "pathogens", microscopy: { white_cells: 150 } });
+    expect((cultures![0].sensitivities as { e_coli: Record<string, string> }).e_coli).toEqual({ nitrofurantoin: "S", cefalexin: "S", trimethoprim: "R", gentamicin: "S" });
+  });
+
   await test.step("The home card, the timeline and the PDF show it", async () => {
     await page.goto("/portal/passport");
     await expect(page.getByTestId("passport-card")).toContainText("USS KUB");
+    await expect(page.getByTestId("passport-card")).toContainText("E. coli");
     await page.goto("/portal/passport/timeline");
-    await expect(page.getByTestId("timeline-month").first()).toContainText("USS KUB");
+    await expect(page.getByText("Result", { exact: true }).first()).toBeVisible();
+    await expect(page.locator("[data-testid=timeline-month]", { hasText: "USS KUB" })).toBeVisible();
     const pdf = await page.request.get("/portal/passport/passport");
     expect(pdf.status()).toBe(200);
     const body = await pdf.body();

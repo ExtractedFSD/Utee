@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardTitle, LinkButton, PageHeader, StatusBadge, buttonBase, buttonVariants } from "@/components/ui";
-import { requireTracker, loadAll, ownKits } from "@/lib/tracker/data";
+import { requireTracker, ownKits } from "@/lib/tracker/data";
+import { loadAllWithUtee } from "@/lib/tracker/load";
 import { copy } from "@/lib/tracker/copy";
 import { redFlagFor } from "@/lib/tracker/redflags";
 import { formatDay, patterns, summarise } from "@/lib/tracker/stats";
@@ -15,7 +16,7 @@ import { passportGlance } from "@/lib/tracker/passport";
 
 export default async function TrackerHome() {
   const { supabase, user, profile } = await requireTracker();
-  const [data, kits] = await Promise.all([loadAll(supabase, user.id), ownKits(supabase)]);
+  const [data, kits] = await Promise.all([loadAllWithUtee(supabase, user.id), ownKits(supabase)]);
   const s = summarise(data.episodes, data.treatments);
   const p = patterns(data.episodes, data.symptoms, data.triggers, data.treatments);
   const open = s.openEpisode;
@@ -32,8 +33,8 @@ export default async function TrackerHome() {
   const feelingToday = data.checkins.find((c) => c.on_date === today)?.feeling ?? null;
   // "Edit today" once something has been logged for today on the open UTI; "Log today" on a new day.
   const loggedToday = !!open && (openRows.some((x) => x.logged_on === today) || feelingToday !== null);
-  const glance = passportGlance({ utis6m: s.episodes6m, utis12m: s.episodes12m }, profile, data.preventions, data.investigations);
-  const passportStarted = !!(profile.local_hospital || profile.first_uti_onset || profile.medical_history.length || data.investigations.length);
+  const glance = passportGlance({ utis6m: s.episodes6m, utis12m: s.episodes12m }, profile, data.preventions, data.investigations, data.cultures);
+  const passportStarted = !!(profile.local_hospital || profile.first_uti_onset || profile.medical_history.length || data.investigations.length || data.cultures.length);
 
   return (
     <div className="space-y-6">

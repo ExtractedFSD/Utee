@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, EmptyState, PageHeader, Pill } from "@/components/ui";
-import { loadAll, requireTracker } from "@/lib/tracker/data";
+import { requireTracker } from "@/lib/tracker/data";
+import { loadAllWithUtee } from "@/lib/tracker/load";
 import { copy } from "@/lib/tracker/copy";
 import { TEST_KINDS, TEST_RESULTS, labelFor } from "@/lib/tracker/options";
 import { timeline } from "@/lib/tracker/passport";
@@ -10,6 +11,7 @@ const TONE: Record<string, string> = {
   uti: "red",
   treatment: "amber",
   test: "sky",
+  culture: "red",
   investigation: "violet",
   prevention_started: "green",
   prevention_stopped: "slate",
@@ -17,11 +19,16 @@ const TONE: Record<string, string> = {
 
 export default async function TimelinePage() {
   const { supabase, user } = await requireTracker();
-  const data = await loadAll(supabase, user.id);
-  const events = timeline(data.episodes, data.treatments, data.tests, data.investigations, data.preventions, {
-    testKind: (k) => labelFor(TEST_KINDS, k),
-    testResult: (r) => (r ? labelFor(TEST_RESULTS, r) : ""),
-  });
+  const data = await loadAllWithUtee(supabase, user.id);
+  const events = timeline(
+    data.episodes,
+    data.treatments,
+    data.tests.filter((t) => !t.kit_id || !data.cultures.some((c) => c.id === `utee:${t.kit_id}`)),
+    data.investigations,
+    data.preventions,
+    { testKind: (k) => labelFor(TEST_KINDS, k), testResult: (r) => (r ? labelFor(TEST_RESULTS, r) : "") },
+    data.cultures
+  );
 
   // Group by month so a long history still reads.
   const months: { key: string; label: string; events: typeof events }[] = [];

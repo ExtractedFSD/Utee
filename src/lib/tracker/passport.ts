@@ -3,6 +3,7 @@ import { antibioticName } from "./search";
 import { preventionName, preventionShortName, type PreventionLike } from "./prevention";
 import type { EpisodeRow, TreatmentRow } from "./stats";
 import { formatDay } from "./stats";
+import { cultureLine, cultureSummary, type CultureRow, type Sir } from "./cultures";
 
 /*
  * The UTI passport: the parts of the tracker a clinician reads at a glance.
@@ -251,6 +252,8 @@ export type AntibioticHistoryRow = {
   reactions: string[];
   /** Also in the allergy list on the profile. */
   allergy: boolean;
+  /** The lab's view across the patient's cultures. */
+  lab: { S: number; I: number; R: number; lastResult: Sir | null; lastOn: string | null } | null;
 };
 
 type TreatmentDetail = TreatmentRow & { reaction?: string | null };
@@ -260,8 +263,13 @@ type TreatmentDetail = TreatmentRow & { reaction?: string | null };
  * and any reaction, newest use first. The lab's view (sensitive or resistant)
  * joins this in phase 2.
  */
-export function antibioticHistory(treatments: TreatmentDetail[], allergies: Allergy[]): AntibioticHistoryRow[] {
+export function antibioticHistory(treatments: TreatmentDetail[], allergies: Allergy[], cultures: CultureRow[] = []): AntibioticHistoryRow[] {
   const map = new Map<string, AntibioticHistoryRow>();
+  const lab = new Map(cultureSummary(cultures).resistance.map((r) => [r.antibiotic_id, r]));
+  const labFor = (id: string) => {
+    const r = lab.get(id);
+    return r ? { S: r.S, I: r.I, R: r.R, lastResult: r.lastResult, lastOn: r.lastOn } : null;
+  };
   for (const t of treatments) {
     const id = t.antibiotic_id === "other" ? `other:${(t.other_name ?? "").trim().toLowerCase()}` : t.antibiotic_id;
     const row = map.get(id) ?? {
@@ -274,6 +282,7 @@ export function antibioticHistory(treatments: TreatmentDetail[], allergies: Alle
       lastUsed: null,
       reactions: [],
       allergy: allergies.some((a) => a.antibiotic_id === t.antibiotic_id && (t.antibiotic_id !== "other" || (a.other_name ?? "").trim().toLowerCase() === (t.other_name ?? "").trim().toLowerCase())),
+      lab: labFor(t.antibiotic_id),
     };
     row.courses += 1;
     if (t.worked === "yes") row.worked += 1;
@@ -283,7 +292,12 @@ export function antibioticHistory(treatments: TreatmentDetail[], allergies: Alle
     if (t.reaction?.trim()) row.reactions.push(t.reaction.trim());
     map.set(id, row);
   }
-  return [...map.values()].sort((a, b) => (a.lastUsed ?? "") < (b.lastUsed ?? "") ? 1 : -1);
+  // Antibiotics the lab has reported on but the patient has never taken still belong in the picture.
+  for (const r of lab.values()) {
+    if (map.has(r.antibiotic_id)) continue;
+    map.set(r.antibiotic_id, { antibiotic_id: r.antibiotic_id, name: r.name, courses: 0, worked: 0, partly: 0, failed: 0, lastUsed: null, reactions: [], allergy: allergies.some((a) => a.antibiotic_id === r.antibiotic_id), lab: labFor(r.antibiotic_id) });
+  }
+  return [...map.values()].sort((a, b) => b.courses - a.courses || ((a.lastUsed ?? a.lab?.lastOn ?? "") < (b.lastUsed ?? b.lab?.lastOn ?? "") ? 1 : -1));
 }
 
 export type PreventionDetailRow = PreventionLike & {
@@ -313,7 +327,7 @@ export function prophylaxisLine(p: PreventionDetailRow): string {
 
 export type TimelineEvent = {
   on: string;
-  kind: "uti" | "treatment" | "test" | "investigation" | "prevention_started" | "prevention_stopped";
+  kind: "uti" | "treatment" | "test" | "culture" | "investigation" | "prevention_started" | "prevention_stopped";
   title: string;
   detail?: string;
   href?: string;
@@ -328,9 +342,15 @@ export function timeline(
   tests: TestLike[],
   investigations: InvestigationRow[],
   preventions: PreventionDetailRow[],
-  labels: { testKind: (k: string) => string; testResult: (r: string | null) => string }
+  labels: { testKind: (k: string) => string; testResult: (r: string | null) => string },
+  cultures: CultureRow[] = []
 ): TimelineEvent[] {
   const out: TimelineEvent[] = [];
+  for (const c of cultures) {
+    if (!c.sample_on) continue;
+    const line = cultureLine(c);
+    out.push({ on: c.sample_on, kind: "culture", title: line.title, detail: line.detail, href: "/portal/passport/cultures" });
+  }
   for (const e of episodes) {
     out.push({ on: e.started_on, kind: "uti", title: "UTI started", detail: e.ended_on ? `Ended ${formatDay(e.ended_on)}` : "Ongoing", href: `/portal/passport/episodes/${e.id}` });
   }
@@ -370,6 +390,9 @@ export type PassportGlance = {
   activeProphylaxis: string[];
   lastInvestigation: { title: string; detail: string; on: string } | null;
   investigationCount: number;
+  /** Most often found organism, with how many cultures it appeared in. */
+  mainOrganism: { name: string; times: number; of: number } | null;
+  lastCulture: { title: string; on: string } | null;
   allergies: string[];
   medicalHistory: string[];
 };
@@ -378,9 +401,12 @@ export function passportGlance(
   counts: { utis6m: number; utis12m: number },
   profile: Partial<PassportProfileFields> | null,
   preventions: PreventionDetailRow[],
-  investigations: InvestigationRow[]
+  investigations: InvestigationRow[],
+  cultures: CultureRow[] = []
 ): PassportGlance {
   const active = preventions.filter((p) => !p.stopped_on);
+  const cs = cultureSummary(cultures);
+  const latestCulture = cultures.filter((c) => c.sample_on).sort((a, b) => (a.sample_on! < b.sample_on! ? 1 : -1))[0] ?? null;
   const dated = investigations.filter((i) => i.performed_on).sort((a, b) => (a.performed_on! < b.performed_on! ? 1 : -1));
   const last = dated[0] ?? null;
   const historyLabels = (profile?.medical_history ?? []).map((k) => (k === "other" ? profile?.medical_history_other?.trim() || "" : MEDICAL_HISTORY.find((o) => o.key === k)?.label ?? k)).filter(Boolean);
@@ -391,6 +417,8 @@ export function passportGlance(
     activeProphylaxis: active.map(prophylaxisLine),
     lastInvestigation: last ? { ...investigationLine(last), on: last.performed_on! } : null,
     investigationCount: investigations.length,
+    mainOrganism: cs.organisms[0] ? { name: cs.organisms[0].short, times: cs.organisms[0].times, of: cs.positive } : null,
+    lastCulture: latestCulture ? { title: cultureLine(latestCulture).title, on: latestCulture.sample_on! } : null,
     allergies: (profile?.allergies ?? []).map((a) => [antibioticName(a.antibiotic_id, a.other_name), a.reaction?.trim()].filter(Boolean).join(": ")),
     medicalHistory: historyLabels,
   };

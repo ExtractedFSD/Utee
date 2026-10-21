@@ -14,6 +14,7 @@ import {
 } from "./passport";
 import { antibioticName } from "./search";
 import { episodeLength, formatDay, summarise } from "./stats";
+import { SIR_LABELS, cultureLine, cultureSummary, methodLabel, organismShort, sensitivityText } from "./cultures";
 
 /*
  * The recurrent UTI summary ("UTI passport"): the patient's record in the
@@ -100,22 +101,29 @@ export type PassportInput = {
 export function passportText(input: PassportInput) {
   const { profile, data } = input;
   const sum = summarise(data.episodes, data.treatments);
-  const history = antibioticHistory(data.treatments, profile.allergies ?? []);
+  const history = antibioticHistory(data.treatments, profile.allergies ?? [], data.cultures);
+  const cultures = cultureSummary(data.cultures);
+  const recentCultures = [...data.cultures].sort((a, b) => ((a.sample_on ?? "") < (b.sample_on ?? "") ? 1 : -1)).slice(0, 8);
   const active = data.preventions.filter((p) => !p.stopped_on);
   const stopped = data.preventions.filter((p) => p.stopped_on).sort((a, b) => (a.stopped_on! < b.stopped_on! ? 1 : -1));
   const investigations = [...data.investigations].sort((a, b) => ((a.performed_on ?? "") < (b.performed_on ?? "") ? 1 : -1));
   const medical = (profile.medical_history ?? []).map((k) => (k === "other" ? profile.medical_history_other?.trim() || "" : MEDICAL_HISTORY.find((o) => o.key === k)?.label ?? k)).filter(Boolean);
   const allergies = (profile.allergies ?? []).map((a) => [antibioticName(a.antibiotic_id, a.other_name), a.reaction?.trim()].filter(Boolean).join(": "));
-  const events = timeline(data.episodes, data.treatments, data.tests, data.investigations, data.preventions, {
-    testKind: (k) => labelFor(TEST_KINDS, k),
-    testResult: (r) => (r ? labelFor(TEST_RESULTS, r) : ""),
-  });
-  return { sum, history, active, stopped, investigations, medical, allergies, events };
+  const events = timeline(
+    data.episodes,
+    data.treatments,
+    data.tests.filter((t) => !t.kit_id || !data.cultures.some((c) => c.id === `utee:${t.kit_id}`)),
+    data.investigations,
+    data.preventions,
+    { testKind: (k) => labelFor(TEST_KINDS, k), testResult: (r) => (r ? labelFor(TEST_RESULTS, r) : "") },
+    data.cultures
+  );
+  return { sum, history, active, stopped, investigations, medical, allergies, events, cultures, recentCultures };
 }
 
 function PassportDoc({ input }: { input: PassportInput }) {
   const { patient, profile, data } = input;
-  const { sum, history, active, stopped, investigations, medical, allergies, events } = passportText(input);
+  const { sum, history, active, stopped, investigations, medical, allergies, events, cultures, recentCultures } = passportText(input);
   const name = patient.name ?? "Utee patient";
   const address = [profile.address_line1, profile.address_line2, profile.city, profile.postcode].filter(Boolean).join(", ");
   const episodes = [...data.episodes].sort((a, b) => (a.started_on < b.started_on ? 1 : -1));
@@ -149,7 +157,16 @@ function PassportDoc({ input }: { input: PassportInput }) {
             <Cell k="UTIs logged in the tracker" v={String(data.episodes.length)} />
             <Cell k="Average length" v={sum.averageLengthDays !== null ? `${sum.averageLengthDays} days` : "Not enough data"} />
           </View>
-          <Text style={s.muted}>Predominant uropathogens and resistance patterns appear here once culture results are logged.</Text>
+          {cultures.organisms.length ? (
+            <View style={s.grid}>
+              <Cell k="Predominant uropathogens" v={cultures.organisms.slice(0, 3).map((o) => `${o.name} (${o.times} of ${cultures.positive})`).join("; ")} wide />
+              <Cell k="Results logged" v={`${cultures.cultures}, ${cultures.positive} with bacteria found`} />
+              {cultures.resistance.some((r) => r.R) ? <Cell k="Resistant to (ever)" v={cultures.resistance.filter((r) => r.R).map((r) => r.name).join(", ")} wide /> : null}
+              {cultures.resistance.some((r) => r.S) ? <Cell k="Sensitive to (ever)" v={cultures.resistance.filter((r) => r.S).map((r) => r.name).join(", ")} wide /> : null}
+            </View>
+          ) : (
+            <Text style={s.muted}>Predominant uropathogens and resistance patterns appear here once culture results are logged.</Text>
+          )}
         </View>
 
         <Text style={s.h2}>Past medical history and allergies</Text>
@@ -158,6 +175,29 @@ function PassportDoc({ input }: { input: PassportInput }) {
           <Text style={s.key}>Antibiotic allergies and reactions</Text>
           {allergies.length ? allergies.map((a) => <Text key={a} style={s.p}>{a}</Text>) : <Text style={s.p}>None recorded.</Text>}
         </View>
+
+        {recentCultures.length > 0 && (
+          <View>
+            <Text style={s.h2}>Culture and test results</Text>
+            {recentCultures.map((c) => (
+              <View key={c.id} style={{ marginBottom: 5 }}>
+                <Text style={s.p}>
+                  <Text style={{ fontWeight: 600, color: C.midnight }}>{c.sample_on ? formatDay(c.sample_on) : "Date unknown"}, {methodLabel(c)}: {cultureLine(c).title}</Text>
+                  {c.organisms.some((o) => o.count) ? ` (${c.organisms.filter((o) => o.count).map((o) => `${organismShort(o)} ${o.count}`).join(", ")})` : ""}
+                </Text>
+                {c.organisms.map((o) => {
+                  const text = sensitivityText(c, o.key);
+                  return text ? <Text key={o.key} style={[s.muted, { marginLeft: 10 }]}>{organismShort(o)}: {text}</Text> : null;
+                })}
+                {(c.microscopy.white_cells !== undefined && c.microscopy.white_cells !== null) || (c.microscopy.red_cells !== undefined && c.microscopy.red_cells !== null) ? (
+                  <Text style={[s.muted, { marginLeft: 10 }]}>Microscopy: {[c.microscopy.white_cells !== undefined && c.microscopy.white_cells !== null && `white cells ${c.microscopy.white_cells}`, c.microscopy.red_cells !== undefined && c.microscopy.red_cells !== null && `red cells ${c.microscopy.red_cells}`].filter(Boolean).join(", ")}</Text>
+                ) : null}
+                {c.source === "utee" ? <Text style={[s.muted, { marginLeft: 10 }]}>From the patient&apos;s Utee test, as reported by the laboratory.</Text> : null}
+              </View>
+            ))}
+            {data.cultures.length > recentCultures.length && <Text style={s.muted}>{data.cultures.length - recentCultures.length} earlier results are in the passport.</Text>}
+          </View>
+        )}
 
         <Text style={s.h2}>Key diagnostic findings</Text>
         {investigations.length === 0 ? (
@@ -180,23 +220,25 @@ function PassportDoc({ input }: { input: PassportInput }) {
         )}
 
         <View style={{ marginTop: 8 }}>
-          <Text style={[s.key, { marginBottom: 3 }]} minPresenceAhead={60}>Antibiotic history (patient-reported outcome)</Text>
+          <Text style={[s.key, { marginBottom: 3 }]} minPresenceAhead={60}>Antibiotic history (patient-reported outcome and laboratory sensitivities)</Text>
           {history.length === 0 ? (
             <Text style={s.p}>No antibiotic courses recorded.</Text>
           ) : (
             <>
               <View style={s.rowHead}>
-                <Text style={[s.th, { width: "32%" }]}>Antibiotic</Text>
-                <Text style={[s.th, { width: "12%" }]}>Courses</Text>
-                <Text style={[s.th, { width: "26%" }]}>Patient said it worked</Text>
-                <Text style={[s.th, { width: "30%" }]}>Last used / reactions</Text>
+                <Text style={[s.th, { width: "26%" }]}>Antibiotic</Text>
+                <Text style={[s.th, { width: "10%" }]}>Courses</Text>
+                <Text style={[s.th, { width: "22%" }]}>Patient said it worked</Text>
+                <Text style={[s.th, { width: "20%" }]}>Lab (S / I / R)</Text>
+                <Text style={[s.th, { width: "22%" }]}>Last used / reactions</Text>
               </View>
               {history.map((h) => (
                 <View key={h.antibiotic_id + h.name} style={s.row}>
-                  <Text style={[s.td, { width: "32%" }]}>{h.name}{h.allergy ? " (allergy listed)" : ""}</Text>
-                  <Text style={[s.td, { width: "12%" }]}>{h.courses}</Text>
-                  <Text style={[s.td, { width: "26%" }]}>{[h.worked && `yes ${h.worked}`, h.partly && `partly ${h.partly}`, h.failed && `no ${h.failed}`].filter(Boolean).join(", ") || "not rated"}</Text>
-                  <Text style={[s.td, { width: "30%" }]}>{[h.lastUsed && formatDay(h.lastUsed), h.reactions.join("; ")].filter(Boolean).join(" · ") || "-"}</Text>
+                  <Text style={[s.td, { width: "26%" }]}>{h.name}{h.allergy ? " (allergy listed)" : ""}</Text>
+                  <Text style={[s.td, { width: "10%" }]}>{h.courses || "-"}</Text>
+                  <Text style={[s.td, { width: "22%" }]}>{[h.worked && `yes ${h.worked}`, h.partly && `partly ${h.partly}`, h.failed && `no ${h.failed}`].filter(Boolean).join(", ") || (h.courses ? "not rated" : "-")}</Text>
+                  <Text style={[s.td, { width: "20%" }]}>{h.lab ? `${h.lab.S} / ${h.lab.I} / ${h.lab.R}${h.lab.lastResult ? `, last ${SIR_LABELS[h.lab.lastResult].toLowerCase()}` : ""}` : "-"}</Text>
+                  <Text style={[s.td, { width: "22%" }]}>{[h.lastUsed && formatDay(h.lastUsed), h.reactions.join("; ")].filter(Boolean).join(" · ") || "-"}</Text>
                 </View>
               ))}
             </>
