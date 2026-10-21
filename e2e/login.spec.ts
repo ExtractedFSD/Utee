@@ -68,7 +68,7 @@ test("the emailed link signs in from a browser that never asked for a code", asy
   const { data, error } = await admin().auth.admin.generateLink({
     type: "magiclink",
     email: user.email,
-    options: { redirectTo: "http://localhost:3000/portal/tracker" },
+    options: { redirectTo: "http://localhost:3000/portal/passport" },
   });
   if (error) throw error;
   const hash = data.properties.hashed_token;
@@ -76,7 +76,7 @@ test("the emailed link signs in from a browser that never asked for a code", asy
   // A fresh context: no cookies, no PKCE verifier, nothing from the login page.
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
-  await page.goto(`/auth/confirm?token_hash=${hash}&type=magiclink&redirect_to=${encodeURIComponent("http://localhost:3000/portal/tracker")}`);
+  await page.goto(`/auth/confirm?token_hash=${hash}&type=magiclink&redirect_to=${encodeURIComponent("http://localhost:3000/portal/passport")}`);
   await page.waitForURL(/\/portal\/tracker/, { timeout: 30_000 });
   await expect(page).not.toHaveURL(/\/login/);
 

@@ -711,8 +711,8 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
 
       {step === "done" && !compact && (
         <div className="flex flex-wrap gap-2" data-testid="guided-done">
-          <LinkButton href="/portal/tracker">{copy.guided.goDashboard}</LinkButton>
-          {savedCount > 0 && <LinkButton href="/portal/tracker/history" variant="secondary">{copy.guided.goHistory}</LinkButton>}
+          <LinkButton href="/portal/passport">{copy.guided.goDashboard}</LinkButton>
+          {savedCount > 0 && <LinkButton href="/portal/passport/history" variant="secondary">{copy.guided.goHistory}</LinkButton>}
         </div>
       )}
       <div ref={endRef} />

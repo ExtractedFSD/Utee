@@ -29,10 +29,10 @@ async function session() {
 }
 
 function revalidate(episodeId?: string) {
-  revalidatePath("/portal/tracker");
-  revalidatePath("/portal/tracker/history");
+  revalidatePath("/portal/passport");
+  revalidatePath("/portal/passport/history");
   revalidatePath("/portal");
-  if (episodeId) revalidatePath(`/portal/tracker/episodes/${episodeId}`);
+  if (episodeId) revalidatePath(`/portal/passport/episodes/${episodeId}`);
 }
 
 // ------------------------------------------------------------------ consent
@@ -51,7 +51,7 @@ export async function giveConsent(formData: FormData) {
   if (error) return { error: "Could not save your consent. Please try again." };
   await audit(supabase, user.id, "consent_given", { kinds: rows.map((r) => r.kind), version: CONSENT_VERSION });
   revalidate();
-  redirect("/portal/tracker/setup");
+  redirect("/portal/passport/setup");
 }
 
 export async function setConsent(kind: "tracker" | "research", on: boolean) {
@@ -72,7 +72,7 @@ export async function setConsent(kind: "tracker" | "research", on: boolean) {
     await audit(supabase, user.id, "consent_withdrawn", { kinds: [kind] });
   }
   revalidate();
-  revalidatePath("/portal/tracker/settings");
+  revalidatePath("/portal/passport/settings");
   return { ok: true };
 }
 
@@ -238,10 +238,10 @@ export async function saveAboutMe(formData: FormData) {
   const synced = await syncPreventions(supabase, user.id, d.prevention_keys, d.prevention_other, d.prevention_antibiotic_id, d.prevention_antibiotic_other);
   if ("error" in synced) return synced;
   revalidate();
-  revalidatePath("/portal/tracker/prevention");
-  revalidatePath("/portal/tracker/settings");
-  const next = String(formData.get("next") ?? "/portal/tracker");
-  redirect(next.startsWith("/") ? next : "/portal/tracker");
+  revalidatePath("/portal/passport/prevention");
+  revalidatePath("/portal/passport/settings");
+  const next = String(formData.get("next") ?? "/portal/passport");
+  redirect(next.startsWith("/") ? next : "/portal/passport");
 }
 
 /** About you without the form: used by the guided setup. */
@@ -262,7 +262,7 @@ export async function saveAboutMeValues(input: { menopause_stage: string; contra
   });
   if (error) return { error: "Could not save. Please try again." };
   revalidate();
-  revalidatePath("/portal/tracker/settings");
+  revalidatePath("/portal/passport/settings");
   return { ok: true };
 }
 
@@ -281,8 +281,8 @@ export async function setUnaAi(on: boolean) {
   const { user, supabase } = await session();
   await supabase.from("tracker_profiles").update({ una_ai: on, updated_at: new Date().toISOString() }).eq("user_id", user.id);
   await audit(supabase, user.id, on ? "una_ai_on" : "una_ai_off");
-  revalidatePath("/portal/tracker/settings");
-  revalidatePath("/portal/tracker");
+  revalidatePath("/portal/passport/settings");
+  revalidatePath("/portal/passport");
   return { ok: true };
 }
 
@@ -448,7 +448,7 @@ export async function deleteEpisode(episodeId: string) {
   await supabase.from("tracker_episodes").delete().eq("id", episodeId).eq("user_id", user.id);
   await audit(supabase, user.id, "episode_deleted", { episodeId });
   revalidate();
-  redirect("/portal/tracker/history");
+  redirect("/portal/passport/history");
 }
 
 // ---------------------------------------------------- symptoms and triggers
@@ -681,9 +681,9 @@ export async function setFeeling(episodeId: string | null, feeling: number, onDa
 // --------------------------------------------------------------- prevention
 
 function revalidatePrevention() {
-  revalidatePath("/portal/tracker");
-  revalidatePath("/portal/tracker/prevention");
-  revalidatePath("/portal/tracker/about-me");
+  revalidatePath("/portal/passport");
+  revalidatePath("/portal/passport/prevention");
+  revalidatePath("/portal/passport/about-me");
 }
 
 /** Add one or more things to "what I'm taking". Already-active keys are skipped. */
@@ -865,7 +865,7 @@ export async function setReminders(daily: boolean, monthly: boolean) {
   const { user, supabase } = await session();
   await supabase.from("tracker_profiles").update({ reminder_daily: daily, reminder_monthly: monthly }).eq("user_id", user.id);
   await audit(supabase, user.id, "reminders_updated", { daily, monthly });
-  revalidatePath("/portal/tracker/settings");
+  revalidatePath("/portal/passport/settings");
   return { ok: true };
 }
 
@@ -880,6 +880,6 @@ export async function deleteAllTrackerData(confirmation: string) {
     if (error) return { error: "Could not delete everything. Please try again." };
   }
   revalidate();
-  revalidatePath("/portal/tracker/settings");
+  revalidatePath("/portal/passport/settings");
   redirect("/portal?tracker=deleted");
 }

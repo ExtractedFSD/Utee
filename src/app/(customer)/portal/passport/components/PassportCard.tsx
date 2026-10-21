@@ -15,8 +15,8 @@ export function PassportCard({ glance, started }: { glance: PassportGlance; star
       <div className="flex flex-wrap items-start justify-between gap-3">
         <CardTitle>{copy.passport.title}</CardTitle>
         <div className="flex flex-wrap gap-2">
-          <Link href="/portal/tracker/timeline" className="min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon">{copy.passport.timeline}</Link>
-          <a href="/portal/tracker/passport" className="min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon">{copy.passport.download}</a>
+          <Link href="/portal/passport/timeline" className="min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon">{copy.passport.timeline}</Link>
+          <a href="/portal/passport/passport" className="min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon">{copy.passport.download}</a>
         </div>
       </div>
 
@@ -24,8 +24,8 @@ export function PassportCard({ glance, started }: { glance: PassportGlance; star
         <div>
           <p className="text-sm text-slate-600 mb-4 max-w-xl">{copy.passport.completeBody}</p>
           <div className="flex flex-wrap gap-2">
-            <LinkButton href="/portal/tracker/about-me?edit=1" variant="secondary">{copy.passport.aboutYou}</LinkButton>
-            <LinkButton href="/portal/tracker/investigations" variant="secondary">{copy.investigations.add}</LinkButton>
+            <LinkButton href="/portal/passport/about-me?edit=1" variant="secondary">{copy.passport.aboutYou}</LinkButton>
+            <LinkButton href="/portal/passport/investigations" variant="secondary">{copy.investigations.add}</LinkButton>
           </div>
         </div>
       ) : (
@@ -33,7 +33,7 @@ export function PassportCard({ glance, started }: { glance: PassportGlance; star
           <dl className="grid grid-cols-3 gap-3">
             <Stat label={copy.passport.utis6m} value={String(glance.utis6m)} />
             <Stat label={copy.passport.utis12m} value={String(glance.utis12m)} />
-            <Stat label={copy.passport.lifetime} value={glance.lifetime === null ? "?" : String(glance.lifetime)} hint={glance.lifetime === null ? copy.passport.lifetimeUnknown : undefined} href={glance.lifetime === null ? "/portal/tracker/about-me?edit=1" : undefined} />
+            <Stat label={copy.passport.lifetime} value={glance.lifetime === null ? "?" : String(glance.lifetime)} hint={glance.lifetime === null ? copy.passport.lifetimeUnknown : undefined} href={glance.lifetime === null ? "/portal/passport/about-me?edit=1" : undefined} />
           </dl>
           <div className="space-y-3 text-sm">
             <div>
@@ -41,19 +41,19 @@ export function PassportCard({ glance, started }: { glance: PassportGlance; star
               {glance.activeProphylaxis.length ? (
                 <ul className="space-y-0.5 text-slate-700">{glance.activeProphylaxis.map((line) => <li key={line}>{line}</li>)}</ul>
               ) : (
-                <Link href="/portal/tracker/prevention" className="text-slate-500 hover:text-midnight">{copy.passport.prophylaxisNone}</Link>
+                <Link href="/portal/passport/prevention" className="text-slate-500 hover:text-midnight">{copy.passport.prophylaxisNone}</Link>
               )}
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[.14em] text-slate-500 mb-1">{copy.passport.lastInvestigation}</p>
               {glance.lastInvestigation ? (
-                <Link href="/portal/tracker/investigations" className="text-slate-700 hover:text-midnight">
+                <Link href="/portal/passport/investigations" className="text-slate-700 hover:text-midnight">
                   <span className="font-semibold text-midnight">{glance.lastInvestigation.title}</span> {formatDay(glance.lastInvestigation.on)}
                   {glance.lastInvestigation.detail && <span className="text-slate-600">: {glance.lastInvestigation.detail}</span>}
                   {glance.investigationCount > 1 && <span className="text-slate-500"> · {glance.investigationCount} in total</span>}
                 </Link>
               ) : (
-                <Link href="/portal/tracker/investigations" className="text-slate-500 hover:text-midnight">{copy.passport.investigationsNone}</Link>
+                <Link href="/portal/passport/investigations" className="text-slate-500 hover:text-midnight">{copy.passport.investigationsNone}</Link>
               )}
             </div>
             {(glance.allergies.length > 0 || glance.medicalHistory.length > 0) && (

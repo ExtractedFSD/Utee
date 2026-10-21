@@ -11,7 +11,7 @@ export default async function HistoryPage() {
   const data = await loadAll(supabase, user.id);
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <PageHeader eyebrow="Tracker" title={copy.history.title} action={<div className="flex flex-wrap gap-2"><LinkButton href="/portal/tracker/setup?mode=utis" variant="secondary">{copy.dashboard.quickAdd}</LinkButton><LinkButton href="/portal/tracker/log">{copy.dashboard.logNew}</LinkButton></div>} />
+      <PageHeader eyebrow="UTI Passport" title={copy.history.title} action={<div className="flex flex-wrap gap-2"><LinkButton href="/portal/passport/setup?mode=utis" variant="secondary">{copy.dashboard.quickAdd}</LinkButton><LinkButton href="/portal/passport/log">{copy.dashboard.logNew}</LinkButton></div>} />
       {data.episodes.length === 0 ? (
         <Card><EmptyState title={copy.history.empty} /></Card>
       ) : (
@@ -22,7 +22,7 @@ export default async function HistoryPage() {
             const treatments = data.treatments.filter((t) => t.episode_id === e.id);
             const tests = data.tests.filter((t) => t.episode_id === e.id);
             return (
-              <Link key={e.id} href={`/portal/tracker/episodes/${e.id}`} className="block">
+              <Link key={e.id} href={`/portal/passport/episodes/${e.id}`} className="block">
                 <Card className="hover:shadow-lg transition-shadow">
                   <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
                     <p className="font-display text-2xl font-light text-midnight">{formatDay(e.started_on)}</p>

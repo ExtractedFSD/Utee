@@ -11,6 +11,10 @@ const nextConfig = {
         destination: "https://portal.myutee.co.uk/:path*",
         permanent: true,
       },
+      // The tracker became the UTI Passport. Reminder emails and bookmarks
+      // from before still open.
+      { source: "/portal/tracker", destination: "/portal/passport", permanent: true },
+      { source: "/portal/tracker/:path*", destination: "/portal/passport/:path*", permanent: true },
     ];
   },
   // The patient report PDF is rendered on the server with the brand fonts
@@ -20,7 +24,7 @@ const nextConfig = {
     "/clinic/case/[kitId]/report": ["./design-system/fonts/**", "./public/logo-*.png"],
     "/clinic/case/[kitId]/report/preview": ["./design-system/fonts/**", "./public/logo-*.png"],
     "/clinic/case/[kitId]": ["./design-system/fonts/**", "./public/logo-*.png"],
-    "/portal/tracker/passport": ["./design-system/fonts/**", "./public/logo-*.png"],
+    "/portal/passport/passport": ["./design-system/fonts/**", "./public/logo-*.png"],
   },
 };
 

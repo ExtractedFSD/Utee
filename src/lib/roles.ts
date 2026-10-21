@@ -13,7 +13,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 /** What each role can see, in the words the users page shows. */
 export const ROLE_HELP: Record<Role, string> = {
-  customer: "Their own kits, results, tracker and orders.",
+  customer: "Their own kits, results, UTI Passport and orders.",
   lab: "Specimens by code only. No patient identity.",
   clinic: "Cases with symptoms and results; publishes reports.",
   fulfilment: "Dispatch and retail packing tools only.",

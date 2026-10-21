@@ -13,17 +13,17 @@ import { GuidedChat } from "./GuidedChat";
 export default async function GuidedSetupPage({ searchParams }: { searchParams: Promise<{ mode?: string }> }) {
   const { mode } = await searchParams;
   const ctx = await trackerContext();
-  if (!ctx.consents.tracker) redirect("/portal/tracker/consent");
+  if (!ctx.consents.tracker) redirect("/portal/passport/consent");
   const quick = (mode === "utis" || mode === "prevention") && !!ctx.profile;
   const active = ctx.profile ? (await loadPreventions(ctx.supabase, ctx.user.id)).filter((p) => !p.stopped_on).map((p) => p.option_key) : [];
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <PageHeader
-        eyebrow="Tracker"
+        eyebrow="UTI Passport"
         title={quick ? (mode === "prevention" ? copy.guided.titlePrevention : copy.guided.titleQuick) : copy.guided.title}
         action={quick
-          ? <Link href="/portal/tracker" className="text-sm font-semibold text-maroon">Back to tracker</Link>
-          : <Link href="/portal/tracker/about-me" className="text-sm font-semibold text-maroon">{copy.guided.preferForm}</Link>}
+          ? <Link href="/portal/passport" className="text-sm font-semibold text-maroon">Back to my passport</Link>
+          : <Link href="/portal/passport/about-me" className="text-sm font-semibold text-maroon">{copy.guided.preferForm}</Link>}
       />
       <GuidedChat
         mode={quick ? (mode === "prevention" ? "prevention" : "utis") : "full"}

@@ -10,10 +10,10 @@ export default async function PreventionPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <PageHeader
-        eyebrow="Tracker"
+        eyebrow="UTI Passport"
         title={copy.prevention.title}
         subtitle={copy.prevention.intro}
-        action={<div className="flex flex-wrap gap-4"><Link href="/portal/tracker/setup?mode=prevention" className="text-sm font-semibold text-maroon">{copy.prevention.updateByChat}</Link><Link href="/portal/tracker" className="text-sm font-semibold text-maroon">Back to tracker</Link></div>}
+        action={<div className="flex flex-wrap gap-4"><Link href="/portal/passport/setup?mode=prevention" className="text-sm font-semibold text-maroon">{copy.prevention.updateByChat}</Link><Link href="/portal/passport" className="text-sm font-semibold text-maroon">Back to my passport</Link></div>}
       />
       <PreventionManager rows={rows} />
     </div>

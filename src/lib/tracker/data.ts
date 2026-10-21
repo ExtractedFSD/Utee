@@ -66,8 +66,8 @@ export async function trackerContext(): Promise<TrackerContext> {
 /** Consent gate, then the once-only profile, then the tracker. */
 export async function requireTracker(): Promise<TrackerContext & { profile: TrackerProfile }> {
   const ctx = await trackerContext();
-  if (!ctx.consents.tracker) redirect("/portal/tracker/consent");
-  if (!ctx.profile) redirect("/portal/tracker/setup");
+  if (!ctx.consents.tracker) redirect("/portal/passport/consent");
+  if (!ctx.profile) redirect("/portal/passport/setup");
   return ctx as TrackerContext & { profile: TrackerProfile };
 }
 

@@ -54,16 +54,16 @@ export default async function PortalHome({
       {kitFlag === "voided" && (
         <Notice>That kit code has been cancelled and can&apos;t be used. Please contact us and we&apos;ll sort out a replacement.</Notice>
       )}
-      {trackerFlag === "deleted" && <Notice tone="mint">Your tracker data has been deleted.</Notice>}
+      {trackerFlag === "deleted" && <Notice tone="mint">Your UTI Passport data has been deleted.</Notice>}
 
       <Callout className="flex flex-wrap items-center justify-between gap-4">
         <div className="max-w-xl">
-          <h3 className="font-display text-2xl font-light">UTI tracker</h3>
+          <h3 className="font-display text-2xl font-light">UTI Passport</h3>
           <p className="text-sm text-white/85 mt-1 leading-relaxed">
             Keep a private record of your UTIs to show a GP or clinic, and spot your own patterns over time.
           </p>
         </div>
-        <LinkButton href="/portal/tracker" variant="white">Open tracker</LinkButton>
+        <LinkButton href="/portal/passport" variant="white">Open my passport</LinkButton>
       </Callout>
 
       <Card>

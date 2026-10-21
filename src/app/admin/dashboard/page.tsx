@@ -54,7 +54,7 @@ export default async function DashboardPage() {
           { label: "Total revenue", value: formatMoney(revenue, currency) },
           { label: "Test kits sold", value: String(totalKits) },
           { label: "Active subscriptions", value: String(activeSubs ?? 0) },
-          { label: "Tracker users", value: String(trackerUsers ?? 0) },
+          { label: "Passport users", value: String(trackerUsers ?? 0) },
           { label: "Research consents", value: String(researchConsents ?? 0) },
           { label: "UTIs logged (all users)", value: String(trackerEpisodes ?? 0) },
         ].map((stat) => (

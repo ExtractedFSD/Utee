@@ -244,15 +244,15 @@ writes nothing: the parcel it reports doesn't exist. Run it against a
 production build (`npm run build && npm start`) for meaningful numbers — the
 dev server compiles on demand and is many times slower.
 
-## UTI tracker
+## UTI Passport (the tracker)
 
-A private diary of UTIs inside the patient portal (`/portal/tracker`), open to
+A private diary of UTIs inside the patient portal (`/portal/passport`), open to
 anyone with an account, not only test buyers. It records what the user logs
 and reflects it back as plain counts. It never diagnoses, scores risk,
 recommends treatment or mentions products; all wording that could be read
 that way lives in `src/lib/tracker/copy.ts` for compliance review.
 
-**Guided setup.** After consent, `/portal/tracker/setup` runs a scripted
+**Guided setup.** After consent, `/portal/passport/setup` runs a scripted
 conversation (about you, what you take, then UTIs) where people type in their
 own words or tap the options. Every assistant line comes from the copy file;
 nothing is generated. A typed answer is read into form fields by
@@ -283,7 +283,7 @@ AI reading can be switched off per person in tracker Settings
 (`tracker_profiles.una_ai`, migration `0007_una_ai.sql`); the chat shows a
 one-line caveat either way. Entry points are labelled "Talk to Una".
 
-**Prevention.** "What I'm taking" (`/portal/tracker/prevention`, table
+**Prevention.** "What I'm taking" (`/portal/passport/prevention`, table
 `tracker_preventions`, migration `0005_prevention.sql`) records everything a
 person takes to help prevent UTIs: prescribed medicines, hormonal options,
 vaccines, supplements, creams and sprays, searchable (brands and spellings
@@ -324,7 +324,7 @@ plus check-ins, consents and profile). The audit row for the delete survives.
 Cron job (`vercel.json`, `/api/cron/tracker-reminders`, protected by
 `CRON_SECRET`). Subject lines and bodies never mention symptoms or UTIs.
 
-**GP summary.** `/portal/tracker/summary` renders a one-page PDF server-side
+**GP summary.** `/portal/passport/summary` renders a one-page PDF server-side
 (`src/lib/tracker/pdf.tsx`). Utee tests linked to an episode show their
 status and "clinical report available in the portal"; the lab outcome is
 never shown, matching the rest of the portal.

@@ -37,8 +37,8 @@ export default async function TrackerHome() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Tracker" title={copy.dashboard.welcomeTitle} action={
-        <Link href="/portal/tracker/settings" className="text-sm font-semibold text-maroon">Settings</Link>
+      <PageHeader eyebrow="UTI Passport" title={copy.dashboard.welcomeTitle} action={
+        <Link href="/portal/passport/settings" className="text-sm font-semibold text-maroon">Settings</Link>
       } />
 
       <RedFlagBanner flag={flag} />
@@ -47,8 +47,8 @@ export default async function TrackerHome() {
         <Card className="bg-gradient-brand text-white">
           <p className="text-sm text-white/85 mb-5 leading-relaxed max-w-xl">{copy.dashboard.welcomeBody}</p>
           <div className="flex flex-wrap gap-3">
-            <LinkButton href="/portal/tracker/log" variant="white">{copy.dashboard.logFirst}</LinkButton>
-            <LinkButton href="/portal/tracker/setup?mode=utis" variant="white">{copy.dashboard.quickAdd}</LinkButton>
+            <LinkButton href="/portal/passport/log" variant="white">{copy.dashboard.logFirst}</LinkButton>
+            <LinkButton href="/portal/passport/setup?mode=utis" variant="white">{copy.dashboard.quickAdd}</LinkButton>
           </div>
         </Card>
       ) : open ? (
@@ -56,13 +56,13 @@ export default async function TrackerHome() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               {/* The whole card opens this UTI; the buttons sit above the stretched link. */}
-              <Link href={`/portal/tracker/episodes/${open.id}`} className="font-display text-3xl font-light after:absolute after:inset-0 after:rounded-card" aria-label={copy.dashboard.openEpisodeLink}>
+              <Link href={`/portal/passport/episodes/${open.id}`} className="font-display text-3xl font-light after:absolute after:inset-0 after:rounded-card" aria-label={copy.dashboard.openEpisodeLink}>
                 {copy.dashboard.openEpisodeDay(s.openDay)}
               </Link>
               <p className="text-sm text-white/85 mt-1">Started {formatDay(open.started_on)}</p>
             </div>
             <div className="relative z-10 flex flex-wrap gap-2">
-              <LinkButton href={`/portal/tracker/episodes/${open.id}`} variant="white">{loggedToday ? copy.dashboard.editToday : copy.dashboard.logToday}</LinkButton>
+              <LinkButton href={`/portal/passport/episodes/${open.id}`} variant="white">{loggedToday ? copy.dashboard.editToday : copy.dashboard.logToday}</LinkButton>
               <QuickCheckin episodeId={open.id} feelingToday={feelingToday} />
             </div>
           </div>
@@ -71,7 +71,7 @@ export default async function TrackerHome() {
         <Card className="bg-gradient-brand text-white">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <p className="font-display text-3xl font-light">{copy.dashboard.sinceLast(s.daysSinceLast ?? 0)}</p>
-            <LinkButton href="/portal/tracker/log" variant="white">{copy.dashboard.logNew}</LinkButton>
+            <LinkButton href="/portal/passport/log" variant="white">{copy.dashboard.logNew}</LinkButton>
           </div>
         </Card>
       )}
@@ -81,14 +81,14 @@ export default async function TrackerHome() {
       <Card data-testid="prevention-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <CardTitle>{copy.dashboard.prevention}</CardTitle>
-          {taking.length > 0 && <Link href="/portal/tracker/prevention" className="text-sm font-semibold text-maroon min-h-[44px] inline-flex items-center">{copy.dashboard.preventionManage}</Link>}
+          {taking.length > 0 && <Link href="/portal/passport/prevention" className="text-sm font-semibold text-maroon min-h-[44px] inline-flex items-center">{copy.dashboard.preventionManage}</Link>}
         </div>
         {taking.length > 0 ? (
           <PreventionPills rows={taking} />
         ) : (
           <div>
             <p className="text-sm text-slate-600 mb-4 max-w-xl">{copy.dashboard.preventionEmpty}</p>
-            <LinkButton href="/portal/tracker/prevention" variant="secondary">{copy.dashboard.preventionAdd}</LinkButton>
+            <LinkButton href="/portal/passport/prevention" variant="secondary">{copy.dashboard.preventionAdd}</LinkButton>
           </div>
         )}
       </Card>
@@ -107,7 +107,7 @@ export default async function TrackerHome() {
             <MonthStrip months={s.months} />
             <div className="mt-5">
               {/* Stretched link: the whole card opens the history page. */}
-              <Link href="/portal/tracker/history" className={`${buttonBase} ${buttonVariants.secondary} after:absolute after:inset-0 after:rounded-card`}>
+              <Link href="/portal/passport/history" className={`${buttonBase} ${buttonVariants.secondary} after:absolute after:inset-0 after:rounded-card`}>
                 {copy.dashboard.seeHistory}
               </Link>
             </div>
@@ -135,10 +135,10 @@ export default async function TrackerHome() {
           <Card>
             <CardTitle>{copy.dashboard.quickActions}</CardTitle>
             <div className="flex flex-col gap-2">
-              <LinkButton href="/portal/tracker/log">{copy.dashboard.logNew}</LinkButton>
-              <LinkButton href="/portal/tracker/setup?mode=utis" variant="secondary">{copy.dashboard.quickAdd}</LinkButton>
-              <LinkButton href="/portal/tracker/summary" variant="secondary">{copy.dashboard.downloadSummary}</LinkButton>
-              <LinkButton href="/portal/tracker/history" variant="secondary">{copy.dashboard.history}</LinkButton>
+              <LinkButton href="/portal/passport/log">{copy.dashboard.logNew}</LinkButton>
+              <LinkButton href="/portal/passport/setup?mode=utis" variant="secondary">{copy.dashboard.quickAdd}</LinkButton>
+              <LinkButton href="/portal/passport/summary" variant="secondary">{copy.dashboard.downloadSummary}</LinkButton>
+              <LinkButton href="/portal/passport/history" variant="secondary">{copy.dashboard.history}</LinkButton>
               <LinkButton href={storeUrl} variant="secondary" external>{copy.dashboard.orderTest}</LinkButton>
               <p className="text-xs text-slate-500">{copy.dashboard.orderTestNote}</p>
             </div>
