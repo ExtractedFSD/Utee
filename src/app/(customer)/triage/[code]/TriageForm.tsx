@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Card, Button, inputClass } from "@/components/ui";
-import { AntibioticPicker } from "@/app/(customer)/portal/tracker/components/AntibioticPicker";
+import { AntibioticPicker } from "@/app/(customer)/portal/passport/components/AntibioticPicker";
 import { antibioticName } from "@/lib/tracker/search";
 import {
   ANTIBIOTIC_UNKNOWN,

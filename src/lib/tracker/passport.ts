@@ -332,7 +332,7 @@ export function timeline(
 ): TimelineEvent[] {
   const out: TimelineEvent[] = [];
   for (const e of episodes) {
-    out.push({ on: e.started_on, kind: "uti", title: "UTI started", detail: e.ended_on ? `Ended ${formatDay(e.ended_on)}` : "Ongoing", href: `/portal/tracker/episodes/${e.id}` });
+    out.push({ on: e.started_on, kind: "uti", title: "UTI started", detail: e.ended_on ? `Ended ${formatDay(e.ended_on)}` : "Ongoing", href: `/portal/passport/episodes/${e.id}` });
   }
   for (const t of treatments) {
     const on = t.started_on ?? episodes.find((e) => e.id === t.episode_id)?.started_on;
@@ -342,22 +342,22 @@ export function timeline(
       kind: "treatment",
       title: antibioticName(t.antibiotic_id, t.other_name),
       detail: [t.days && `${t.days} days`, t.worked && `worked: ${t.worked}`].filter(Boolean).join(" · "),
-      href: `/portal/tracker/episodes/${t.episode_id}`,
+      href: `/portal/passport/episodes/${t.episode_id}`,
     });
   }
   for (const t of tests) {
     const on = t.tested_on ?? episodes.find((e) => e.id === t.episode_id)?.started_on;
     if (!on) continue;
-    out.push({ on, kind: "test", title: labels.testKind(t.kind), detail: t.kit_id ? "Utee test" : labels.testResult(t.result), href: `/portal/tracker/episodes/${t.episode_id}` });
+    out.push({ on, kind: "test", title: labels.testKind(t.kind), detail: t.kit_id ? "Utee test" : labels.testResult(t.result), href: `/portal/passport/episodes/${t.episode_id}` });
   }
   for (const i of investigations) {
     if (!i.performed_on) continue;
     const line = investigationLine(i);
-    out.push({ on: i.performed_on, kind: "investigation", title: line.title, detail: line.detail, href: "/portal/tracker/investigations" });
+    out.push({ on: i.performed_on, kind: "investigation", title: line.title, detail: line.detail, href: "/portal/passport/investigations" });
   }
   for (const p of preventions) {
-    if (p.started_on) out.push({ on: p.started_on, kind: "prevention_started", title: `Started ${preventionName(p)}`, href: "/portal/tracker/prevention" });
-    if (p.stopped_on) out.push({ on: p.stopped_on, kind: "prevention_stopped", title: `Stopped ${preventionName(p)}`, href: "/portal/tracker/prevention" });
+    if (p.started_on) out.push({ on: p.started_on, kind: "prevention_started", title: `Started ${preventionName(p)}`, href: "/portal/passport/prevention" });
+    if (p.stopped_on) out.push({ on: p.stopped_on, kind: "prevention_stopped", title: `Stopped ${preventionName(p)}`, href: "/portal/passport/prevention" });
   }
   return out.sort((a, b) => (a.on < b.on ? 1 : a.on > b.on ? -1 : 0));
 }

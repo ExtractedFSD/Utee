@@ -13,7 +13,7 @@ export default async function LogPage() {
   const lastSymptoms = last ? [...new Set(data.symptoms.filter((s) => s.episode_id === last.id).map((s) => s.symptom))] : [];
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <PageHeader eyebrow="Tracker" title={copy.log.title} />
+      <PageHeader eyebrow="UTI Passport" title={copy.log.title} />
       <LogForm symptomOrder={order} lastSymptoms={lastSymptoms} />
     </div>
   );

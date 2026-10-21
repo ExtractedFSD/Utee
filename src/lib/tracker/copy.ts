@@ -11,17 +11,17 @@ export const copy = {
   consent: {
     title: "Before you start tracking",
     intro:
-      "The tracker keeps a private record of your UTIs so you can see your own history and share it with a GP or clinic if you choose. It records what you tell it and nothing more.",
+      "Your UTI Passport is a private record of your UTIs, tests, treatments and investigations, in the shape a GP or clinic can read. It records what you tell it and nothing more.",
     trackerText:
-      "I consent to Utee storing the symptoms, triggers, treatments, tests, investigations, medical history, contact details and notes I log in the tracker. This is health information. It is stored in the UK, only I can see it, and I can export or delete it at any time from the tracker settings. My chats with Una, the tracker helper, are kept with my record so I can reopen them. What I type to Una is sent to Utee's AI provider only to fill in the form, and I can turn that off and tap the options instead.",
-    trackerLabel: "I agree to Utee storing my tracker entries",
+      "I consent to Utee storing the symptoms, triggers, treatments, tests, investigations, medical history, contact details and notes I log in my UTI Passport. This is health information. It is stored in the UK, only I can see it, and I can export or delete it at any time from the passport settings. My chats with Una, the passport helper, are kept with my record so I can reopen them. What I type to Una is sent to Utee's AI provider only to fill in the form, and I can turn that off and tap the options instead.",
+    trackerLabel: "I agree to Utee storing my UTI Passport entries",
     researchTitle: "Optional: help other people with UTIs",
     researchText:
-      "I also consent to Utee using my tracker entries, with anything that could identify me removed, in combined figures for research and reporting. Recurrent UTIs are under-researched, and most of what is known comes from a handful of small studies. Real records of what people notice, what they take and what helps are what change that. Combined with others', my entries could help improve testing, treatment and care for people like me. This is optional and I can switch it off at any time.",
+      "I also consent to Utee using my UTI Passport entries, with anything that could identify me removed, in combined figures for research and reporting. Recurrent UTIs are under-researched, and most of what is known comes from a handful of small studies. Real records of what people notice, what they take and what helps are what change that. Combined with others', my entries could help improve testing, treatment and care for people like me. This is optional and I can switch it off at any time.",
     researchLabel: "Yes, use my anonymised entries to help research that could improve care for people with UTIs (optional)",
     separateNote:
       "This is separate from the consent you give when you use a Utee test. You can withdraw either at any time in settings.",
-    button: "Start tracking",
+    button: "Start my UTI Passport",
   },
 
   aboutMe: {
@@ -54,8 +54,8 @@ export const copy = {
   },
 
   passport: {
-    title: "My UTI passport",
-    intro: "Your UTI history in the shape a clinician reads. Everything here is what you have logged.",
+    title: "At a glance",
+    intro: "Your history in the shape a clinician reads. Everything here is what you have logged.",
     glance: "At a glance",
     utis6m: "UTIs, 6 months",
     utis12m: "UTIs, 12 months",
@@ -120,13 +120,13 @@ export const copy = {
       "Some of what you've logged can need prompt attention. Contact your GP today, or call NHS 111. If you feel very unwell, call 999.",
     pregnancyBody:
       "Because you've told us you are pregnant or trying, please contact your GP or midwife today about these symptoms, or call NHS 111. If you feel very unwell, call 999.",
-    footnote: "This is safety information only. The tracker does not tell you what is causing your symptoms.",
+    footnote: "This is safety information only. Your passport does not tell you what is causing your symptoms.",
   },
 
   dashboard: {
-    welcomeTitle: "Your UTI tracker",
+    welcomeTitle: "Your UTI Passport",
     welcomeBody:
-      "Log each UTI as it happens and build a record you can show a GP or clinic. You can also add ones you remember from the past.",
+      "Log each UTI as it happens and build a passport you can show a GP or clinic. You can also add ones you remember from the past.",
     logFirst: "Log your first UTI",
     logPast: "Add a past UTI",
     openEpisodeDay: (day: number) => `Day ${day} of this UTI`,
@@ -163,7 +163,7 @@ export const copy = {
     title: "Guided setup",
     titleQuick: "Add UTIs quickly",
     titlePrevention: "Update what I'm taking",
-    intro: "Hi, I'm Una, your Utee tracker helper. I'll set up your tracker with a few short questions. Just answer in your own words. I only fill in your record. I don't give medical advice.",
+    intro: "Hi, I'm Una, your Utee UTI Passport helper. I'll set up your passport with a few short questions. Just answer in your own words. I only fill in your record. I don't give medical advice.",
     introQuick: "Hi, it's Una. Tell me about your UTIs in your own words and I'll fill in the record for you to check.",
     introFree: "Hi, it's Una. Tell me about a UTI, something you've started or stopped taking, or both, and I'll fill in your record for you to check.",
     askFree: "What would you like to add or update?",
@@ -292,9 +292,9 @@ export const copy = {
     allDone: "That's all",
     skip: "Skip for now",
     noneYet: "None yet",
-    done: "All set. Your tracker is ready.",
+    done: "All set. Your UTI Passport is ready.",
     doneQuick: "Done. Everything you added is in your history.",
-    goDashboard: "Go to my tracker",
+    goDashboard: "Go to my passport",
     goHistory: "See my history",
     next: "Next",
     saveUti: "Save this UTI",
@@ -412,7 +412,7 @@ export const copy = {
   },
 
   episode: {
-    back: "Tracker",
+    back: "Passport",
     title: "Your UTI",
     started: (date: string, day: number) => `Started ${date} · Day ${day}`,
     ended: (date: string, days: number) => `Ended ${date} · ${days} day${days === 1 ? "" : "s"}`,
@@ -468,14 +468,14 @@ export const copy = {
   },
 
   settings: {
-    title: "Tracker settings",
+    title: "Passport settings",
     export: "Export my data",
-    exportBody: "Everything in your tracker, as a file you keep.",
+    exportBody: "Everything in your UTI Passport, as a file you keep.",
     exportJson: "Download JSON",
     exportCsv: "Download CSV",
-    delete: "Delete my tracker data",
+    delete: "Delete my passport data",
     deleteBody:
-      "Permanently deletes every UTI, symptom, treatment, test, note and check-in you've logged, and your tracker consents. This cannot be undone. Your portal account and any Utee tests are not affected.",
+      "Permanently deletes every UTI, symptom, treatment, test, note and check-in you've logged, and your passport consents. This cannot be undone. Your portal account and any Utee tests are not affected.",
     deleteConfirm: "Type DELETE to confirm",
     deleteButton: "Delete everything",
     reminders: "Reminders",
@@ -487,10 +487,10 @@ export const copy = {
     unaBody: "Una reads what you type so she can fill in your record. With AI reading on, your message is sent to Utee's AI provider only for that. With it off, she matches plain phrases and may miss things.",
     unaAi: "Let Una use AI to read my messages",
     consents: "Consents",
-    consentTracker: "Storing my tracker entries",
+    consentTracker: "Storing my UTI Passport entries",
     consentResearch: "Anonymised research use",
     consentWithdrawNote:
-      "Withdrawing tracker consent stops the tracker. To remove your data as well, use Delete my tracker data.",
+      "Withdrawing consent closes your UTI Passport. To remove your data as well, use Delete my passport data.",
     aboutMe: "About you",
   },
 
@@ -498,17 +498,17 @@ export const copy = {
     chatButton: "Update what you're taking by chat",
     dailySubject: "Your Utee check-in",
     dailyBody:
-      "You asked us to remind you to check in. Open your tracker whenever you have a moment.",
+      "You asked us to remind you to check in. Open your UTI Passport whenever you have a moment.",
     monthlySubject: "A quick note from Utee",
     monthlyBody:
-      "You asked for a monthly reminder. If there's anything you'd like to add to your tracker, it's ready when you are.",
-    button: "Open my tracker",
+      "You asked for a monthly reminder. If there's anything you'd like to add to your UTI Passport, it's ready when you are.",
+    button: "Open my passport",
   },
 
   pdf: {
     prevention: "Prevention, as reported by the patient",
     title: "My UTI history",
-    footer: "Recorded by the patient using the Utee tracker. Not a clinical record.",
+    footer: "Recorded by the patient in their Utee UTI Passport. Not a clinical record.",
     generated: (date: string) => `Generated ${date}`,
     range: (from: string, to: string) => `${from} to ${to}`,
     noEpisodes: "No UTIs recorded in this period.",

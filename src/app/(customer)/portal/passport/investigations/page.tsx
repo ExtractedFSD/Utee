@@ -10,10 +10,10 @@ export default async function InvestigationsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <PageHeader
-        eyebrow="Tracker"
+        eyebrow="UTI Passport"
         title={copy.investigations.title}
         subtitle={copy.investigations.intro}
-        action={<Link href="/portal/tracker" className="text-sm font-semibold text-maroon">Back to tracker</Link>}
+        action={<Link href="/portal/passport" className="text-sm font-semibold text-maroon">Back to my passport</Link>}
       />
       <InvestigationsManager rows={rows} unaAi={profile.una_ai !== false} />
       <Card className="bg-pink-25/60">

@@ -37,7 +37,7 @@ export default async function TimelinePage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <PageHeader eyebrow="Tracker" title={copy.timeline.title} subtitle={copy.timeline.intro} action={<Link href="/portal/tracker" className="text-sm font-semibold text-maroon">Back to tracker</Link>} />
+      <PageHeader eyebrow="UTI Passport" title={copy.timeline.title} subtitle={copy.timeline.intro} action={<Link href="/portal/passport" className="text-sm font-semibold text-maroon">Back to my passport</Link>} />
       {events.length === 0 ? (
         <Card><EmptyState title={copy.timeline.empty} /></Card>
       ) : (

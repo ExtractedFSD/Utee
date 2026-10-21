@@ -72,7 +72,7 @@ export function LogForm({ symptomOrder, lastSymptoms }: { symptomOrder: string[]
             startTransition(async () => {
               const r = await createEpisode({ startedOn, endedOn: isPast ? endedOn : null, symptoms: [...selected], otherText });
               if (r.error) setError(r.error);
-              else router.push(`/portal/tracker/episodes/${r.id}?new=1`);
+              else router.push(`/portal/passport/episodes/${r.id}?new=1`);
             });
           }}
         >

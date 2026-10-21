@@ -6,10 +6,10 @@ import { ConsentForm } from "./ConsentForm";
 
 export default async function TrackerConsentPage() {
   const ctx = await trackerContext();
-  if (ctx.consents.tracker) redirect(ctx.profile ? "/portal/tracker" : "/portal/tracker/about-me");
+  if (ctx.consents.tracker) redirect(ctx.profile ? "/portal/passport" : "/portal/passport/about-me");
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <PageHeader eyebrow="Tracker" title={copy.consent.title} subtitle={copy.consent.intro} />
+      <PageHeader eyebrow="UTI Passport" title={copy.consent.title} subtitle={copy.consent.intro} />
       <Card>
         <ConsentForm />
       </Card>

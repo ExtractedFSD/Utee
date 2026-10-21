@@ -31,9 +31,9 @@ async function session() {
 }
 
 function revalidate() {
-  revalidatePath("/portal/tracker");
-  revalidatePath("/portal/tracker/investigations");
-  revalidatePath("/portal/tracker/timeline");
+  revalidatePath("/portal/passport");
+  revalidatePath("/portal/passport/investigations");
+  revalidatePath("/portal/passport/timeline");
 }
 
 /** Keeps only findings and numbers that belong to this kind of test. */
