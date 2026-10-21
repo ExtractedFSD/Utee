@@ -16,6 +16,7 @@ export default async function TrackerSettingsPage() {
         <div className="flex flex-wrap gap-2">
           <LinkButton href="/portal/passport/about-me?edit=1" variant="secondary">Edit my answers</LinkButton>
           <LinkButton href="/portal/passport/investigations" variant="secondary">{copy.investigations.title}</LinkButton>
+          <LinkButton href="/portal/passport/cultures" variant="secondary">{copy.cultures.title}</LinkButton>
         </div>
       </Card>
       <Card>

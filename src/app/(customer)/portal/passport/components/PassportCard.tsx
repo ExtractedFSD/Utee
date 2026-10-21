@@ -26,6 +26,7 @@ export function PassportCard({ glance, started }: { glance: PassportGlance; star
           <div className="flex flex-wrap gap-2">
             <LinkButton href="/portal/passport/about-me?edit=1" variant="secondary">{copy.passport.aboutYou}</LinkButton>
             <LinkButton href="/portal/passport/investigations" variant="secondary">{copy.investigations.add}</LinkButton>
+            <LinkButton href="/portal/passport/cultures" variant="secondary">{copy.cultures.add}</LinkButton>
           </div>
         </div>
       ) : (
@@ -42,6 +43,18 @@ export function PassportCard({ glance, started }: { glance: PassportGlance; star
                 <ul className="space-y-0.5 text-slate-700">{glance.activeProphylaxis.map((line) => <li key={line}>{line}</li>)}</ul>
               ) : (
                 <Link href="/portal/passport/prevention" className="text-slate-500 hover:text-midnight">{copy.passport.prophylaxisNone}</Link>
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[.14em] text-slate-500 mb-1">{copy.cultures.mainOrganism}</p>
+              {glance.mainOrganism ? (
+                <Link href="/portal/passport/cultures" className="text-slate-700 hover:text-midnight">
+                  <span className="font-semibold text-midnight">{glance.mainOrganism.name}</span>
+                  <span className="text-slate-600"> in {glance.mainOrganism.times} of {glance.mainOrganism.of} positive result{glance.mainOrganism.of === 1 ? "" : "s"}</span>
+                  {glance.lastCulture && <span className="text-slate-500"> · last {formatDay(glance.lastCulture.on)}</span>}
+                </Link>
+              ) : (
+                <Link href="/portal/passport/cultures" className="text-slate-500 hover:text-midnight">{copy.cultures.culturesNone}</Link>
               )}
             </div>
             <div>

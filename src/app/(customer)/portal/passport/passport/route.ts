@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { audit, loadAll, requireTracker } from "@/lib/tracker/data";
+import { audit, requireTracker } from "@/lib/tracker/data";
+import { loadAllWithUtee } from "@/lib/tracker/load";
 import { renderPassportPdf } from "@/lib/tracker/passport-pdf";
 import { isoToday } from "@/lib/tracker/stats";
 
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 /** The recurrent UTI summary as a PDF the patient keeps or hands over. */
 export async function GET() {
   const { supabase, user, profile } = await requireTracker();
-  const data = await loadAll(supabase, user.id);
+  const data = await loadAllWithUtee(supabase, user.id);
   const today = isoToday();
   const pdf = await renderPassportPdf({
     patient: { name: user.fullName, email: user.email, dateOfBirth: user.dateOfBirth },
