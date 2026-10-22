@@ -175,6 +175,39 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await expect(page.getByRole("radio", { name: "Good" })).toHaveAttribute("aria-checked", "true");
   });
 
+  await test.step("Each ticked symptom gets a 1 to 10 scale; the rating and a note land in the diary", async () => {
+    const severity = page.getByTestId("severity-today");
+    await expect(severity).toBeVisible();
+    await severity.getByRole("radiogroup", { name: "Burning or stinging when peeing, how bad" }).getByRole("radio", { name: "7" }).click();
+    await expect(severity.getByRole("radiogroup", { name: "Burning or stinging when peeing, how bad" }).getByRole("radio", { name: "7" })).toHaveAttribute("aria-checked", "true");
+    await page.getByRole("button", { name: "A note about today" }).click();
+    await page.getByLabel("A note about today").fill("Drank two litres, saw the pharmacist");
+    await page.getByLabel("A note about today").blur();
+    await expect(page.getByText("Saved")).toBeVisible();
+    const userId = (await admin().from("profiles").select("id").eq("email", email).single()).data!.id;
+    const { data: rated } = await admin().from("tracker_symptoms").select("symptom, severity").eq("user_id", userId).eq("symptom", "burning").order("logged_on", { ascending: false }).limit(1);
+    expect(rated?.[0]?.severity).toBe(7);
+    const { data: checkin } = await admin().from("tracker_checkins").select("feeling, note").eq("user_id", userId).order("on_date", { ascending: false }).limit(1);
+    expect(checkin?.[0]).toMatchObject({ feeling: 4, note: "Drank two litres, saw the pharmacist" });
+
+    await page.goto("/portal/passport/diary");
+    const diary = page.locator("[data-testid=diary-month]").first();
+    await expect(diary).toContainText("Good");
+    await expect(diary).toContainText("Burning or stinging when peeing 7");
+    await expect(diary).toContainText("Drank two litres, saw the pharmacist");
+    // A day outside any UTI can still be added: a feeling and a note.
+    await page.getByRole("button", { name: "Add to my diary" }).click();
+    const sheet = page.getByTestId("sheet-diary");
+    await sheet.getByRole("button", { name: "Earlier" }).click();
+    await sheet.getByLabel("Which day?").fill("2025-01-15");
+    await expect(sheet.getByTestId("diary-symptoms")).toHaveCount(0);
+    await sheet.getByRole("radio", { name: "Great" }).click();
+    await sheet.getByLabel("A note (optional)").fill("Holiday, no problems");
+    await sheet.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.locator("[data-testid=diary-month]", { hasText: "January 2025" })).toContainText("Holiday, no problems");
+    await page.goto(episodeUrl);
+  });
+
   await test.step("Dashboard while open: Edit today once logged, Day card and 12 months card are links", async () => {
     await page.goto("/portal/passport");
     const openCard = page.getByTestId("open-episode-card");

@@ -3,7 +3,7 @@ import { labelFor, SYMPTOMS, TRIGGERS } from "./options";
 import { copy } from "./copy";
 
 export type EpisodeRow = { id: string; started_on: string; ended_on: string | null; notes: string | null };
-export type SymptomRow = { episode_id: string; symptom: string; other_text: string | null; logged_on: string };
+export type SymptomRow = { episode_id: string; symptom: string; other_text: string | null; logged_on: string; severity?: number | null };
 export type TriggerRow = { episode_id: string; trigger: string; other_text: string | null; logged_on: string };
 export type TreatmentRow = {
   episode_id: string;

@@ -35,11 +35,11 @@ export async function GET(req: NextRequest) {
 
   const sections = [
     ["episodes", toCsv(data.episodes, ["id", "started_on", "ended_on", "notes"])],
-    ["symptoms", toCsv(data.symptoms, ["episode_id", "symptom", "other_text", "logged_on"])],
+    ["symptoms", toCsv(data.symptoms, ["episode_id", "symptom", "other_text", "logged_on", "severity"])],
     ["triggers", toCsv(data.triggers, ["episode_id", "trigger", "other_text", "logged_on"])],
     ["treatments", toCsv(data.treatments, ["episode_id", "antibiotic_id", "other_name", "started_on", "days", "course_type", "source", "worked"])],
     ["tests", toCsv(data.tests, ["episode_id", "kind", "tested_on", "result", "notes", "kit_id"])],
-    ["checkins", toCsv(data.checkins, ["episode_id", "on_date", "feeling"])],
+    ["checkins", toCsv(data.checkins, ["episode_id", "on_date", "feeling", "note"])],
     ["preventions", toCsv(data.preventions, ["option_key", "other_name", "antibiotic_id", "started_on", "stopped_on", "helping", "notes"])],
   ];
   const csv = sections.map(([name, body]) => `# ${name}\n${body}`).join("\n\n") + "\n";

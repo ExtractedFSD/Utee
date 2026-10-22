@@ -13,15 +13,19 @@ import type { EpisodeRow } from "@/lib/tracker/stats";
 import type { KitStatus } from "@/lib/status";
 import { Chip, ChipGroup, DateChips } from "../../components/Chips";
 import { FeelingFaces } from "../../components/FeelingFaces";
+import { ScoreChart } from "../../components/ScoreChart";
+import { SeverityScale } from "../../components/SeverityScale";
+import type { ScorePoint } from "@/lib/tracker/diary";
+import { scoreSummary } from "@/lib/tracker/diary";
 import { AntibioticPicker } from "../../components/AntibioticPicker";
 import { RedFlagBanner } from "../../components/RedFlagBanner";
 import { Sheet } from "../../components/Sheet";
 import {
-  addTest, addTreatment, copyYesterdaySymptoms, deleteEpisode, deleteTest, deleteTreatment, rateTreatment, setFeeling,
-  toggleSymptom, toggleTrigger, updateEpisode, updateTreatment,
+  addTest, addTreatment, copyYesterdaySymptoms, deleteEpisode, deleteTest, deleteTreatment, rateTreatment, saveDiaryEntry, setFeeling,
+  setSymptomSeverity, toggleSymptom, toggleTrigger, updateEpisode, updateTreatment,
 } from "../../actions";
 
-type Item = { key: string; other: string | null };
+type Item = { key: string; other: string | null; severity?: number | null };
 type Treatment = { id: string; antibiotic_id: string; other_name: string | null; started_on: string | null; days: number | null; course_type: string | null; source: string | null; worked: string | null; dose?: string | null; frequency?: string | null; route?: string | null; reaction?: string | null };
 type TestItem = { id: string; kind: string; tested_on: string | null; result: string | null; notes: string | null; kit_id: string | null; kitCode: string | null; kitStatus: string | null; kitReportReady: boolean };
 type Kit = { id: string; code: string; status: string; reportReady: boolean };
@@ -37,11 +41,12 @@ const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
  */
 export function EpisodeEditor({
   episode, today, pregnantOrTrying, todaySymptoms, allSymptoms, yesterdaySymptoms, triggers, treatments, tests, feelingToday,
-  symptomOrder, triggerOrder, previousAntibiotics, lastSource, kits,
+  symptomOrder, triggerOrder, previousAntibiotics, lastSource, kits, noteToday = null, scores = [],
 }: {
   episode: EpisodeRow; today: string; pregnantOrTrying: string; todaySymptoms: Item[]; allSymptoms: string[]; yesterdaySymptoms: string[];
   triggers: Item[]; treatments: Treatment[]; tests: TestItem[]; feelingToday: number | null;
   symptomOrder: string[]; triggerOrder: string[]; previousAntibiotics: string[]; lastSource: string | null; kits: Kit[];
+  noteToday?: string | null; scores?: ScorePoint[];
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +70,11 @@ export function EpisodeEditor({
   // For a closed UTI the symptoms are one summary across the whole episode.
   const [allSymptomKeys, toggleAllSymptomNow] = useOptimistic(allSymptoms, applyToggle);
   const [feeling, setFeelingNow] = useOptimistic(feelingToday, (_: number | null, next: number) => next);
+  // How bad each ticked symptom is today, 1 to 10, keyed by symptom.
+  const [severity, setSeverityNow] = useOptimistic(
+    Object.fromEntries(todaySymptoms.map((s) => [s.key, s.severity ?? null])) as Record<string, number | null>,
+    (state: Record<string, number | null>, next: { key: string; value: number | null }) => ({ ...state, [next.key]: next.value })
+  );
 
   const run: Run = (fn, optimistic) => {
     setError(null);
@@ -199,6 +209,23 @@ export function EpisodeEditor({
               <button type="button" className={linkBtn} disabled={pending} onClick={() => run(() => toggleSymptom(episode.id, "other", true, symptomOther, today))}>{copy.log.save}</button>
             )}
           </div>
+          {symptomKeys.length > 0 && (
+            <div className="mt-5 rounded-2xl bg-pink-25 p-4" data-testid="severity-today">
+              <p className="text-sm font-semibold text-slate-700">{copy.episode.severityQuestion}</p>
+              <p className="text-xs text-slate-500 mb-3">{copy.episode.severityHint}</p>
+              <div className="space-y-3">
+                {orderOptions(SYMPTOMS, symptomOrder).filter((o) => symptomSet.has(o.key)).map((o) => (
+                  <SeverityScale
+                    key={o.key}
+                    label={o.key === "other" ? symptomOther || o.label : o.label}
+                    value={severity[o.key] ?? null}
+                    onChange={(v) => run(() => setSymptomSeverity(episode.id, o.key, today, v), () => setSeverityNow({ key: o.key, value: v }))}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          <NoteToday key={noteToday ?? ""} today={today} initial={noteToday ?? ""} run={run} />
           {flag.show && <div className="mt-4"><RedFlagBanner flag={flag} /></div>}
           {dueToAsk.map((t) => (
             <div key={t.id} className="mt-5 rounded-2xl bg-pink-25 p-4">
@@ -211,6 +238,15 @@ export function EpisodeEditor({
         </Card>
       ) : (
         <Card><p className="text-sm text-slate-700">{copy.episode.closedNote}</p></Card>
+      )}
+
+      {/* --------------------------------------------------------- the shape */}
+      {(open ? scores.length > 0 : scores.length > 1) && (
+        <Card data-testid="score-card">
+          <h2 className="font-display text-2xl font-light text-midnight mb-1">{copy.episode.chartTitle}</h2>
+          <p className="text-sm text-slate-600 mb-4">{scoreSummary(scores) ?? copy.episode.chartIntro}</p>
+          <ScoreChart points={scores} />
+        </Card>
       )}
 
       {/* --------------------------------------------------------- about this */}
@@ -256,7 +292,7 @@ export function EpisodeEditor({
           <ChipGroup
             options={orderOptions(SYMPTOMS, symptomOrder)}
             selected={new Set(allSymptomKeys)}
-            onToggle={(key, on) => run(() => toggleSymptom(episode.id, key, on, symptomOther, episode.started_on), () => toggleAllSymptomNow({ key, on }))}
+            onToggle={(key, on) => run(() => toggleSymptom(episode.id, key, on, symptomOther, episode.started_on, "all"), () => toggleAllSymptomNow({ key, on }))}
             otherText={symptomOther}
             onOtherText={setSymptomOther}
           />
@@ -497,6 +533,31 @@ function TestSection({ episodeId, tests, kits, pending, run }: { episodeId: stri
         </ul>
       )}
       <Button variant="secondary" onClick={() => setAdding(true)}>{copy.episode.addTest}</Button>
+    </div>
+  );
+}
+
+/** Today's diary line, saved when the field loses focus. */
+function NoteToday({ today, initial, run }: { today: string; initial: string; run: Run }) {
+  const [note, setNote] = useState(initial);
+  const [openField, setOpenField] = useState(!!initial);
+  if (!openField) {
+    return <button type="button" className={`${linkBtn} mt-3 -ml-2`} onClick={() => setOpenField(true)}>{copy.episode.noteToday}</button>;
+  }
+  return (
+    <div className="mt-5">
+      <label htmlFor="note-today" className="block text-sm font-semibold text-slate-700 mb-2">{copy.episode.noteToday}</label>
+      <textarea
+        id="note-today"
+        value={note}
+        autoFocus={!initial}
+        onChange={(e) => setNote(e.target.value)}
+        onBlur={() => { if (note.trim() !== initial.trim()) run(() => saveDiaryEntry({ onDate: today, note })); }}
+        rows={2}
+        maxLength={1000}
+        className={inputClass}
+        placeholder={copy.episode.noteTodayPlaceholder}
+      />
     </div>
   );
 }

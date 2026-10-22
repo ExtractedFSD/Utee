@@ -15,6 +15,7 @@ import {
 import { antibioticName } from "./search";
 import { episodeLength, formatDay, summarise } from "./stats";
 import { SIR_LABELS, cultureLine, cultureSummary, methodLabel, organismShort, sensitivityText } from "./cultures";
+import { diaryEntries, feelingLabel, scoreSummary, symptomScores } from "./diary";
 
 /*
  * The recurrent UTI summary ("UTI passport"): the patient's record in the
@@ -116,7 +117,8 @@ export function passportText(input: PassportInput) {
     data.investigations,
     data.preventions,
     { testKind: (k) => labelFor(TEST_KINDS, k), testResult: (r) => (r ? labelFor(TEST_RESULTS, r) : "") },
-    data.cultures
+    data.cultures,
+    data.checkins
   );
   return { sum, history, active, stopped, investigations, medical, allergies, events, cultures, recentCultures };
 }
@@ -252,12 +254,19 @@ function PassportDoc({ input }: { input: PassportInput }) {
           const treatments = data.treatments.filter((t) => t.episode_id === e.id);
           const tests = data.tests.filter((t) => t.episode_id === e.id);
           const symptoms = [...new Set(data.symptoms.filter((x) => x.episode_id === e.id).map((x) => x.symptom))];
+          const scores = symptomScores(data.symptoms, e);
+          const shape = scoreSummary(scores);
+          const diary = diaryEntries(data.checkins.filter((c) => c.episode_id === e.id || (c.on_date >= e.started_on && c.on_date <= (e.ended_on ?? input.generatedOn))), data.symptoms.filter((x) => x.episode_id === e.id), [], [], [e], { testKind: (k) => labelFor(TEST_KINDS, k) }, input.generatedOn)
+            .filter((d) => d.feeling !== null || d.note || d.score !== null)
+            .sort((a, b) => (a.on < b.on ? -1 : 1))
+            .slice(0, 21);
           return (
             <View key={e.id} wrap={false} style={{ marginBottom: 8, paddingBottom: 6, borderBottomWidth: 0.5, borderBottomColor: C.line }}>
               <Text style={[s.val, { fontSize: 10 }]}>
                 {formatDay(e.started_on)} to {e.ended_on ? formatDay(e.ended_on) : "ongoing"}{e.ended_on ? ` (${episodeLength(e)} days)` : ""}
               </Text>
               {symptoms.length > 0 && <Text style={s.muted}>Symptoms: {symptoms.join(", ").replace(/_/g, " ")}</Text>}
+              {shape && <Text style={s.muted}>{shape.replace(/\.$/, "")} (each symptom rated 1 to 10 by the patient, added up per day).</Text>}
               {treatments.map((t) => (
                 <Text key={t.id} style={s.p}>
                   {antibioticName(t.antibiotic_id, t.other_name)}
@@ -269,6 +278,17 @@ function PassportDoc({ input }: { input: PassportInput }) {
                   {labelFor(TEST_KINDS, t.kind)}{t.tested_on ? ` ${formatDay(t.tested_on)}` : ""}{t.kit_id ? ", Utee test" : t.result ? `, ${labelFor(TEST_RESULTS, t.result).toLowerCase()}` : ""}{t.notes ? `. ${t.notes}` : ""}
                 </Text>
               ))}
+              {diary.length > 0 && (
+                <View style={{ marginTop: 3 }}>
+                  <Text style={[s.key, { fontSize: 7.5 }]}>Patient diary</Text>
+                  {diary.map((d) => (
+                    <Text key={d.on} style={[s.muted, { marginLeft: 10 }]}>
+                      {`Day ${d.utiDay ?? "-"}, ${formatDay(d.on)}: `}
+                      {[d.feeling && `feeling ${feelingLabel(d.feeling).toLowerCase()}`, d.score !== null && `score ${d.score} (${d.symptoms.filter((x) => x.severity).map((x) => `${x.label.toLowerCase()} ${x.severity}`).join(", ")})`, d.note].filter(Boolean).join("; ")}
+                    </Text>
+                  ))}
+                </View>
+              )}
             </View>
           );
         })}

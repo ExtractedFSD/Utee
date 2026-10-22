@@ -140,6 +140,7 @@ export default async function TrackerHome() {
               <LinkButton href="/portal/passport/setup?mode=utis" variant="secondary">{copy.dashboard.quickAdd}</LinkButton>
               <LinkButton href="/portal/passport/summary" variant="secondary">{copy.dashboard.downloadSummary}</LinkButton>
               <LinkButton href="/portal/passport/history" variant="secondary">{copy.dashboard.history}</LinkButton>
+              <LinkButton href="/portal/passport/diary" variant="secondary">{copy.dashboard.diary}</LinkButton>
               <LinkButton href={storeUrl} variant="secondary" external>{copy.dashboard.orderTest}</LinkButton>
               <p className="text-xs text-slate-500">{copy.dashboard.orderTestNote}</p>
             </div>

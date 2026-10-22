@@ -17,6 +17,7 @@ import { FIRST_UTI_ONSET, FREQUENCIES, INSTILLATION_PRODUCTS, MEDICAL_HISTORY, R
 import { extract } from "@/lib/tracker/guided/extract";
 import { utiSaveSchema, type GuidedStep, type TestExtract, type TreatmentExtract, type UtiSave } from "@/lib/tracker/guided/schema";
 import { ageBandFor, formatDay, isoToday } from "@/lib/tracker/stats";
+import { SEVERITY_MAX, SEVERITY_MIN } from "@/lib/tracker/diary";
 
 const keys = (list: { key: string }[]) => list.map((o) => o.key) as [string, ...string[]];
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date");
@@ -31,6 +32,8 @@ async function session() {
 function revalidate(episodeId?: string) {
   revalidatePath("/portal/passport");
   revalidatePath("/portal/passport/history");
+  revalidatePath("/portal/passport/diary");
+  revalidatePath("/portal/passport/timeline");
   revalidatePath("/portal");
   if (episodeId) revalidatePath(`/portal/passport/episodes/${episodeId}`);
 }
@@ -461,7 +464,8 @@ async function toggleItem(
   key: string,
   on: boolean,
   otherText?: string,
-  loggedOn?: string
+  loggedOn?: string,
+  scope: "day" | "all" = "all"
 ) {
   const { user, supabase } = await session();
   if (!uuid.safeParse(episodeId).success || !allowed.some((o) => o.key === key)) return { error: "Not found" };
@@ -487,14 +491,17 @@ async function toggleItem(
       if (error) return { error: "Could not save." };
     }
   } else {
-    await supabase.from(table).delete().eq("episode_id", episodeId).eq(column, key).eq("user_id", user.id);
+    // Unticking a day's symptom removes that day only; the whole-UTI summary removes every day.
+    const q = supabase.from(table).delete().eq("episode_id", episodeId).eq(column, key).eq("user_id", user.id);
+    await (scope === "day" ? q.eq("logged_on", day) : q);
   }
   revalidate(episodeId);
   return { ok: true };
 }
 
-export async function toggleSymptom(episodeId: string, key: string, on: boolean, otherText?: string, loggedOn?: string) {
-  return toggleItem("tracker_symptoms", "symptom", SYMPTOMS, episodeId, key, on, otherText, loggedOn);
+/** Tick or untick a symptom for one day (scope "day") or across the whole UTI (scope "all"). */
+export async function toggleSymptom(episodeId: string, key: string, on: boolean, otherText?: string, loggedOn?: string, scope: "day" | "all" = "day") {
+  return toggleItem("tracker_symptoms", "symptom", SYMPTOMS, episodeId, key, on, otherText, loggedOn, scope);
 }
 
 export async function toggleTrigger(episodeId: string, key: string, on: boolean, otherText?: string, loggedOn?: string) {
@@ -508,17 +515,31 @@ export async function copyYesterdaySymptoms(episodeId: string) {
   const today = isoToday();
   const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   const [{ data: prev }, { data: cur }] = await Promise.all([
-    supabase.from("tracker_symptoms").select("symptom, other_text").eq("episode_id", episodeId).eq("logged_on", yesterday),
+    supabase.from("tracker_symptoms").select("symptom, other_text, severity").eq("episode_id", episodeId).eq("logged_on", yesterday),
     supabase.from("tracker_symptoms").select("symptom").eq("episode_id", episodeId).eq("logged_on", today),
   ]);
   const have = new Set((cur ?? []).map((c) => c.symptom));
   const rows = (prev ?? [])
     .filter((p) => !have.has(p.symptom))
-    .map((p) => ({ user_id: user.id, episode_id: episodeId, symptom: p.symptom, other_text: p.other_text, logged_on: today }));
+    .map((p) => ({ user_id: user.id, episode_id: episodeId, symptom: p.symptom, other_text: p.other_text, severity: p.severity, logged_on: today }));
   if (rows.length) {
     const { error } = await supabase.from("tracker_symptoms").insert(rows);
     if (error) return { error: "Could not save." };
   }
+  revalidate(episodeId);
+  return { ok: true };
+}
+
+/** How bad one symptom was on one day, 1 (mild) to 10 (worst); null clears it. */
+export async function setSymptomSeverity(episodeId: string, key: string, loggedOn: string, severity: number | null) {
+  const { user, supabase } = await session();
+  if (!uuid.safeParse(episodeId).success || !SYMPTOMS.some((o) => o.key === key) || !isoDate.safeParse(loggedOn).success) return { error: "Not found" };
+  if (severity !== null && (!Number.isInteger(severity) || severity < SEVERITY_MIN || severity > SEVERITY_MAX)) return { error: `Choose ${SEVERITY_MIN} to ${SEVERITY_MAX}` };
+  const { data: existing } = await supabase.from("tracker_symptoms").select("id").eq("episode_id", episodeId).eq("symptom", key).eq("logged_on", loggedOn).eq("user_id", user.id).maybeSingle();
+  const { error } = existing
+    ? await supabase.from("tracker_symptoms").update({ severity }).eq("id", existing.id)
+    : await supabase.from("tracker_symptoms").insert({ user_id: user.id, episode_id: episodeId, symptom: key, other_text: null, logged_on: loggedOn, severity });
+  if (error) return { error: "Could not save." };
   revalidate(episodeId);
   return { ok: true };
 }
@@ -674,6 +695,35 @@ export async function setFeeling(episodeId: string | null, feeling: number, onDa
     .from("tracker_checkins")
     .upsert({ user_id: user.id, episode_id: episodeId, on_date: day, feeling }, { onConflict: "user_id,on_date" });
   if (error) return { error: "Could not save." };
+  revalidate(episodeId ?? undefined);
+  return { ok: true };
+}
+
+/**
+ * One diary day: the feeling and a short note. Fields left undefined are
+ * kept as they are; a day with neither a feeling nor a note is removed.
+ */
+export async function saveDiaryEntry(input: { onDate: string; feeling?: number | null; note?: string | null }) {
+  const { user, supabase } = await session();
+  const today = isoToday();
+  if (!isoDate.safeParse(input.onDate).success || input.onDate > today) return { error: "Choose a date that isn't in the future." };
+  if (input.feeling !== undefined && input.feeling !== null && (!Number.isInteger(input.feeling) || input.feeling < 1 || input.feeling > 5)) return { error: "Choose a face" };
+  const { data: current } = await supabase.from("tracker_checkins").select("id, episode_id, feeling, note").eq("user_id", user.id).eq("on_date", input.onDate).maybeSingle();
+  const feeling = input.feeling === undefined ? (current?.feeling ?? null) : input.feeling;
+  const note = input.note === undefined ? (current?.note ?? null) : input.note?.trim().slice(0, 1000) || null;
+  let episodeId: string | null = current?.episode_id ?? null;
+  if (!episodeId) {
+    const { data: ep } = await supabase.from("tracker_episodes").select("id").eq("user_id", user.id).lte("started_on", input.onDate).or(`ended_on.is.null,ended_on.gte.${input.onDate}`).order("started_on", { ascending: false }).limit(1).maybeSingle();
+    episodeId = ep?.id ?? null;
+  }
+  if (feeling === null && !note) {
+    if (current) await supabase.from("tracker_checkins").delete().eq("id", current.id);
+  } else {
+    const { error } = await supabase
+      .from("tracker_checkins")
+      .upsert({ user_id: user.id, episode_id: episodeId, on_date: input.onDate, feeling, note }, { onConflict: "user_id,on_date" });
+    if (error) return { error: "Could not save." };
+  }
   revalidate(episodeId ?? undefined);
   return { ok: true };
 }
