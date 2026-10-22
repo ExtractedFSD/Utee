@@ -15,6 +15,7 @@ const TONE: Record<string, string> = {
   investigation: "violet",
   prevention_started: "green",
   prevention_stopped: "slate",
+  note: "brand",
 };
 
 export default async function TimelinePage() {
@@ -27,7 +28,8 @@ export default async function TimelinePage() {
     data.investigations,
     data.preventions,
     { testKind: (k) => labelFor(TEST_KINDS, k), testResult: (r) => (r ? labelFor(TEST_RESULTS, r) : "") },
-    data.cultures
+    data.cultures,
+    data.checkins
   );
 
   // Group by month so a long history still reads.

@@ -1,4 +1,4 @@
-import type { Option } from "./options";
+import { FEELINGS, type Option } from "./options";
 import { antibioticName } from "./search";
 import { preventionName, preventionShortName, type PreventionLike } from "./prevention";
 import type { EpisodeRow, TreatmentRow } from "./stats";
@@ -327,13 +327,14 @@ export function prophylaxisLine(p: PreventionDetailRow): string {
 
 export type TimelineEvent = {
   on: string;
-  kind: "uti" | "treatment" | "test" | "culture" | "investigation" | "prevention_started" | "prevention_stopped";
+  kind: "uti" | "treatment" | "test" | "culture" | "investigation" | "prevention_started" | "prevention_stopped" | "note";
   title: string;
   detail?: string;
   href?: string;
 };
 
 type TestLike = { episode_id: string; kind: string; tested_on: string | null; result: string | null; kit_id: string | null };
+type CheckinLike = { on_date: string; feeling: number | null; note: string | null };
 
 /** Everything on one dated line, newest first. */
 export function timeline(
@@ -343,9 +344,16 @@ export function timeline(
   investigations: InvestigationRow[],
   preventions: PreventionDetailRow[],
   labels: { testKind: (k: string) => string; testResult: (r: string | null) => string },
-  cultures: CultureRow[] = []
+  cultures: CultureRow[] = [],
+  checkins: CheckinLike[] = []
 ): TimelineEvent[] {
   const out: TimelineEvent[] = [];
+  // Diary days with a note. Feelings on their own stay in the diary.
+  for (const c of checkins) {
+    const note = c.note?.trim();
+    if (!note) continue;
+    out.push({ on: c.on_date, kind: "note", title: note.length > 90 ? `${note.slice(0, 89)}...` : note, detail: c.feeling ? `Feeling: ${FEELINGS.find((f) => f.key === String(c.feeling))?.label.toLowerCase() ?? ""}` : undefined, href: "/portal/passport/diary" });
+  }
   for (const c of cultures) {
     if (!c.sample_on) continue;
     const line = cultureLine(c);

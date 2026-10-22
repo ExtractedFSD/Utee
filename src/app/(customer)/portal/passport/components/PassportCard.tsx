@@ -15,6 +15,7 @@ export function PassportCard({ glance, started }: { glance: PassportGlance; star
       <div className="flex flex-wrap items-start justify-between gap-3">
         <CardTitle>{copy.passport.title}</CardTitle>
         <div className="flex flex-wrap gap-2">
+          <Link href="/portal/passport/diary" className="min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon">{copy.passport.diary}</Link>
           <Link href="/portal/passport/timeline" className="min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon">{copy.passport.timeline}</Link>
           <a href="/portal/passport/passport" className="min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon">{copy.passport.download}</a>
         </div>

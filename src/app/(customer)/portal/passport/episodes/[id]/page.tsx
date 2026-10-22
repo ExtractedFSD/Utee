@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireTracker, loadAll, ownKits } from "@/lib/tracker/data";
 import { SYMPTOMS, TRIGGERS } from "@/lib/tracker/options";
 import { isoDaysAgo, isoToday, orderByUsage } from "@/lib/tracker/stats";
+import { symptomScores } from "@/lib/tracker/diary";
 import { EpisodeEditor } from "./EpisodeEditor";
 
 export default async function EpisodePage({ params }: { params: Promise<{ id: string }> }) {
@@ -25,7 +26,7 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
       episode={episode}
       today={today}
       pregnantOrTrying={profile.pregnant_or_trying}
-      todaySymptoms={symptoms.filter((s) => s.logged_on === today).map((s) => ({ key: s.symptom, other: s.other_text }))}
+      todaySymptoms={symptoms.filter((s) => s.logged_on === today).map((s) => ({ key: s.symptom, other: s.other_text, severity: s.severity ?? null }))}
       allSymptoms={[...new Set(symptoms.map((s) => s.symptom))]}
       yesterdaySymptoms={symptoms.filter((s) => s.logged_on === yesterday).map((s) => s.symptom)}
       triggers={[...new Map(triggers.map((t) => [t.trigger, { key: t.trigger, other: t.other_text }])).values()]}
@@ -35,6 +36,8 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
         return { ...t, kitCode: kit?.code ?? null, kitStatus: kit?.status ?? null, kitReportReady: kit?.reportReady ?? false };
       })}
       feelingToday={data.checkins.find((c) => c.on_date === today)?.feeling ?? null}
+      noteToday={data.checkins.find((c) => c.on_date === today)?.note ?? null}
+      scores={symptomScores(symptoms, episode)}
       symptomOrder={orderByUsage(SYMPTOMS.map((s) => s.key), data.symptoms.map((s) => ({ key: s.symptom })))}
       triggerOrder={orderByUsage(TRIGGERS.map((t) => t.key), data.triggers.map((t) => ({ key: t.trigger })))}
       previousAntibiotics={previousAntibiotics}

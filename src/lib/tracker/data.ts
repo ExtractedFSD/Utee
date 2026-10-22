@@ -118,7 +118,7 @@ export type TrackerData = {
   triggers: (TriggerRow & { id: string })[];
   treatments: (TreatmentRow & { id: string; created_at: string })[];
   tests: TestRow[];
-  checkins: { episode_id: string | null; on_date: string; feeling: number }[];
+  checkins: { episode_id: string | null; on_date: string; feeling: number | null; note: string | null }[];
   preventions: PreventionRow[];
   investigations: InvestigationRow[];
   /** Patient-entered cultures. Utee results are merged in by loadAllWithUtee. */
@@ -147,11 +147,11 @@ export async function loadPreventions(supabase: SupabaseClient, userId: string):
 export async function loadAll(supabase: SupabaseClient, userId: string): Promise<TrackerData> {
   const [e, s, tr, t, te, c, pr, inv, cu] = await Promise.all([
     supabase.from("tracker_episodes").select("id, started_on, ended_on, notes").eq("user_id", userId).order("started_on", { ascending: false }),
-    supabase.from("tracker_symptoms").select("id, episode_id, symptom, other_text, logged_on").eq("user_id", userId),
+    supabase.from("tracker_symptoms").select("id, episode_id, symptom, other_text, logged_on, severity").eq("user_id", userId),
     supabase.from("tracker_triggers").select("id, episode_id, trigger, other_text, logged_on").eq("user_id", userId),
     supabase.from("tracker_treatments").select("id, episode_id, antibiotic_id, other_name, started_on, days, course_type, source, worked, dose, frequency, route, reaction, created_at").eq("user_id", userId).order("created_at", { ascending: true }),
     supabase.from("tracker_tests").select("id, episode_id, kind, tested_on, result, notes, kit_id").eq("user_id", userId),
-    supabase.from("tracker_checkins").select("episode_id, on_date, feeling").eq("user_id", userId),
+    supabase.from("tracker_checkins").select("episode_id, on_date, feeling, note").eq("user_id", userId),
     supabase.from("tracker_preventions").select(PREVENTION_COLUMNS).eq("user_id", userId).order("created_at", { ascending: true }),
     supabase.from("tracker_investigations").select(INVESTIGATION_COLUMNS).eq("user_id", userId).order("performed_on", { ascending: false, nullsFirst: false }),
     supabase.from("tracker_cultures").select(CULTURE_COLUMNS).eq("user_id", userId).order("sample_on", { ascending: false, nullsFirst: false }),

@@ -42,14 +42,23 @@ describe("passport PDF", () => {
           { id: "e1", started_on: "2026-03-01", ended_on: "2026-03-06", notes: null },
           { id: "e2", started_on: "2026-07-10", ended_on: null, notes: null },
         ],
-        symptoms: [{ id: "s1", episode_id: "e1", symptom: "burning", other_text: null, logged_on: "2026-03-01" }],
+        symptoms: [
+          { id: "s1", episode_id: "e1", symptom: "burning", other_text: null, logged_on: "2026-03-01", severity: 8 },
+          { id: "s2", episode_id: "e1", symptom: "frequency", other_text: null, logged_on: "2026-03-01", severity: 7 },
+          { id: "s3", episode_id: "e1", symptom: "burning", other_text: null, logged_on: "2026-03-03", severity: 4 },
+          { id: "s4", episode_id: "e1", symptom: "burning", other_text: null, logged_on: "2026-03-05", severity: 1 },
+        ],
         triggers: [],
         treatments: [
           { id: "t1", episode_id: "e1", antibiotic_id: "nitrofurantoin", other_name: null, started_on: "2026-03-02", days: 3, course_type: "treatment", source: "gp", worked: "yes", dose: "100 mg", frequency: "twice_daily", route: "oral", reaction: null, created_at: "2026-03-02T00:00:00Z" },
           { id: "t2", episode_id: "e2", antibiotic_id: "trimethoprim", other_name: null, started_on: "2026-07-11", days: 3, course_type: "treatment", source: "gp", worked: "no", dose: "200 mg", frequency: "twice_daily", route: "oral", reaction: "rash", created_at: "2026-07-11T00:00:00Z" },
         ],
         tests: [{ id: "x1", episode_id: "e1", kind: "lab", tested_on: "2026-03-01", result: "positive", notes: "E. coli", kit_id: null }],
-        checkins: [],
+        checkins: [
+          { episode_id: "e1", on_date: "2026-03-01", feeling: 2, note: "Started overnight, GP appointment booked" },
+          { episode_id: "e1", on_date: "2026-03-03", feeling: 3, note: null },
+          { episode_id: null, on_date: "2026-06-02", feeling: null, note: "Long flight, drank very little" },
+        ],
         preventions: [
           { id: "p1", option_key: "vaginal_oestrogen", other_name: null, antibiotic_id: null, started_on: "2026-02-03", stopped_on: null, helping: "yes", notes: null, product: "vagifem", dose: "10 micrograms", frequency: "twice_weekly", course_weeks: null, completed: null, created_at: "2026-02-03T00:00:00Z" },
           { id: "p2", option_key: "methenamine", other_name: null, antibiotic_id: null, started_on: "2026-04-01", stopped_on: null, helping: null, notes: null, product: null, dose: "1 g", frequency: "twice_daily", course_weeks: null, completed: null, created_at: "2026-04-01T00:00:00Z" },
