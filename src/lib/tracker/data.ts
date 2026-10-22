@@ -5,6 +5,7 @@ import { requireRole, type SessionUser } from "@/lib/auth";
 import type { EpisodeRow, SymptomRow, TreatmentRow, TriggerRow } from "./stats";
 import type { InvestigationRow, PassportProfileFields } from "./passport";
 import type { CultureRow } from "./cultures";
+import type { VerificationRow } from "./verify";
 
 /*
  * All tracker reads and writes go through the user's own Supabase session, so
@@ -123,11 +124,19 @@ export type TrackerData = {
   investigations: InvestigationRow[];
   /** Patient-entered cultures. Utee results are merged in by loadAllWithUtee. */
   cultures: CultureRow[];
+  /** Clinician confirmations of investigations and cultures. */
+  verifications: VerificationRow[];
 };
 
 const PREVENTION_COLUMNS = "id, option_key, other_name, antibiotic_id, started_on, stopped_on, helping, notes, product, dose, frequency, course_weeks, completed, created_at";
 const INVESTIGATION_COLUMNS = "id, kind, performed_on, normal, findings, body_part, values, notes, source, created_at";
 const CULTURE_COLUMNS = "id, episode_id, sample_on, method, method_other, outcome, organisms, sensitivities, microscopy, notes, source, created_at";
+const VERIFICATION_COLUMNS = "id, entity, entity_id, verified_name, verified_at";
+
+export async function loadVerifications(supabase: SupabaseClient, userId: string): Promise<VerificationRow[]> {
+  const { data } = await supabase.from("tracker_verifications").select(VERIFICATION_COLUMNS).eq("user_id", userId);
+  return (data ?? []) as VerificationRow[];
+}
 
 export async function loadCultures(supabase: SupabaseClient, userId: string): Promise<CultureRow[]> {
   const { data } = await supabase.from("tracker_cultures").select(CULTURE_COLUMNS).eq("user_id", userId).order("sample_on", { ascending: false, nullsFirst: false });
@@ -145,7 +154,7 @@ export async function loadPreventions(supabase: SupabaseClient, userId: string):
 }
 
 export async function loadAll(supabase: SupabaseClient, userId: string): Promise<TrackerData> {
-  const [e, s, tr, t, te, c, pr, inv, cu] = await Promise.all([
+  const [e, s, tr, t, te, c, pr, inv, cu, ve] = await Promise.all([
     supabase.from("tracker_episodes").select("id, started_on, ended_on, notes").eq("user_id", userId).order("started_on", { ascending: false }),
     supabase.from("tracker_symptoms").select("id, episode_id, symptom, other_text, logged_on, severity").eq("user_id", userId),
     supabase.from("tracker_triggers").select("id, episode_id, trigger, other_text, logged_on").eq("user_id", userId),
@@ -155,6 +164,7 @@ export async function loadAll(supabase: SupabaseClient, userId: string): Promise
     supabase.from("tracker_preventions").select(PREVENTION_COLUMNS).eq("user_id", userId).order("created_at", { ascending: true }),
     supabase.from("tracker_investigations").select(INVESTIGATION_COLUMNS).eq("user_id", userId).order("performed_on", { ascending: false, nullsFirst: false }),
     supabase.from("tracker_cultures").select(CULTURE_COLUMNS).eq("user_id", userId).order("sample_on", { ascending: false, nullsFirst: false }),
+    supabase.from("tracker_verifications").select(VERIFICATION_COLUMNS).eq("user_id", userId),
   ]);
   return {
     episodes: e.data ?? [],
@@ -166,6 +176,7 @@ export async function loadAll(supabase: SupabaseClient, userId: string): Promise
     preventions: (pr.data ?? []) as PreventionRow[],
     investigations: (inv.data ?? []) as InvestigationRow[],
     cultures: (cu.data ?? []) as CultureRow[],
+    verifications: (ve.data ?? []) as VerificationRow[],
   };
 }
 

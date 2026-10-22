@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { audit, loadAll, requireTracker, trackerConsents } from "@/lib/tracker/data";
 import { isoToday } from "@/lib/tracker/stats";
+import { toFhirBundle } from "@/lib/tracker/fhir";
 
 export const runtime = "nodejs";
 
@@ -17,10 +18,22 @@ function toCsv(rows: Record<string, unknown>[], columns: string[]): string {
 export async function GET(req: NextRequest) {
   const { supabase, user, profile } = await requireTracker();
   const account = { full_name: user.fullName, date_of_birth: user.dateOfBirth, email: user.email };
-  const format = req.nextUrl.searchParams.get("format") === "csv" ? "csv" : "json";
+  const wanted = req.nextUrl.searchParams.get("format");
+  const format = wanted === "csv" ? "csv" : wanted === "fhir" ? "fhir" : "json";
   const [data, consents] = await Promise.all([loadAll(supabase, user.id), trackerConsents(supabase, user.id)]);
   await audit(supabase, user.id, "data_exported", { format });
   const today = isoToday();
+
+  if (format === "fhir") {
+    const bundle = toFhirBundle({ patient: { name: user.fullName, email: user.email, dateOfBirth: user.dateOfBirth }, profile, data, generatedOn: today });
+    return new NextResponse(JSON.stringify(bundle, null, 2), {
+      headers: {
+        "content-type": "application/fhir+json",
+        "content-disposition": `attachment; filename="utee-uti-passport-${today}.fhir.json"`,
+        "cache-control": "private, no-store",
+      },
+    });
+  }
 
   if (format === "json") {
     const body = { exported_at: new Date().toISOString(), account, profile, consents, ...data };

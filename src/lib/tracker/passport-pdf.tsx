@@ -16,6 +16,7 @@ import { antibioticName } from "./search";
 import { episodeLength, formatDay, summarise } from "./stats";
 import { SIR_LABELS, cultureLine, cultureSummary, methodLabel, organismShort, sensitivityText } from "./cultures";
 import { diaryEntries, feelingLabel, scoreSummary, symptomScores } from "./diary";
+import { verificationFor, verifiedLine } from "./verify";
 
 /*
  * The recurrent UTI summary ("UTI passport"): the patient's record in the
@@ -97,6 +98,8 @@ export type PassportInput = {
   profile: TrackerProfile;
   data: TrackerData;
   generatedOn: string;
+  /** When present, the last page carries the share code and a QR back to the live passport. */
+  share?: { url: string; code: string; until: string; qr: Buffer };
 };
 
 export function passportText(input: PassportInput) {
@@ -195,6 +198,7 @@ function PassportDoc({ input }: { input: PassportInput }) {
                   <Text style={[s.muted, { marginLeft: 10 }]}>Microscopy: {[c.microscopy.white_cells !== undefined && c.microscopy.white_cells !== null && `white cells ${c.microscopy.white_cells}`, c.microscopy.red_cells !== undefined && c.microscopy.red_cells !== null && `red cells ${c.microscopy.red_cells}`].filter(Boolean).join(", ")}</Text>
                 ) : null}
                 {c.source === "utee" ? <Text style={[s.muted, { marginLeft: 10 }]}>From the patient&apos;s Utee test, as reported by the laboratory.</Text> : null}
+                {verifiedLine(verificationFor(data.verifications ?? [], "culture", c.id)) ? <Text style={[s.muted, { marginLeft: 10, color: C.midnight }]}>{verifiedLine(verificationFor(data.verifications ?? [], "culture", c.id))} against the original report.</Text> : null}
               </View>
             ))}
             {data.cultures.length > recentCultures.length && <Text style={s.muted}>{data.cultures.length - recentCultures.length} earlier results are in the passport.</Text>}
@@ -207,7 +211,8 @@ function PassportDoc({ input }: { input: PassportInput }) {
         ) : (
           investigations.map((i) => {
             const line = investigationLine(i);
-            return <Bullet key={i.id} text={`${line.title}${i.performed_on ? ` ${formatDay(i.performed_on)}` : ""}: ${line.detail || "no detail recorded"}`} />;
+            const v = verifiedLine(verificationFor(data.verifications ?? [], "investigation", i.id));
+            return <Bullet key={i.id} text={`${line.title}${i.performed_on ? ` ${formatDay(i.performed_on)}` : ""}: ${line.detail || "no detail recorded"}${v ? ` (${v.replace(/^Verified/, "verified")})` : ""}`} />;
           })
         )}
 
@@ -301,6 +306,17 @@ function PassportDoc({ input }: { input: PassportInput }) {
           </View>
         ))}
         {events.length > 80 && <Text style={[s.muted, { marginTop: 4 }]}>{events.length - 80} earlier entries are in the tracker.</Text>}
+
+        {input.share && (
+          <View wrap={false} style={[s.box, s.boxOutline, { marginTop: 18, flexDirection: "row", alignItems: "center", gap: 14 }]}>
+            <Image src={{ data: input.share.qr, format: "png" }} style={{ width: 84, height: 84 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.key}>Live copy of this passport</Text>
+              <Text style={[s.val, { fontSize: 10 }]}>{input.share.url}</Text>
+              <Text style={s.p}>Scan the code or enter {input.share.code} at portal.myutee.co.uk/passport. Opens read-only, with anything added since this was printed. Works until {input.share.until}; the patient can remove it at any time.</Text>
+            </View>
+          </View>
+        )}
       </Page>
     </Document>
   );

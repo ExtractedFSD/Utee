@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import QRCode from "qrcode";
 import { renderPassportPdf, type PassportInput } from "./passport-pdf";
 
 const profile: PassportInput["profile"] = {
@@ -68,6 +69,7 @@ describe("passport PDF", () => {
           { id: "c1", episode_id: "e1", sample_on: "2026-03-01", method: "standard_culture", method_other: null, outcome: "pathogens", organisms: [{ key: "e_coli", name: null, count: ">10^8 cfu/L" }], sensitivities: { e_coli: { nitrofurantoin: "S", trimethoprim: "R", cefalexin: "S", amoxicillin: "R" } }, microscopy: { white_cells: 150 }, notes: null, source: "patient", created_at: "2026-03-01T00:00:00Z" },
           { id: "utee:k1", episode_id: null, sample_on: "2026-07-12", method: "utee", method_other: null, outcome: "pathogens", organisms: [{ key: "e_coli", name: null, count: null }, { key: "enterococcus", name: null, count: null }], sensitivities: {}, microscopy: {}, notes: null, source: "utee", created_at: "2026-07-12T00:00:00Z" },
         ],
+        verifications: [{ id: "v1", entity: "investigation", entity_id: "i1", verified_name: "Prof Bob Yang", verified_at: "2026-10-01T10:00:00Z" }],
         investigations: [
           { id: "i1", kind: "uss_kub", performed_on: "2025-08-12", normal: true, findings: [], body_part: null, values: { pvr_ml: 30 }, notes: null, source: "patient", created_at: "2025-08-12T00:00:00Z" },
           { id: "i2", kind: "bloods", performed_on: "2026-09-16", normal: true, findings: [], body_part: null, values: { egfr: 92, creatinine: 70 }, notes: null, source: "patient", created_at: "2026-09-16T00:00:00Z" },
@@ -78,5 +80,19 @@ describe("passport PDF", () => {
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     const out = process.env.REPORT_PDF_OUT;
     if (out) fs.writeFileSync(path.join(out, "passport.pdf"), pdf);
+  }, 60_000);
+
+  it("carries the share code and QR when printed for a clinician", async () => {
+    const url = "https://portal.myutee.co.uk/passport/ABCD-EFGH-JKLM";
+    const pdf = await renderPassportPdf({
+      patient: { name: "Test Patient", email: "test@example.com", dateOfBirth: "1988-04-12" },
+      profile,
+      generatedOn: "2026-10-20",
+      data: { episodes: [], symptoms: [], triggers: [], treatments: [], tests: [], checkins: [], preventions: [], investigations: [], cultures: [], verifications: [] },
+      share: { url, code: "ABCD-EFGH-JKLM", until: "Tue 3 Nov, 14:05", qr: await QRCode.toBuffer(url, { type: "png", margin: 1, width: 360 }) },
+    });
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    const out = process.env.REPORT_PDF_OUT;
+    if (out) fs.writeFileSync(path.join(out, "passport-shared.pdf"), pdf);
   }, 60_000);
 });

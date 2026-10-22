@@ -18,6 +18,7 @@ export default async function TrackerSettingsPage() {
           <LinkButton href="/portal/passport/investigations" variant="secondary">{copy.investigations.title}</LinkButton>
           <LinkButton href="/portal/passport/cultures" variant="secondary">{copy.cultures.title}</LinkButton>
           <LinkButton href="/portal/passport/diary" variant="secondary">{copy.diary.title}</LinkButton>
+          <LinkButton href="/portal/passport/share" variant="secondary">{copy.settings.share}</LinkButton>
         </div>
       </Card>
       <Card>
@@ -26,7 +27,9 @@ export default async function TrackerSettingsPage() {
         <div className="flex flex-wrap gap-2">
           <a href="/portal/passport/export?format=json" className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] bg-white text-midnight border border-midnight/15 hover:bg-pink-25">{copy.settings.exportJson}</a>
           <a href="/portal/passport/export?format=csv" className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] bg-white text-midnight border border-midnight/15 hover:bg-pink-25">{copy.settings.exportCsv}</a>
+          <a href="/portal/passport/export?format=fhir" className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] bg-white text-midnight border border-midnight/15 hover:bg-pink-25">{copy.settings.exportFhir}</a>
         </div>
+        <p className="text-xs text-slate-500 mt-3">{copy.settings.exportFhirNote}</p>
       </Card>
       <SettingsPanel
         consents={ctx.consents}
