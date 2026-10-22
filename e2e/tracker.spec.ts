@@ -704,3 +704,97 @@ test("tracker: passport details, an investigation and the passport PDF", async (
   });
   await ctx.close();
 });
+
+test("tracker: share the passport with a clinician by code, verify an entry, revoke", async ({ browser }) => {
+  const user = await createUser("customer", "tracker-share");
+  const ctx = await browser.newContext({ viewport: PHONE });
+  await loginAs(ctx, user.email);
+  const page = await ctx.newPage();
+  await page.goto("/portal/passport/consent");
+  await page.getByLabel(/I agree to Utee storing/).check();
+  await page.getByRole("button", { name: "Start my UTI Passport" }).click();
+  await page.getByRole("link", { name: "Prefer a form?" }).click();
+  await page.getByLabel("Your local hospital").fill("Royal Berkshire Hospital");
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await expect(page).toHaveURL(/\/portal\/passport$/);
+  await admin().from("tracker_investigations").insert({ user_id: user.id, kind: "uss_kub", performed_on: "2025-08-12", normal: true, findings: [], values: { pvr_ml: 30 }, source: "patient" });
+
+  let code = "";
+  await test.step("Creating a code asks for consent and shows the code, link and QR", async () => {
+    await page.goto("/portal/passport/share");
+    await page.getByRole("button", { name: "Create a share code" }).click();
+    const sheet = page.getByTestId("sheet-share");
+    await sheet.getByLabel("Who is it for? (optional)").fill("Dr Patel");
+    await sheet.getByRole("button", { name: "30 days" }).click();
+    await sheet.getByRole("button", { name: "Create a share code" }).click();
+    await expect(sheet.getByText("Tick the box to share.")).toBeVisible();
+    await sheet.getByRole("checkbox").check();
+    await sheet.getByRole("button", { name: "Create a share code" }).click();
+    const created = page.getByTestId("share-created");
+    await expect(created).toBeVisible();
+    code = (await created.getByTestId("share-code").textContent())!.trim();
+    expect(code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    await expect(created.locator("svg")).toBeVisible();
+    await expect(page.getByTestId("share-list")).toContainText("Dr Patel");
+    const { data: shares } = await admin().from("tracker_shares").select("code, label, consent_text, view_count").eq("user_id", user.id);
+    expect(shares).toHaveLength(1);
+    expect(shares![0]).toMatchObject({ code: code.replace(/-/g, ""), label: "Dr Patel", view_count: 0 });
+    expect(shares![0].consent_text.length).toBeGreaterThan(40);
+  });
+
+  await test.step("The code opens a read-only passport without signing in, and the PDF and FHIR download", async () => {
+    const anon = await browser.newContext();
+    const view = await anon.newPage();
+    await view.goto(`/passport/${code.toLowerCase()}`);
+    await expect(view.getByTestId("shared-passport")).toBeVisible();
+    await expect(view.getByTestId("shared-passport")).toContainText("Royal Berkshire Hospital");
+    await expect(view.getByTestId("shared-investigations")).toContainText("USS KUB");
+    await expect(view.getByText("Sign in to Utee as a clinician")).toBeVisible();
+    expect(await view.getByRole("button", { name: "Mark as checked" }).count()).toBe(0);
+    const pdf = await view.request.get(`/passport/${code}/pdf`);
+    expect(pdf.status()).toBe(200);
+    expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
+    const fhir = await view.request.get(`/passport/${code}/fhir`);
+    expect(fhir.status()).toBe(200);
+    const bundle = await fhir.json();
+    expect(bundle.resourceType).toBe("Bundle");
+    expect(bundle.entry.some((e: { resource: { resourceType: string } }) => e.resource.resourceType === "DiagnosticReport")).toBe(true);
+    // A wrong code goes back to the entry form.
+    await view.goto("/passport/ABCD-EFGH-JKLM");
+    await expect(view).toHaveURL(/\/passport\?error=not-found/);
+    await expect(view.getByText(/not recognised/)).toBeVisible();
+    await anon.close();
+    const { data: shares } = await admin().from("tracker_shares").select("view_count, last_viewed_at").eq("user_id", user.id).single();
+    expect(shares?.view_count).toBe(1);
+    expect(shares?.last_viewed_at).toBeTruthy();
+  });
+
+  await test.step("A signed-in clinician marks the investigation as checked; the patient sees it", async () => {
+    const clinician = await createUser("clinic", "tracker-share-clinic", "Prof Test Clinician");
+    const cctx = await browser.newContext();
+    await loginAs(cctx, clinician.email);
+    const cpage = await cctx.newPage();
+    await cpage.goto(`/passport/${code}`);
+    await cpage.getByRole("button", { name: "Mark as checked" }).click();
+    await expect(cpage.getByTestId("shared-investigations")).toContainText("Verified by Prof Test Clinician");
+    await cctx.close();
+    await page.goto("/portal/passport/investigations");
+    await expect(page.getByTestId("investigations-list")).toContainText("Verified by Prof Test Clinician");
+    const { data: v } = await admin().from("tracker_verifications").select("entity, verified_name").eq("user_id", user.id);
+    expect(v).toEqual([{ entity: "investigation", verified_name: "Prof Test Clinician" }]);
+  });
+
+  await test.step("Removing the code closes the door at once", async () => {
+    await page.goto("/portal/passport/share");
+    await page.getByTestId("share-list").getByRole("button", { name: "Remove" }).first().click();
+    await page.getByTestId("share-list").getByRole("button", { name: "Remove" }).last().click();
+    await expect(page.getByText("Past codes")).toBeVisible();
+    const anon = await browser.newContext();
+    const view = await anon.newPage();
+    await view.goto(`/passport/${code}`);
+    await expect(view).toHaveURL(/\/passport\?error=not-found/);
+    expect((await view.request.get(`/passport/${code}/pdf`)).status()).toBe(404);
+    await anon.close();
+  });
+  await ctx.close();
+});

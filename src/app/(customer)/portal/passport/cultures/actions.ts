@@ -1,5 +1,7 @@
 "use server";
 
+import { createAdminClient } from "@/lib/supabase/admin";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
@@ -95,6 +97,11 @@ async function episodeFor(supabase: Awaited<ReturnType<typeof createClient>>, us
   return hit?.id ?? null;
 }
 
+/** A clinician's check is a mark on the entry as it was; any change removes it. */
+async function clearVerification(userId: string, id: string) {
+  await createAdminClient().from("tracker_verifications").delete().eq("user_id", userId).eq("entity", "culture").eq("entity_id", id);
+}
+
 export async function addCulture(input: CultureInput) {
   const { user, supabase } = await session();
   const parsed = cultureSchema.safeParse(input);
@@ -119,6 +126,7 @@ export async function updateCulture(id: string, input: CultureInput) {
   const episode_id = await episodeFor(supabase, user.id, cleaned.row.sample_on);
   const { error } = await supabase.from("tracker_cultures").update({ episode_id, ...cleaned.row }).eq("id", id).eq("user_id", user.id);
   if (error) return { error: "Could not save. Please try again." };
+  await clearVerification(user.id, id);
   revalidate();
   return { ok: true };
 }
@@ -128,6 +136,7 @@ export async function deleteCulture(id: string) {
   if (!uuid.safeParse(id).success) return { error: "Not found" };
   const { error } = await supabase.from("tracker_cultures").delete().eq("id", id).eq("user_id", user.id);
   if (error) return { error: "Could not delete." };
+  await clearVerification(user.id, id);
   await audit(supabase, user.id, "culture_deleted", { id });
   revalidate();
   return { ok: true };

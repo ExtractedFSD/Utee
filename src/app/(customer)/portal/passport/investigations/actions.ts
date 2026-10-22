@@ -1,5 +1,7 @@
 "use server";
 
+import { createAdminClient } from "@/lib/supabase/admin";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
@@ -62,6 +64,11 @@ function cleanRow(d: z.infer<typeof investigationSchema>) {
   };
 }
 
+/** A clinician's check is a mark on the entry as it was; any change removes it. */
+async function clearVerification(userId: string, id: string) {
+  await createAdminClient().from("tracker_verifications").delete().eq("user_id", userId).eq("entity", "investigation").eq("entity_id", id);
+}
+
 export async function addInvestigation(input: InvestigationInput) {
   const { user, supabase } = await session();
   const parsed = investigationSchema.safeParse(input);
@@ -84,6 +91,7 @@ export async function updateInvestigation(id: string, input: InvestigationInput)
   if ("error" in cleaned) return cleaned;
   const { error } = await supabase.from("tracker_investigations").update(cleaned.row).eq("id", id).eq("user_id", user.id);
   if (error) return { error: "Could not save. Please try again." };
+  await clearVerification(user.id, id);
   revalidate();
   return { ok: true };
 }
@@ -93,6 +101,7 @@ export async function deleteInvestigation(id: string) {
   if (!uuid.safeParse(id).success) return { error: "Not found" };
   const { error } = await supabase.from("tracker_investigations").delete().eq("id", id).eq("user_id", user.id);
   if (error) return { error: "Could not delete." };
+  await clearVerification(user.id, id);
   await audit(supabase, user.id, "investigation_deleted", { id });
   revalidate();
   return { ok: true };

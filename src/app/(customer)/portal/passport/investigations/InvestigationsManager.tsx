@@ -5,6 +5,7 @@ import { Button, Card, CardTitle, Pill, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { INVESTIGATION_KINDS, investigationKind, investigationLine, type InvestigationRow } from "@/lib/tracker/passport";
 import type { InvestigationExtract } from "@/lib/tracker/guided/investigation";
+import { verificationFor, verifiedLine, type VerificationRow } from "@/lib/tracker/verify";
 import { formatDay, isoToday } from "@/lib/tracker/stats";
 import { Chip } from "../components/Chips";
 import { Sheet } from "../components/Sheet";
@@ -69,7 +70,7 @@ function toInput(d: Draft): InvestigationInput {
  * opens with a "describe it" box so Una can fill the form; the fields below
  * are always there for checking and for anyone who prefers tapping.
  */
-export function InvestigationsManager({ rows, unaAi }: { rows: InvestigationRow[]; unaAi: boolean }) {
+export function InvestigationsManager({ rows, unaAi, verifications = [] }: { rows: InvestigationRow[]; unaAi: boolean; verifications?: VerificationRow[] }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<"add" | string | null>(null);
@@ -117,6 +118,7 @@ export function InvestigationsManager({ rows, unaAi }: { rows: InvestigationRow[
                       <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
                         {r.normal === true && <Pill tone="green">{copy.investigations.normalYes}</Pill>}
                         {r.normal === false && <Pill tone="amber">{copy.investigations.normalNo}</Pill>}
+                        {verificationFor(verifications, "investigation", r.id) && <span title={copy.share.verifiedHint}><Pill tone="green">{verifiedLine(verificationFor(verifications, "investigation", r.id))}</Pill></span>}
                         {line.detail && <span>{line.detail.replace(/^(Normal|Abnormal[^·]*)( · )?/, "")}</span>}
                       </span>
                     </span>

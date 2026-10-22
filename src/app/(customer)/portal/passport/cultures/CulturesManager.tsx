@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { Button, Card, CardTitle, Pill, inputClass } from "@/components/ui";
+import { verificationFor, verifiedLine, type VerificationRow } from "@/lib/tracker/verify";
 import { copy } from "@/lib/tracker/copy";
 import {
   CULTURE_METHODS,
@@ -126,7 +127,7 @@ const SIR_STYLE: Record<Sir, string> = {
   R: "bg-rose-100 text-rose-800 border-rose-200",
 };
 
-export function CulturesManager({ rows, utee, unaAi }: { rows: CultureRow[]; utee: CultureRow[]; unaAi: boolean }) {
+export function CulturesManager({ rows, utee, unaAi, verifications = [] }: { rows: CultureRow[]; utee: CultureRow[]; unaAi: boolean; verifications?: VerificationRow[] }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<"add" | string | null>(null);
@@ -217,7 +218,8 @@ export function CulturesManager({ rows, utee, unaAi }: { rows: CultureRow[]; ute
                       {r.sample_on && <span className="font-normal text-slate-500"> · {formatDay(r.sample_on)}</span>}
                     </span>
                     <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                      <Pill tone={fromUtee ? "pink" : "slate"}>{fromUtee ? copy.cultures.utee : methodLabel(r)}</Pill>
+                      <Pill tone={fromUtee ? "brand" : "slate"}>{fromUtee ? copy.cultures.utee : methodLabel(r)}</Pill>
+                      {!fromUtee && verificationFor(verifications, "culture", r.id) && <span title={copy.share.verifiedHint}><Pill tone="green">{verifiedLine(verificationFor(verifications, "culture", r.id))}</Pill></span>}
                       <span>{line.detail.replace(/^[^·]*·\s*/, "")}</span>
                     </span>
                   </span>
