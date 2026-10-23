@@ -135,7 +135,7 @@ export function patterns(
     .map((x) => ({ key: x.key, label: labelFor(SYMPTOMS, x.key), count: x.count }));
   const rated = new Map<string, PatternAntibiotic>();
   for (const t of treatments) {
-    if (!t.worked || t.worked === "too_early") continue;
+    if (!t.worked || t.worked === "too_early" || t.antibiotic_id === "dont_know") continue;
     const name = antibioticName(t.antibiotic_id, t.other_name);
     const cur = rated.get(name) ?? { worked: 0, rated: 0, name };
     cur.rated += 1;

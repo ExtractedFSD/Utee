@@ -1,38 +1,63 @@
 import Link from "next/link";
-import { Card, CardTitle, LinkButton, PageHeader, buttonBase, buttonVariants } from "@/components/ui";
+import { Card, CardTitle, LinkButton, PageHeader } from "@/components/ui";
 import { requireTracker, ownKits } from "@/lib/tracker/data";
 import { loadAllWithUtee } from "@/lib/tracker/load";
 import { copy } from "@/lib/tracker/copy";
-import { redFlagFor } from "@/lib/tracker/redflags";
-import { formatDay, patterns, summarise } from "@/lib/tracker/stats";
-import { RedFlagBanner } from "./components/RedFlagBanner";
-import { MonthStrip } from "./components/MonthStrip";
-import { QuickCheckin } from "./QuickCheckin";
-import { PreventionPills } from "./components/PreventionPills";
-import { PatternsCard } from "./components/PatternsCard";
-import { PassportCard } from "./components/PassportCard";
+import { SYMPTOMS } from "@/lib/tracker/options";
 import { passportGlance } from "@/lib/tracker/passport";
+import { antibioticName } from "@/lib/tracker/search";
+import { daysBetween, isoDaysAgo, isoToday, orderByUsage, patterns, summarise } from "@/lib/tracker/stats";
+import { MonthStrip } from "./components/MonthStrip";
+import { PassportCard } from "./components/PassportCard";
+import { PatternsCard } from "./components/PatternsCard";
+import { PreventionPills } from "./components/PreventionPills";
+import { TodayHero, type HeroState } from "./components/TodayHero";
 
-export default async function TrackerHome() {
+/*
+ * Today. The hero decides what the person is here to do; the cards below it
+ * are the same every visit, so the eye learns where things are. On phones
+ * the order is hero, At a glance, What I'm taking, Last 12 months, My
+ * patterns; on wide screens the cards sit in two columns.
+ */
+export default async function TodayPage() {
   const { supabase, user, profile } = await requireTracker();
-  const data = await loadAllWithUtee(supabase, user.id);
-  const s = summarise(data.episodes, data.treatments);
+  const [data, kits] = await Promise.all([loadAllWithUtee(supabase, user.id), ownKits(supabase)]);
+  const today = isoToday();
+  const s = summarise(data.episodes, data.treatments, today);
   const p = patterns(data.episodes, data.symptoms, data.triggers, data.treatments);
   const open = s.openEpisode;
-  const openRows = open ? data.symptoms.filter((x) => x.episode_id === open.id) : [];
-  const latestDay = openRows.reduce((m, x) => (x.logged_on > m ? x.logged_on : m), "");
-  const openSymptoms = openRows.filter((x) => x.logged_on === latestDay).map((x) => x.symptom);
-  const flag = open ? redFlagFor(openSymptoms, profile.pregnant_or_trying) : { show: false as const };
-  const communityUrl = process.env.NEXT_PUBLIC_COMMUNITY_URL;
-  const storeUrl = process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL ?? "#";
   const brandNew = data.episodes.length === 0;
+
+  let state: HeroState;
+  if (brandNew) state = { kind: "new" };
+  else if (open) {
+    const rows = data.symptoms.filter((x) => x.episode_id === open.id);
+    const checkin = data.checkins.find((c) => c.on_date === today);
+    state = {
+      kind: "open",
+      uti: {
+        id: open.id,
+        startedOn: open.started_on,
+        day: s.openDay,
+        feelingToday: checkin?.feeling ?? null,
+        noteToday: checkin?.note ?? null,
+        symptomsToday: rows.filter((x) => x.logged_on === today).map((x) => ({ key: x.symptom, other: x.other_text, severity: x.severity ?? null })),
+        yesterdaySymptoms: rows.filter((x) => x.logged_on === isoDaysAgo(1)).map((x) => x.symptom),
+        symptomOrder: orderByUsage(SYMPTOMS.map((x) => x.key), data.symptoms.map((x) => ({ key: x.symptom }))),
+        unrated: data.treatments.filter((t) => t.episode_id === open.id && !t.worked).map((t) => ({ id: t.id, name: antibioticName(t.antibiotic_id, t.other_name) })),
+      },
+    };
+  } else {
+    // A Utee result published in the last week is worth a line on the hero.
+    const recent = kits.find((k) => k.reportReady && k.reportAt && daysBetween(k.reportAt.slice(0, 10), today) <= 7);
+    state = { kind: "between", daysSince: s.daysSinceLast ?? 0, result: recent ? { kitId: recent.id, code: recent.code } : null };
+  }
+
   const taking = data.preventions.filter((x) => !x.stopped_on);
-  const today = new Date().toISOString().slice(0, 10);
-  const feelingToday = data.checkins.find((c) => c.on_date === today)?.feeling ?? null;
-  // "Edit today" once something has been logged for today on the open UTI; "Log today" on a new day.
-  const loggedToday = !!open && (openRows.some((x) => x.logged_on === today) || feelingToday !== null);
   const glance = passportGlance({ utis6m: s.episodes6m, utis12m: s.episodes12m }, profile, data.preventions, data.investigations, data.cultures);
-  const passportStarted = !!(profile.local_hospital || profile.first_uti_onset || profile.medical_history.length || data.investigations.length || data.cultures.length);
+  const gated = data.episodes.length >= 2;
+  const storeUrl = process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL ?? "#";
+  const communityUrl = process.env.NEXT_PUBLIC_COMMUNITY_URL;
 
   return (
     <div className="space-y-6">
@@ -40,95 +65,53 @@ export default async function TrackerHome() {
         <Link href="/portal/passport/settings" className="text-sm font-semibold text-maroon">Settings</Link>
       } />
 
-      <RedFlagBanner flag={flag} />
+      <TodayHero state={state} pregnantOrTrying={profile.pregnant_or_trying} />
 
-      {brandNew ? (
-        <Card className="bg-gradient-brand text-white" data-testid="new-hero">
-          <p className="font-display text-3xl font-light mb-2">{copy.dashboard.welcomeHeading}</p>
-          <p className="text-sm text-white/85 mb-5 leading-relaxed max-w-xl">{copy.dashboard.welcomeBody}</p>
-          <div className="flex flex-wrap items-center gap-4">
-            <LinkButton href="/portal/passport/setup?mode=utis" variant="white">{copy.dashboard.setUpWithUna}</LinkButton>
-            <Link href="/portal/passport/log" className="text-sm font-semibold text-white underline underline-offset-4">{copy.dashboard.logInstead}</Link>
-          </div>
-        </Card>
-      ) : open ? (
-        <Card className="relative bg-gradient-brand text-white" data-testid="open-episode-card">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              {/* The whole card opens this UTI; the buttons sit above the stretched link. */}
-              <Link href={`/portal/passport/episodes/${open.id}`} className="font-display text-3xl font-light after:absolute after:inset-0 after:rounded-card" aria-label={copy.dashboard.openEpisodeLink}>
-                {copy.dashboard.openEpisodeDay(s.openDay)}
-              </Link>
-              <p className="text-sm text-white/85 mt-1">Started {formatDay(open.started_on)}</p>
-            </div>
-            <div className="relative z-10 flex flex-wrap gap-2">
-              <LinkButton href={`/portal/passport/episodes/${open.id}`} variant="white">{loggedToday ? copy.dashboard.editToday : copy.dashboard.logToday}</LinkButton>
-              <QuickCheckin episodeId={open.id} feelingToday={feelingToday} />
-            </div>
-          </div>
-        </Card>
-      ) : (
-        <Card className="bg-gradient-brand text-white">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <p className="font-display text-3xl font-light">{copy.dashboard.sinceLast(s.daysSinceLast ?? 0)}</p>
-            <LinkButton href="/portal/passport/log" variant="white">{copy.dashboard.logNew}</LinkButton>
-          </div>
-        </Card>
-      )}
-
-      <PassportCard glance={glance} started={passportStarted} />
-
-      <Card data-testid="prevention-card">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <CardTitle>{copy.dashboard.prevention}</CardTitle>
-          {taking.length > 0 && <Link href="/portal/passport/record?tab=taking" className="text-sm font-semibold text-maroon min-h-[44px] inline-flex items-center">{copy.dashboard.preventionManage}</Link>}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <div className="contents lg:block lg:space-y-6">
+          <div className="order-1 lg:order-none"><PassportCard glance={glance} brandNew={brandNew} /></div>
+          {gated && <div className="order-4 lg:order-none"><PatternsCard p={p} /></div>}
         </div>
-        {taking.length > 0 ? (
-          <PreventionPills rows={taking} />
-        ) : (
-          <div>
-            <p className="text-sm text-slate-600 mb-4 max-w-xl">{copy.dashboard.preventionEmpty}</p>
-            <LinkButton href="/portal/passport/record?tab=taking" variant="secondary">{copy.dashboard.preventionAdd}</LinkButton>
+        <div className="contents lg:block lg:space-y-6">
+          <div className="order-2 lg:order-none">
+            <Card data-testid="prevention-card">
+              {taking.length > 0 ? (
+                <>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <CardTitle>{copy.dashboard.prevention}</CardTitle>
+                    <Link href="/portal/passport/record?tab=taking" className="text-sm font-semibold text-maroon min-h-[44px] inline-flex items-center">{copy.dashboard.preventionManage}</Link>
+                  </div>
+                  <PreventionPills rows={taking} />
+                </>
+              ) : (
+                <div className="text-center">
+                  <CardTitle>{copy.dashboard.prevention}</CardTitle>
+                  <p className="mx-auto max-w-sm text-[13px] text-[#5a4a6e] -mt-2 mb-4">{copy.dashboard.takingEmpty}</p>
+                  <LinkButton href="/portal/passport/record?tab=taking" variant="secondary">{copy.dashboard.addSomething}</LinkButton>
+                </div>
+              )}
+            </Card>
           </div>
-        )}
-      </Card>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="relative" data-testid="last-year-card">
-          <CardTitle>{copy.dashboard.lastYear}</CardTitle>
-          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
-            <Stat label="UTIs, 6 months" value={s.episodes6m} />
-            <Stat label="UTIs, 12 months" value={s.episodes12m} />
-            <Stat label="Treatment courses" value={s.treatmentCourses12m} />
-            <Stat label="Preventive courses" value={s.preventiveCourses12m} />
-          </dl>
-          {s.averageLengthDays !== null && <p className="text-sm text-slate-700 mb-4">Average length: {s.averageLengthDays} days</p>}
-          <MonthStrip months={s.months} />
-          <div className="mt-5">
-            {/* Stretched link: the whole card opens the history page. */}
-            <Link href="/portal/passport/history" className={`${buttonBase} ${buttonVariants.secondary} after:absolute after:inset-0 after:rounded-card`}>
-              {copy.dashboard.seeHistory}
-            </Link>
-          </div>
-        </Card>
-
-        <PatternsCard p={p} />
+          {gated && (
+            <div className="order-3 lg:order-none">
+              <Card className="relative" data-testid="last-year-card">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <CardTitle>{copy.dashboard.last12}</CardTitle>
+                  {/* Stretched link: the whole card opens History. */}
+                  <Link href="/portal/passport/history" className="text-sm font-semibold text-maroon min-h-[44px] inline-flex items-center after:absolute after:inset-0 after:rounded-card">{copy.nav.history}</Link>
+                </div>
+                <MonthStrip months={s.months} />
+              </Card>
+            </div>
+          )}
+        </div>
       </div>
 
-      <p className="text-center text-xs text-slate-600">
+      {!gated && <p className="text-center text-[13px] text-[#5a4a6e]">{copy.dashboard.gatedNote}</p>}
+      <p className="text-center text-xs text-[#5a4a6e]">
         <a href={storeUrl} target="_blank" rel="noopener" className="font-semibold text-maroon">{copy.dashboard.orderTest}</a> · {copy.dashboard.orderTestLine}
         {communityUrl && <> · <a href={communityUrl} target="_blank" rel="noopener" className="font-semibold text-maroon">{copy.dashboard.community}</a></>}
       </p>
     </div>
   );
 }
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="font-display text-3xl font-light text-midnight">{value}</dd>
-    </div>
-  );
-}
-

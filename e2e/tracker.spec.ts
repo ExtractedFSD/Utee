@@ -103,14 +103,18 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
 
   let episodeUrl = "";
   await test.step("Log a UTI in a few taps; no red flag for ordinary symptoms", async () => {
-    await page.getByRole("link", { name: "Log your first UTI" }).click();
+    await page.getByRole("link", { name: "Use a form instead" }).click();
     await page.getByRole("button", { name: "Yesterday" }).click();
-    await page.getByRole("button", { name: "Burning or stinging when peeing" }).click();
-    await page.getByRole("button", { name: "Needing to pee more often" }).click();
-    await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
-    episodeUrl = page.url();
+    await page.getByRole("button", { name: "Burning when peeing" }).click();
+    await page.getByRole("button", { name: "Peeing more often" }).click();
+    await page.getByRole("radiogroup", { name: "Burning or stinging when peeing, how bad" }).getByRole("radio", { name: "6" }).click();
     await expect(page.getByTestId("red-flag")).toHaveCount(0);
+    await page.getByRole("button", { name: "Save and go to Today" }).click();
+    await expect(page.getByTestId("open-hero")).toBeVisible();
+    await expect(page.getByTestId("red-flag")).toHaveCount(0);
+    await page.getByTestId("open-hero").getByRole("link", { name: "Details" }).click();
+    await expect(page).toHaveURL(/\/portal\/passport\/episodes\//);
+    episodeUrl = page.url();
   });
 
   await test.step("Layout: primary action visible on load, Day shown once, nothing expanded", async () => {
@@ -208,19 +212,21 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await page.goto(episodeUrl);
   });
 
-  await test.step("Dashboard while open: Edit today once logged, Day card and 12 months card are links", async () => {
+  await test.step("Today while open: the check-in lives in the hero, chips reveal a rating, Details opens the UTI", async () => {
     await page.goto("/portal/passport");
-    const openCard = page.getByTestId("open-episode-card");
-    await expect(openCard.getByRole("link", { name: "Edit today" })).toBeVisible();
-    await expect(openCard.getByRole("link", { name: "Log today" })).toHaveCount(0);
-    await openCard.getByRole("link", { name: "Open this UTI" }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
-    await page.goto("/portal/passport");
-    await page.getByTestId("last-year-card").getByRole("link", { name: "See full history" }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker\/history$/);
+    const hero = page.getByTestId("open-hero");
+    await expect(hero).toContainText(/Day \d+ of this UTI/);
+    await hero.getByRole("radio", { name: "Good" }).click();
+    await expect(hero.getByTestId("hero-symptoms")).toBeVisible();
+    await hero.getByRole("button", { name: "Cloudy urine" }).click();
+    await hero.getByTestId("hero-rating").getByRole("radio", { name: "4" }).click();
+    await expect(hero.getByRole("button", { name: "Cloudy urine · 4" })).toBeVisible();
+    await expect(page.getByText("Quick actions")).toHaveCount(0);
+    await page.getByTestId("passport-nav").getByRole("link", { name: "History" }).click();
+    await expect(page).toHaveURL(/\/portal\/passport\/history$/);
     await page.goBack();
-    await openCard.getByRole("link", { name: "Edit today" }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
+    await hero.getByRole("link", { name: "Details" }).click();
+    await expect(page).toHaveURL(/\/portal\/passport\/episodes\//);
     await expect(page.getByTestId("today-card")).toBeVisible();
   });
 
@@ -375,9 +381,11 @@ test("tracker: a Utee test links without re-entry", async ({ browser }) => {
   await page.getByRole("button", { name: "Save and continue" }).click();
   await expect(page.getByText(`Kit ${kit.code}`)).toBeVisible();
 
-  await page.getByRole("link", { name: "Log your first UTI" }).click();
-  await page.getByRole("button", { name: "Save", exact: true }).click();
-  // Pregnancy answer alone shows the banner with its own wording.
+  await page.getByRole("link", { name: "Use a form instead" }).click();
+  // Pregnancy answer alone shows the banner with its own wording, before anything is ticked.
+  await expect(page.getByTestId("red-flag")).toContainText("midwife");
+  await page.getByRole("button", { name: "Save and go to Today" }).click();
+  await page.getByTestId("open-hero").getByRole("link", { name: "Details" }).click();
   await expect(page.getByTestId("red-flag")).toContainText("midwife");
   await page.getByTestId("about-card").getByRole("button", { name: /^Tests/ }).click();
   const tests = page.getByTestId("sheet-tests");
