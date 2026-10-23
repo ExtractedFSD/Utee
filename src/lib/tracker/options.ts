@@ -2,21 +2,21 @@
  * Fixed option lists for the tracker. Keys are what gets stored; labels are
  * what the user sees. Keep clinical-sounding wording in copy.ts.
  */
-export type Option = { key: string; label: string };
+export type Option = { key: string; label: string; short?: string };
 
 export const SYMPTOMS: Option[] = [
-  { key: "burning", label: "Burning or stinging when peeing" },
-  { key: "frequency", label: "Needing to pee more often" },
-  { key: "urgency", label: "Sudden urgent need to pee" },
-  { key: "cloudy", label: "Cloudy urine" },
-  { key: "smelly", label: "Strong-smelling urine" },
-  { key: "blood", label: "Blood in urine" },
-  { key: "lower_tummy_pain", label: "Pain low in the tummy" },
-  { key: "back_side_pain", label: "Pain in the back or side" },
-  { key: "fever_chills", label: "High temperature, shivering or chills" },
-  { key: "nausea_vomiting", label: "Feeling sick or being sick" },
-  { key: "confusion_tired", label: "Feeling confused or unusually tired" },
-  { key: "other", label: "Other" },
+  { key: "burning", label: "Burning or stinging when peeing", short: "Burning when peeing" },
+  { key: "frequency", label: "Needing to pee more often", short: "Peeing more often" },
+  { key: "urgency", label: "Sudden urgent need to pee", short: "Urgent need to pee" },
+  { key: "cloudy", label: "Cloudy urine", short: "Cloudy urine" },
+  { key: "smelly", label: "Strong-smelling urine", short: "Strong smell" },
+  { key: "blood", label: "Blood in urine", short: "Blood in urine" },
+  { key: "lower_tummy_pain", label: "Pain low in the tummy", short: "Pain low in the tummy" },
+  { key: "back_side_pain", label: "Pain in the back or side", short: "Pain in the back or side" },
+  { key: "fever_chills", label: "High temperature, shivering or chills", short: "High temperature or chills" },
+  { key: "nausea_vomiting", label: "Feeling sick or being sick", short: "Feeling or being sick" },
+  { key: "confusion_tired", label: "Feeling confused or unusually tired", short: "Confused or very tired" },
+  { key: "other", label: "Other", short: "Other" },
 ];
 
 export const TRIGGERS: Option[] = [

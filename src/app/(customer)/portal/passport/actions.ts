@@ -388,7 +388,7 @@ export async function updateOpenUti(input: {
 
 // ----------------------------------------------------------------- episodes
 
-export async function createEpisode(input: { startedOn: string; endedOn?: string | null; symptoms: string[]; otherText?: string }) {
+export async function createEpisode(input: { startedOn: string; endedOn?: string | null; symptoms: string[]; otherText?: string; severity?: Record<string, number | null> }) {
   const { user, supabase } = await session();
   const started = isoDate.safeParse(input.startedOn);
   if (!started.success || started.data > isoToday()) return { error: "Choose a start date that isn't in the future." };
@@ -415,6 +415,7 @@ export async function createEpisode(input: { startedOn: string; endedOn?: string
         symptom,
         other_text: symptom === "other" ? input.otherText?.trim() || null : null,
         logged_on: started.data,
+        severity: (() => { const v = input.severity?.[symptom]; return Number.isInteger(v) && (v as number) >= SEVERITY_MIN && (v as number) <= SEVERITY_MAX ? v : null; })(),
       }))
     );
   }

@@ -184,7 +184,7 @@ export async function loadAll(supabase: SupabaseClient, userId: string): Promise
 export async function ownKits(supabase: SupabaseClient) {
   const { data } = await supabase
     .from("kits")
-    .select("id, code, status, created_at, clinic_reports(status)")
+    .select("id, code, status, created_at, clinic_reports(status, completed_at)")
     .not("status", "in", "(generated,printed,voided)")
     .order("created_at", { ascending: false });
   return (data ?? []).map((k) => ({
@@ -193,5 +193,6 @@ export async function ownKits(supabase: SupabaseClient) {
     status: k.status as string,
     created_at: k.created_at as string,
     reportReady: ((k.clinic_reports as unknown as { status: string }[] | null) ?? []).some((r) => r.status === "complete"),
+    reportAt: ((k.clinic_reports as unknown as { status: string; completed_at: string | null }[] | null) ?? []).find((r) => r.status === "complete")?.completed_at ?? null,
   }));
 }

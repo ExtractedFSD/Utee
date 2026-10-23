@@ -399,7 +399,7 @@ export type PassportGlance = {
   lastInvestigation: { title: string; detail: string; on: string } | null;
   investigationCount: number;
   /** Most often found organism, with how many cultures it appeared in. */
-  mainOrganism: { name: string; times: number; of: number } | null;
+  mainOrganism: { name: string; times: number; of: number; source: "utee" | "patient" } | null;
   lastCulture: { title: string; on: string } | null;
   allergies: string[];
   medicalHistory: string[];
@@ -425,7 +425,14 @@ export function passportGlance(
     activeProphylaxis: active.map(prophylaxisLine),
     lastInvestigation: last ? { ...investigationLine(last), on: last.performed_on! } : null,
     investigationCount: investigations.length,
-    mainOrganism: cs.organisms[0] ? { name: cs.organisms[0].short, times: cs.organisms[0].times, of: cs.positive } : null,
+    mainOrganism: cs.organisms[0]
+      ? {
+          name: cs.organisms[0].short,
+          times: cs.organisms[0].times,
+          of: cs.positive,
+          source: [...cultures].sort((a, b) => ((a.sample_on ?? "") < (b.sample_on ?? "") ? 1 : -1)).find((c) => c.organisms.some((o) => o.key === cs.organisms[0].key))?.source === "utee" ? "utee" : "patient",
+        }
+      : null,
     lastCulture: latestCulture ? { title: cultureLine(latestCulture).title, on: latestCulture.sample_on! } : null,
     allergies: (profile?.allergies ?? []).map((a) => [antibioticName(a.antibiotic_id, a.other_name), a.reaction?.trim()].filter(Boolean).join(": ")),
     medicalHistory: historyLabels,

@@ -28,7 +28,7 @@ export function sectionFor(pathname: string): Section {
 
 /** Full-screen flows (consent, the setup chat) stand alone, without the bar. */
 export function navHidden(pathname: string): boolean {
-  return /\/portal\/passport\/(consent|setup)/.test(pathname);
+  return /\/portal\/passport\/(consent|setup|log)/.test(pathname);
 }
 
 export function PassportNav({ variant, unaEnabled, unaOpen, onUna, hydrated }: { variant: "phone" | "desktop"; unaEnabled: boolean; unaOpen: boolean; onUna: () => void; hydrated: boolean }) {
