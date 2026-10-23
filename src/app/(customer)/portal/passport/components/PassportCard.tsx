@@ -30,7 +30,7 @@ export function PassportCard({ glance, brandNew }: { glance: PassportGlance; bra
       <dl className="grid grid-cols-3 gap-3 mb-2">
         <Stat label={copy.passport.utis6m} value={String(glance.utis6m)} />
         <Stat label={copy.passport.utis12m} value={String(glance.utis12m)} />
-        <Stat label={copy.passport.lifetime} value={glance.lifetime === null ? "–" : String(glance.lifetime)} href={glance.lifetime === null ? "/portal/passport/record?tab=about" : undefined} />
+        <Stat label={copy.passport.lifetimeEstimate} value={glance.lifetime === null ? null : String(glance.lifetime)} href="/portal/passport/record?tab=about" />
       </dl>
       <dl className="divide-y divide-[rgba(29,0,58,.08)] text-sm">
         <div className={row}>
@@ -73,11 +73,16 @@ export function PassportCard({ glance, brandNew }: { glance: PassportGlance; bra
   );
 }
 
-function Stat({ label, value, href }: { label: string; value: string; href?: string }) {
+/** A number, or an explicit "Add" when it can only come from the person and has not been given. */
+function Stat({ label, value, href }: { label: string; value: string | null; href?: string }) {
   const body = (
     <>
       <dt className="text-xs text-[#5a4a6e]">{label}</dt>
-      <dd className="font-display text-[28px] font-light leading-tight text-midnight">{value}</dd>
+      {value === null ? (
+        <dd className="pt-2 text-sm font-semibold text-maroon">{copy.dashboard.add}</dd>
+      ) : (
+        <dd className="font-display text-[28px] font-light leading-tight text-midnight">{value}</dd>
+      )}
     </>
   );
   return href ? <Link href={href} className="block">{body}</Link> : <div>{body}</div>;

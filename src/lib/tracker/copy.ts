@@ -60,6 +60,7 @@ export const copy = {
     utis6m: "UTIs, 6 months",
     utis12m: "UTIs, 12 months",
     lifetime: "Lifetime",
+    lifetimeEstimate: "Lifetime, your estimate",
     lifetimeUnknown: "Add in About you",
     prophylaxis: "Taking to prevent UTIs",
     prophylaxisNone: "Nothing logged",
