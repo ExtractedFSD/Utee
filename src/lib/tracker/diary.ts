@@ -1,5 +1,5 @@
 import { FEELINGS, SYMPTOMS, labelFor } from "./options";
-import { antibioticName } from "./search";
+import { antibioticDisplayName } from "./search";
 import { daysBetween, isoToday, type EpisodeRow } from "./stats";
 
 /*
@@ -131,7 +131,7 @@ export function diaryEntries(
   }
   for (const t of treatments) {
     if (!t.started_on) continue;
-    entry(t.started_on).started.push(antibioticName(t.antibiotic_id, t.other_name));
+    entry(t.started_on).started.push(antibioticDisplayName(t.antibiotic_id, t.other_name));
   }
   for (const t of tests) {
     if (!t.tested_on) continue;
