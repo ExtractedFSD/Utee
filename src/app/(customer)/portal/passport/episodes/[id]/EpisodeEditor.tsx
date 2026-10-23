@@ -168,7 +168,7 @@ export function EpisodeEditor({
       </Sheet>
 
       {/* ---------------------------------------------------------- how it went */}
-      {means.length > 0 && (
+      {means.length > 1 && (
         <Card data-testid="score-card">
           <div className="flex flex-wrap items-baseline justify-between gap-2 mb-4">
             <h2 className="font-display text-2xl font-light text-midnight">{copy.episode.howItWent}</h2>
