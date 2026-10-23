@@ -18,7 +18,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
 
   await test.step("Anyone can create an account", async () => {
     await loginViaUi(page, email, "/portal/passport", { name: "Tracker Tester" });
-    await expect(page).toHaveURL(/\/portal\/tracker\/consent/);
+    await expect(page).toHaveURL(/\/portal\/passport\/consent/);
     const { data: profile } = await admin().from("profiles").select("id, full_name, date_of_birth").eq("email", email).single();
     expect(profile?.full_name).toBe("Tracker Tester");
     expect(profile?.date_of_birth).toBe("1990-05-14");
@@ -30,7 +30,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await expect(page.getByText(/Tick the first box/)).toBeVisible();
     await page.getByLabel(/I agree to Utee storing my tracker entries/).check();
     await page.getByRole("button", { name: "Start my UTI Passport" }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker\/setup/);
+    await expect(page).toHaveURL(/\/portal\/passport\/setup/);
     const { data: consents } = await admin().from("tracker_consents").select("kind, consent_version, consent_text").eq("user_id", (await admin().from("profiles").select("id").eq("email", email).single()).data!.id);
     expect(consents?.map((c) => c.kind)).toEqual(["tracker"]);
     expect(consents?.[0].consent_version).toBeTruthy();
@@ -68,7 +68,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await page.getByRole("button", { name: "Send" }).click();
     await expect(chat).toContainText("All set. Your UTI Passport is ready.");
     await page.getByTestId("guided-done").getByRole("link", { name: "Go to my passport" }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker$/);
+    await expect(page).toHaveURL(/\/portal\/passport$/);
     const card = page.getByTestId("prevention-card");
     await expect(card).toContainText("D-mannose");
     await expect(card).toContainText("Vaginal oestrogen");
@@ -77,7 +77,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
 
   await test.step("What I'm taking: rate, stop, and the history is kept", async () => {
     await page.getByTestId("prevention-card").getByRole("link", { name: "Manage" }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker\/prevention$/);
+    await expect(page).toHaveURL(/\/portal\/passport\/prevention$/);
     const current = page.getByTestId("prevention-current");
     await current.getByRole("button", { name: /^D-mannose/ }).click();
     const sheet = page.getByTestId("sheet-prevention");
@@ -117,25 +117,25 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     episodeUrl = page.url();
   });
 
-  await test.step("Layout: primary action visible on load, Day shown once, nothing expanded", async () => {
-    const better = page.getByRole("button", { name: "I feel better" });
-    await expect(better).toBeVisible();
-    const box = await better.boundingBox();
-    expect(box && box.y + box.height <= PHONE.height, "I feel better is inside the first screen").toBe(true);
+  await test.step("Layout: the UTI page is the detail view, dated title, one filled action, nothing expanded", async () => {
+    await expect(page.getByRole("button", { name: "I feel better" })).toBeVisible();
     expect(await page.getByText(/Day \d+/).count()).toBe(1);
     expect(await page.getByRole("dialog").count()).toBe(0);
-    await expect(page.getByTestId("today-card")).toBeVisible();
-    // Feeling faces carry text labels for screen readers.
-    await expect(page.getByRole("radio", { name: "Great" })).toBeVisible();
+    await expect(page.getByTestId("today-card")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(/^Since /);
   });
 
-  await test.step("A red-flag symptom shows the safety banner inside the Today card; removing it hides it", async () => {
-    await page.getByRole("button", { name: "Blood in urine" }).click();
-    await expect(page.getByTestId("today-card").getByTestId("red-flag")).toBeVisible();
+  await test.step("A red-flag symptom ticked in the hero shows the safety banner at once; unticking hides it", async () => {
+    await page.goto("/portal/passport");
+    const hero = page.getByTestId("open-hero");
+    await hero.getByRole("radio", { name: "OK" }).click();
+    await hero.getByRole("button", { name: "Blood in urine" }).click();
+    await expect(page.getByTestId("red-flag")).toBeVisible();
     await expect(page.getByTestId("red-flag")).toContainText("111");
-    await expect(page.getByText("Saved")).toBeVisible();
-    await page.getByRole("button", { name: "Blood in urine" }).click();
+    await expect(hero.getByText("Saved ✓")).toBeVisible();
+    await hero.getByTestId("hero-rating").getByRole("button", { name: "Untick" }).click();
     await expect(page.getByTestId("red-flag")).toHaveCount(0);
+    await page.goto(episodeUrl);
   });
 
   await test.step("About this UTI: add a trigger, a treatment from the picker, and a test", async () => {
@@ -174,30 +174,27 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await expect(about.getByRole("button", { name: /^Tests/ })).toContainText("Dipstick at home · Positive");
   });
 
-  await test.step("Feeling scale is one tap", async () => {
-    await page.getByRole("radio", { name: "Good" }).click();
-    await expect(page.getByRole("radio", { name: "Good" })).toHaveAttribute("aria-checked", "true");
-  });
-
-  await test.step("Each ticked symptom gets a 1 to 10 scale; the rating and a note land in the diary", async () => {
-    const severity = page.getByTestId("severity-today");
-    await expect(severity).toBeVisible();
-    await severity.getByRole("radiogroup", { name: "Burning or stinging when peeing, how bad" }).getByRole("radio", { name: "7" }).click();
-    await expect(severity.getByRole("radiogroup", { name: "Burning or stinging when peeing, how bad" }).getByRole("radio", { name: "7" })).toHaveAttribute("aria-checked", "true");
-    await page.getByRole("button", { name: "A note about today" }).click();
-    await page.getByLabel("A note about today").fill("Drank two litres, saw the pharmacist");
-    await page.getByLabel("A note about today").blur();
-    await expect(page.getByText("Saved")).toBeVisible();
+  await test.step("A chip in the hero reveals a 1 to 10 row; the rating and a note land in the diary", async () => {
+    await page.goto("/portal/passport");
+    const hero = page.getByTestId("open-hero");
+    await hero.getByRole("radio", { name: "Good" }).click();
+    await hero.getByRole("button", { name: /^Burning when peeing/ }).click();
+    await hero.getByTestId("hero-rating").getByRole("radio", { name: "7" }).click();
+    await expect(hero.getByRole("button", { name: "Burning when peeing · 7" })).toBeVisible();
+    await hero.getByRole("button", { name: "Add a note" }).click();
+    await hero.getByLabel("A note about today").fill("Drank two litres, saw the pharmacist");
+    await hero.getByLabel("A note about today").blur();
+    await expect(hero.getByText("Saved ✓")).toBeVisible();
     const userId = (await admin().from("profiles").select("id").eq("email", email).single()).data!.id;
     const { data: rated } = await admin().from("tracker_symptoms").select("symptom, severity").eq("user_id", userId).eq("symptom", "burning").order("logged_on", { ascending: false }).limit(1);
     expect(rated?.[0]?.severity).toBe(7);
     const { data: checkin } = await admin().from("tracker_checkins").select("feeling, note").eq("user_id", userId).order("on_date", { ascending: false }).limit(1);
     expect(checkin?.[0]).toMatchObject({ feeling: 4, note: "Drank two litres, saw the pharmacist" });
 
-    await page.goto("/portal/passport/diary");
+    await page.goto("/portal/passport/history?view=days");
     const diary = page.locator("[data-testid=diary-month]").first();
-    await expect(diary).toContainText("Good");
-    await expect(diary).toContainText("Burning or stinging when peeing 7");
+    await expect(diary).toContainText("Feeling good");
+    await expect(diary).toContainText("Burning when peeing 7");
     await expect(diary).toContainText("Drank two litres, saw the pharmacist");
     // A day outside any UTI can still be added: a feeling and a note.
     await page.getByRole("button", { name: "Add to my diary" }).click();
@@ -227,7 +224,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await page.goBack();
     await hero.getByRole("link", { name: "Details" }).click();
     await expect(page).toHaveURL(/\/portal\/passport\/episodes\//);
-    await expect(page.getByTestId("today-card")).toBeVisible();
+    await expect(page.getByTestId("about-card")).toBeVisible();
   });
 
   await test.step("I feel better: close the episode and rate the antibiotic", async () => {
@@ -236,7 +233,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await panel.getByRole("button", { name: "Yes", exact: true }).click();
     await panel.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByText(/^Ended /)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Reopen" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reopen this UTI" })).toBeVisible();
   });
 
   await test.step("Dashboard and history reflect it as facts", async () => {
@@ -310,7 +307,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await page.getByTestId("end-date").getByLabel("When did it end?").fill(fiveDaysAgo);
     await page.getByRole("button", { name: "Burning or stinging when peeing" }).click();
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
+    await expect(page).toHaveURL(/\/portal\/passport\/episodes\//);
     await expect(page.getByText(/^Ended /)).toBeVisible();
     await expect(page.getByTestId("today-card")).toHaveCount(0);
     const about = page.getByTestId("about-card");
@@ -322,13 +319,13 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: "Delete this UTI" }).click();
     await page.getByRole("button", { name: "Yes, delete it" }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker\/history/);
+    await expect(page).toHaveURL(/\/portal\/passport\/history/);
   });
 
   await test.step("Delete is only reachable via the menu, with confirmation", async () => {
     await page.goto("/portal/passport/log");
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker\/episodes\//);
+    await expect(page).toHaveURL(/\/portal\/passport\/episodes\//);
     expect(await page.getByRole("button", { name: "Delete this UTI" }).count()).toBe(0);
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: "Delete this UTI" }).click();
@@ -338,7 +335,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     await page.getByRole("button", { name: "More actions" }).click();
     await page.getByRole("menuitem", { name: "Delete this UTI" }).click();
     await page.getByRole("button", { name: "Yes, delete it" }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker\/history/);
+    await expect(page).toHaveURL(/\/portal\/passport\/history/);
     const json = await page.request.get("/portal/passport/export?format=json");
     expect((await json.json()).episodes).toHaveLength(1);
   });
@@ -357,7 +354,7 @@ test("tracker: sign up to GP summary on a phone", async ({ browser }) => {
     expect(log?.map((l) => l.action)).toContain("tracker_data_deleted");
     expect(log?.map((l) => l.action)).toContain("data_exported");
     await page.goto("/portal/passport");
-    await expect(page).toHaveURL(/\/portal\/tracker\/consent/);
+    await expect(page).toHaveURL(/\/portal\/passport\/consent/);
   });
 
   await ctx.close();
@@ -374,7 +371,7 @@ test("tracker: a Utee test links without re-entry", async ({ browser }) => {
   await page.getByLabel(/I agree to Utee storing/).check();
   await page.getByRole("button", { name: "Start my UTI Passport" }).click();
   await page.getByRole("link", { name: "Prefer a form?" }).click();
-  await expect(page).toHaveURL(/\/portal\/tracker\/about-me/);
+  await expect(page).toHaveURL(/\/portal\/passport\/about-me/);
   const pregnant = page.getByRole("radiogroup", { name: "pregnant_or_trying" }).getByRole("button", { name: "Yes", exact: true });
   await pregnant.click();
   await expect(pregnant).toHaveAttribute("aria-pressed", "true");
@@ -408,7 +405,7 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await page.goto("/portal/passport/consent");
   await page.getByLabel(/I agree to Utee storing/).check();
   await page.getByRole("button", { name: "Start my UTI Passport" }).click();
-  await expect(page).toHaveURL(/\/portal\/tracker\/setup/);
+  await expect(page).toHaveURL(/\/portal\/passport\/setup/);
   const chat = page.getByTestId("guided-chat");
   const chips = page.getByTestId("chat-chips");
   const input = page.getByPlaceholder("Type here...");
@@ -473,7 +470,7 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   await type("that's all");
   await expect(chat).toContainText("All set. Your UTI Passport is ready.");
   await page.getByTestId("guided-done").getByRole("link", { name: "See my history" }).click();
-  await expect(page).toHaveURL(/\/portal\/tracker\/history/);
+  await expect(page).toHaveURL(/\/portal\/passport\/history/);
   const json = await page.request.get("/portal/passport/export?format=json");
   const body = await json.json();
   expect(body.episodes).toHaveLength(2);
@@ -631,7 +628,7 @@ test("tracker: passport details, an investigation and the passport PDF", async (
   await page.getByLabel(/I agree to Utee storing/).check();
   await page.getByRole("button", { name: "Start my UTI Passport" }).click();
   await page.getByRole("link", { name: "Prefer a form?" }).click();
-  await expect(page).toHaveURL(/\/portal\/tracker\/about-me/);
+  await expect(page).toHaveURL(/\/portal\/passport\/about-me/);
 
   await test.step("About you takes the passport fields, all optional", async () => {
     await page.getByRole("radiogroup", { name: "first_uti_onset" }).getByRole("button", { name: "As an adult" }).click();
@@ -647,7 +644,7 @@ test("tracker: passport details, an investigation and the passport PDF", async (
     await page.getByLabel("Your local hospital").fill("Royal Berkshire Hospital");
     await page.getByLabel("NHS number (optional)").fill("123 456 7890");
     await page.getByRole("button", { name: "Save and continue" }).click();
-    await expect(page).toHaveURL(/\/portal\/tracker$/);
+    await expect(page).toHaveURL(/\/portal\/passport$/);
     const { data: profile } = await admin().from("tracker_profiles").select("local_hospital, nhs_number, first_uti_onset, first_uti_year, lifetime_utis, medical_history, allergies").eq("user_id", user.id).single();
     expect(profile).toMatchObject({ local_hospital: "Royal Berkshire Hospital", nhs_number: "1234567890", first_uti_onset: "adult", first_uti_year: 2015, lifetime_utis: 20, medical_history: ["diabetes"] });
     expect(profile?.allergies).toEqual([{ antibiotic_id: "trimethoprim", other_name: null, reaction: "Rash" }]);
@@ -700,7 +697,7 @@ test("tracker: passport details, an investigation and the passport PDF", async (
     await page.goto("/portal/passport");
     await expect(page.getByTestId("passport-card")).toContainText("USS KUB");
     await expect(page.getByTestId("passport-card")).toContainText("E. coli");
-    await page.goto("/portal/passport/timeline");
+    await page.goto("/portal/passport/history?view=everything");
     await expect(page.getByText("Result", { exact: true }).first()).toBeVisible();
     await expect(page.locator("[data-testid=timeline-month]", { hasText: "USS KUB" })).toBeVisible();
     const pdf = await page.request.get("/portal/passport/passport");

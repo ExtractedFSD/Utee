@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diaryEntries, episodeOn, feelingStrip, scoreSummary, symptomScores } from "./diary";
+import { calendar, dayMeans, diaryEntries, episodeOn, feelingStrip, meanSummary, scoreSummary, symptomScores } from "./diary";
 
 const episode = { id: "e1", started_on: "2026-03-01", ended_on: "2026-03-05", notes: null };
 const symptoms = [
@@ -50,6 +50,21 @@ describe("diary", () => {
     expect(episodeOn([episode], "2026-03-03")?.id).toBe("e1");
     expect(episodeOn([episode], "2026-03-06")).toBeNull();
     expect(episodeOn([{ ...episode, ended_on: null }], "2026-03-19", "2026-03-20")?.id).toBe("e1");
+  });
+  it("lays the last days on a Monday-first grid and marks UTI days and today", () => {
+    // 2026-03-12 is a Thursday; 30 days back starts on Wednesday 11 Feb, so two blanks lead.
+    const cal = calendar(checkins, [episode], 30, "2026-03-12");
+    expect(cal.lead).toBe(2);
+    expect(cal.cells).toHaveLength(30);
+    expect(cal.cells[cal.cells.length - 1]).toMatchObject({ on: "2026-03-12", today: true, dayOfMonth: 12, feeling: null });
+    expect(cal.cells.find((c) => c.on === "2026-03-03")).toMatchObject({ inUti: true, feeling: null });
+    expect(cal.cells.find((c) => c.on === "2026-03-10")).toMatchObject({ inUti: false, feeling: 5 });
+  });
+  it("averages each day's ratings into a 1 to 10 bar", () => {
+    const points = symptomScores(symptoms, episode);
+    expect(dayMeans(points).map((d) => [d.day, d.mean])).toEqual([[1, 8], [2, 9], [4, 3]]);
+    expect(meanSummary(points)).toBe("Worst on day 2, easing to 3 out of 10 by day 4.");
+    expect(meanSummary(points.slice(0, 1))).toBeNull();
   });
   it("lays the last days out as a strip", () => {
     const strip = feelingStrip(checkins, 5, "2026-03-12");

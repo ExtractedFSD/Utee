@@ -2,27 +2,24 @@
 
 import Link from "next/link";
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
-import { Button, Card, LinkButton, StatusBadge, inputClass } from "@/components/ui";
+import { Button, Card, StatusBadge, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { COURSE_DAYS, COURSE_TYPES, SOURCES, SYMPTOMS, TEST_KINDS, TEST_RESULTS, TRIGGERS, WORKED, labelFor } from "@/lib/tracker/options";
 import { FREQUENCIES, ROUTES } from "@/lib/tracker/passport";
 import { redFlagFor } from "@/lib/tracker/redflags";
-import { antibioticName } from "@/lib/tracker/search";
+import { antibioticDisplayName, antibioticName } from "@/lib/tracker/search";
 import { askDateFor, episodeLength, formatDay, formatDayShort, isoToday } from "@/lib/tracker/stats";
 import type { EpisodeRow } from "@/lib/tracker/stats";
 import type { KitStatus } from "@/lib/status";
 import { Chip, ChipGroup, DateChips } from "../../components/Chips";
-import { FeelingFaces } from "../../components/FeelingFaces";
-import { ScoreChart } from "../../components/ScoreChart";
-import { SeverityScale } from "../../components/SeverityScale";
 import type { ScorePoint } from "@/lib/tracker/diary";
-import { scoreSummary } from "@/lib/tracker/diary";
+import { FEELING_SHADE, dayMeans, meanSummary } from "@/lib/tracker/diary";
 import { AntibioticPicker } from "../../components/AntibioticPicker";
 import { RedFlagBanner } from "../../components/RedFlagBanner";
 import { Sheet } from "../../components/Sheet";
 import {
-  addTest, addTreatment, copyYesterdaySymptoms, deleteEpisode, deleteTest, deleteTreatment, rateTreatment, saveDiaryEntry, setFeeling,
-  setSymptomSeverity, toggleSymptom, toggleTrigger, updateEpisode, updateTreatment,
+  addTest, addTreatment, deleteEpisode, deleteTest, deleteTreatment, rateTreatment,
+  toggleSymptom, toggleTrigger, updateEpisode, updateTreatment,
 } from "../../actions";
 
 type Item = { key: string; other: string | null; severity?: number | null };
@@ -40,13 +37,13 @@ const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
  * "About this UTI" as a collapsed summary that opens row by row.
  */
 export function EpisodeEditor({
-  episode, today, pregnantOrTrying, todaySymptoms, allSymptoms, yesterdaySymptoms, triggers, treatments, tests, feelingToday,
-  symptomOrder, triggerOrder, previousAntibiotics, lastSource, kits, noteToday = null, scores = [],
+  episode, today, pregnantOrTrying, todaySymptoms, allSymptoms, triggers, treatments, tests,
+  symptomOrder, triggerOrder, previousAntibiotics, lastSource, kits, scores = [],
 }: {
-  episode: EpisodeRow; today: string; pregnantOrTrying: string; todaySymptoms: Item[]; allSymptoms: string[]; yesterdaySymptoms: string[];
-  triggers: Item[]; treatments: Treatment[]; tests: TestItem[]; feelingToday: number | null;
+  episode: EpisodeRow; today: string; pregnantOrTrying: string; todaySymptoms: Item[]; allSymptoms: string[];
+  triggers: Item[]; treatments: Treatment[]; tests: TestItem[];
   symptomOrder: string[]; triggerOrder: string[]; previousAntibiotics: string[]; lastSource: string | null; kits: Kit[];
-  noteToday?: string | null; scores?: ScorePoint[];
+  scores?: ScorePoint[];
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -65,16 +62,10 @@ export function EpisodeEditor({
   // the tap and settle to the server's values once the action has finished.
   type Toggle = { key: string; on: boolean };
   const applyToggle = (state: string[], { key, on }: Toggle) => (on ? [...new Set([...state, key])] : state.filter((k) => k !== key));
-  const [symptomKeys, toggleSymptomNow] = useOptimistic(todaySymptoms.map((s) => s.key), applyToggle);
+  const symptomKeys = todaySymptoms.map((s) => s.key);
   const [triggerKeys, toggleTriggerNow] = useOptimistic(triggers.map((t) => t.key), applyToggle);
   // For a closed UTI the symptoms are one summary across the whole episode.
   const [allSymptomKeys, toggleAllSymptomNow] = useOptimistic(allSymptoms, applyToggle);
-  const [feeling, setFeelingNow] = useOptimistic(feelingToday, (_: number | null, next: number) => next);
-  // How bad each ticked symptom is today, 1 to 10, keyed by symptom.
-  const [severity, setSeverityNow] = useOptimistic(
-    Object.fromEntries(todaySymptoms.map((s) => [s.key, s.severity ?? null])) as Record<string, number | null>,
-    (state: Record<string, number | null>, next: { key: string; value: number | null }) => ({ ...state, [next.key]: next.value })
-  );
 
   const run: Run = (fn, optimistic) => {
     setError(null);
@@ -96,15 +87,15 @@ export function EpisodeEditor({
   const day = episodeLength(episode, today);
   const symptomSet = new Set(symptomKeys);
   const triggerSet = new Set(triggerKeys);
-  const yesterdayHasSymptoms = yesterdaySymptoms.length > 0;
   const flag = redFlagFor(symptomSet, pregnantOrTrying);
   const orderOptions = (list: { key: string; label: string }[], order: string[]) => order.map((k) => list.find((o) => o.key === k)!).filter(Boolean);
-  const dueToAsk = treatments.filter((t) => !t.worked && (askDateFor(t.started_on, t.days) ?? "9999") <= today);
+  const means = dayMeans(scores);
+  const title = open ? copy.episode.titleOpen(formatDay(episode.started_on)) : rangeText(episode.started_on, episode.ended_on!);
   const unrated = treatments.filter((t) => !t.worked);
   const onThisUti = treatments.map((t) => t.antibiotic_id);
 
   const treatmentSummary = (t: Treatment) =>
-    [antibioticName(t.antibiotic_id, t.other_name), t.days && `${t.days} day${t.days === 1 ? "" : "s"}${t.started_on ? ` from ${formatDay(t.started_on)}` : ""}`, labelFor(SOURCES, t.source)].filter(Boolean).join(" · ");
+    [antibioticDisplayName(t.antibiotic_id, t.other_name), t.days && `${t.days} day${t.days === 1 ? "" : "s"}${t.started_on ? ` from ${formatDay(t.started_on)}` : ""}`, labelFor(SOURCES, t.source)].filter(Boolean).join(" · ");
   const testSummary = (t: TestItem) =>
     t.kit_id ? `${labelFor(TEST_KINDS, "utee")} ${t.kitCode ?? ""}` : [labelFor(TEST_KINDS, t.kind), labelFor(TEST_RESULTS, t.result)].filter(Boolean).join(" · ");
 
@@ -112,21 +103,16 @@ export function EpisodeEditor({
     <div className="max-w-3xl mx-auto space-y-5">
       {/* ------------------------------------------------------------ header */}
       <div>
-        <Link href="/portal/passport/history" className="inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-maroon">
+        <Link href="/portal/passport/history" className="inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-maroon -ml-1">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m15 18-6-6 6-6" /></svg>
           {copy.episode.back}
         </Link>
-        <button type="button" onClick={() => setDateSheet(true)} className="block text-eyebrow uppercase text-maroon min-h-[44px] -mt-2" aria-label={copy.episode.changeStart}>
-          {open ? copy.episode.started(formatDayShort(episode.started_on), day) : copy.episode.ended(formatDayShort(episode.ended_on), day)}
-        </button>
-        <div className="flex flex-wrap items-center justify-between gap-3 -mt-1">
-          <h1 className="font-display text-4xl font-light text-midnight">{copy.episode.title}</h1>
-          <div className="relative flex items-center gap-2">
-            {open ? (
-              <Button onClick={() => { setEndedOn(isoToday()); setClosing(true); }}>{copy.episode.feelBetter}</Button>
-            ) : (
-              <Button variant="secondary" disabled={pending} onClick={() => run(() => updateEpisode(episode.id, { endedOn: null }))}>{copy.episode.reopen}</Button>
-            )}
+        <p className="text-eyebrow uppercase text-maroon mt-1">
+          {open ? copy.episode.eyebrowOpen(day, formatDayShort(episode.started_on)) : copy.episode.eyebrowEnded(formatDayShort(episode.ended_on), day)}
+        </p>
+        <div className="flex items-start justify-between gap-3 mt-1">
+          <h1 className="font-display text-[30px] font-light leading-tight text-midnight">{title}</h1>
+          <div className="relative shrink-0">
             <button
               type="button"
               aria-label={copy.episode.menu}
@@ -138,16 +124,18 @@ export function EpisodeEditor({
               <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
             </button>
             {menuOpen && (
-              <div role="menu" className="absolute right-0 top-12 z-30 min-w-[200px] rounded-2xl bg-white p-2 shadow-card">
-                <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); setConfirmDelete(true); }} className="w-full min-h-[44px] rounded-xl px-3 text-left text-sm font-semibold text-maroon hover:bg-pink-25">
-                  {copy.episode.delete}
-                </button>
+              <div role="menu" className="absolute right-0 top-12 z-30 min-w-[220px] rounded-2xl bg-white p-2 shadow-card">
+                <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); setDateSheet(true); }} className="w-full min-h-[44px] rounded-xl px-3 text-left text-sm font-semibold text-midnight hover:bg-pink-25">{copy.episode.changeStart}</button>
+                <a role="menuitem" href="/portal/passport/summary" className="block w-full min-h-[44px] rounded-xl px-3 py-3 text-left text-sm font-semibold text-midnight hover:bg-pink-25">{copy.episode.downloadSummary}</a>
+                <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); setConfirmDelete(true); }} className="w-full min-h-[44px] rounded-xl px-3 text-left text-sm font-semibold text-maroon hover:bg-pink-25">{copy.episode.delete}</button>
               </div>
             )}
           </div>
         </div>
         {error && <p className="text-sm text-rose-600 mt-2">{error}</p>}
       </div>
+
+      {open && flag.show && <RedFlagBanner flag={flag} />}
 
       {confirmDelete && (
         <Card className="border border-maroon/30" data-testid="confirm-delete">
@@ -169,7 +157,7 @@ export function EpisodeEditor({
           <DateChips value={endedOn} onChange={setEndedOn} />
           {unrated.map((t) => (
             <div key={t.id}>
-              <p className="text-sm font-semibold text-midnight mb-2">{copy.episode.howDidItGo(antibioticName(t.antibiotic_id, t.other_name))}</p>
+              <p className="text-sm font-semibold text-midnight mb-2">{copy.episode.howDidItGo(antibioticDisplayName(t.antibiotic_id, t.other_name))}</p>
               <div className="flex flex-wrap gap-2">
                 {WORKED.map((w) => <Chip key={w.key} selected={t.worked === w.key} disabled={pending} onClick={() => run(() => rateTreatment(t.id, w.key))}>{w.label}</Chip>)}
               </div>
@@ -179,88 +167,37 @@ export function EpisodeEditor({
         </div>
       </Sheet>
 
-      {/* -------------------------------------------------------------- today */}
-      {open ? (
-        <Card data-testid="today-card">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <h2 className="font-display text-2xl font-light text-midnight">{copy.episode.today(formatDayShort(today))}</h2>
-            <span aria-live="polite" className={`inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 transition-opacity ${saved ? "opacity-100" : "opacity-0"}`}>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 6 9 17l-5-5" /></svg>
-              {copy.episode.saved}
-            </span>
-          </div>
-          <p className="text-sm font-semibold text-slate-700 mb-2">{copy.episode.feelingQuestion}</p>
-          <FeelingFaces value={feeling} onChange={(f) => run(() => setFeeling(episode.id, f), () => setFeelingNow(f))} />
-          <p className="text-sm font-semibold text-slate-700 mt-5 mb-2">{copy.episode.noticingQuestion}</p>
-          <div className="flex flex-wrap gap-2">
-            {yesterdayHasSymptoms && (
-              <Chip size="lg" onClick={() => run(() => copyYesterdaySymptoms(episode.id), () => yesterdaySymptoms.forEach((key) => toggleSymptomNow({ key, on: true })))}>{copy.episode.sameAsYesterday}</Chip>
-            )}
-          </div>
-          <div className={yesterdayHasSymptoms ? "mt-2" : ""}>
-            <ChipGroup
-              options={orderOptions(SYMPTOMS, symptomOrder)}
-              selected={symptomSet}
-              onToggle={(key, on) => run(() => toggleSymptom(episode.id, key, on, symptomOther, today), () => toggleSymptomNow({ key, on }))}
-              otherText={symptomOther}
-              onOtherText={setSymptomOther}
-            />
-            {symptomSet.has("other") && (
-              <button type="button" className={linkBtn} disabled={pending} onClick={() => run(() => toggleSymptom(episode.id, "other", true, symptomOther, today))}>{copy.log.save}</button>
-            )}
-          </div>
-          {symptomKeys.length > 0 && (
-            <div className="mt-5 rounded-2xl bg-pink-25 p-4" data-testid="severity-today">
-              <p className="text-sm font-semibold text-slate-700">{copy.episode.severityQuestion}</p>
-              <p className="text-xs text-slate-500 mb-3">{copy.episode.severityHint}</p>
-              <div className="space-y-3">
-                {orderOptions(SYMPTOMS, symptomOrder).filter((o) => symptomSet.has(o.key)).map((o) => (
-                  <SeverityScale
-                    key={o.key}
-                    label={o.key === "other" ? symptomOther || o.label : o.label}
-                    value={severity[o.key] ?? null}
-                    onChange={(v) => run(() => setSymptomSeverity(episode.id, o.key, today, v), () => setSeverityNow({ key: o.key, value: v }))}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-          <NoteToday key={noteToday ?? ""} today={today} initial={noteToday ?? ""} run={run} />
-          {flag.show && <div className="mt-4"><RedFlagBanner flag={flag} /></div>}
-          {dueToAsk.map((t) => (
-            <div key={t.id} className="mt-5 rounded-2xl bg-pink-25 p-4">
-              <p className="text-sm font-semibold text-midnight mb-2">{copy.episode.howDidItGo(antibioticName(t.antibiotic_id, t.other_name))}</p>
-              <div className="flex flex-wrap gap-2">
-                {WORKED.map((w) => <Chip key={w.key} disabled={pending} onClick={() => run(() => rateTreatment(t.id, w.key))}>{w.label}</Chip>)}
-              </div>
-            </div>
-          ))}
-        </Card>
-      ) : (
-        <Card><p className="text-sm text-slate-700">{copy.episode.closedNote}</p></Card>
-      )}
-
-      {/* --------------------------------------------------------- the shape */}
-      {(open ? scores.length > 0 : scores.length > 1) && (
+      {/* ---------------------------------------------------------- how it went */}
+      {means.length > 0 && (
         <Card data-testid="score-card">
-          <h2 className="font-display text-2xl font-light text-midnight mb-1">{copy.episode.chartTitle}</h2>
-          <p className="text-sm text-slate-600 mb-4">{scoreSummary(scores) ?? copy.episode.chartIntro}</p>
-          <ScoreChart points={scores} />
+          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-4">
+            <h2 className="font-display text-2xl font-light text-midnight">{copy.episode.howItWent}</h2>
+            <p className="text-sm text-[#5a4a6e]">{copy.episode.scoreScale}</p>
+          </div>
+          <div className="flex items-end gap-1.5" style={{ height: 120 }} role="img" aria-label={means.map((m) => `day ${m.day}: ${m.mean} out of 10`).join(", ")}>
+            {means.map((m) => (
+              <div key={m.on} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1 h-full">
+                <span className="text-xs font-semibold text-midnight">{m.mean}</span>
+                <span className="w-full rounded-[6px]" style={{ height: `${Math.max(6, m.mean * 9)}%`, background: FEELING_SHADE[Math.max(1, Math.min(5, 6 - Math.ceil(m.mean / 2)))] }} />
+              </div>
+            ))}
+          </div>
+          <div className="mt-1 flex gap-1.5 text-[11px] text-[#8a7a9c]">
+            {means.map((m) => <span key={m.on} className="min-w-0 flex-1 truncate text-center">{means.length <= 8 ? formatDayShort(m.on).split(",")[0] : `D${m.day}`}</span>)}
+          </div>
+          {meanSummary(scores) && <p className="mt-3 text-sm text-[#5a4a6e]">{meanSummary(scores)}</p>}
         </Card>
       )}
 
       {/* --------------------------------------------------------- about this */}
       <Card data-testid="about-card">
-        <h2 className="font-display text-2xl font-light text-midnight mb-2">{copy.episode.aboutTitle}</h2>
-        <ul className="divide-y divide-slate-100">
-          {!open && (
-            <SummaryRow
-              label={copy.episode.rows.symptoms}
-              lines={allSymptomKeys.map((k) => (k === "other" ? symptomOther || "Other" : labelFor(SYMPTOMS, k)))}
-              isOpen={openRow === "symptoms"}
-              onOpen={() => setOpenRow("symptoms")}
-            />
-          )}
+        <ul className="divide-y divide-[rgba(29,0,58,.08)]">
+          <SummaryRow
+            label={copy.episode.rows.symptoms}
+            lines={allSymptomKeys.map((k) => (k === "other" ? symptomOther || "Other" : SYMPTOMS.find((o) => o.key === k)?.short ?? labelFor(SYMPTOMS, k)))}
+            isOpen={openRow === "symptoms"}
+            onOpen={() => setOpenRow("symptoms")}
+          />
           <SummaryRow
             label={copy.episode.rows.triggers}
             lines={[...triggerSet].map((k) => (k === "other" ? triggerOther || "Other" : labelFor(TRIGGERS, k)))}
@@ -282,7 +219,7 @@ export function EpisodeEditor({
           <SummaryRow
             label={copy.episode.rows.notes}
             lines={episode.notes ? [episode.notes.split("\n")[0]] : []}
-            emptyLabel={copy.episode.addNote}
+            emptyLabel={copy.episode.none}
             isOpen={openRow === "notes"}
             onOpen={() => setOpenRow("notes")}
           />
@@ -325,10 +262,24 @@ export function EpisodeEditor({
       </Card>
 
       <div className="flex justify-center pt-2">
-        <LinkButton href="/portal/passport/summary" variant="secondary">{copy.episode.downloadSummary}</LinkButton>
+        {open ? (
+          <Button onClick={() => { setEndedOn(isoToday()); setClosing(true); }}>{copy.episode.feelBetter}</Button>
+        ) : (
+          <Button variant="secondary" disabled={pending} onClick={() => run(() => updateEpisode(episode.id, { endedOn: null }))}>{copy.episode.reopenThis}</Button>
+        )}
       </div>
     </div>
   );
+}
+
+/** "21 to 24 Sept 2026", or "28 Sept to 2 Oct 2026" across a month, or the full dates across a year. */
+function rangeText(startIso: string, endIso: string): string {
+  const a = formatDay(startIso);
+  const b = formatDay(endIso);
+  if (startIso === endIso) return a;
+  if (startIso.slice(0, 4) !== endIso.slice(0, 4)) return `${a} to ${b}`;
+  if (startIso.slice(0, 7) === endIso.slice(0, 7)) return `${startIso.slice(8, 10).replace(/^0/, "")} to ${b}`;
+  return `${a.replace(/ \d{4}$/, "")} to ${b}`;
 }
 
 function SummaryRow({ label, lines, emptyLabel, isOpen, onOpen }: { label: string; lines: string[]; emptyLabel?: string; isOpen: boolean; onOpen: () => void }) {
@@ -337,13 +288,13 @@ function SummaryRow({ label, lines, emptyLabel, isOpen, onOpen }: { label: strin
     <li>
       <button type="button" onClick={onOpen} aria-expanded={isOpen} className="flex w-full min-h-[56px] items-center justify-between gap-4 py-3 text-left">
         <span className="min-w-0">
-          <span className="block text-xs text-slate-500">{label}</span>
+          <span className="block text-xs text-[#5a4a6e]">{label}</span>
           {isOpen ? (
-            <span className="block text-sm text-slate-500">{copy.episode.editing}</span>
+            <span className="block text-sm text-[#8a7a9c]">{copy.episode.editing}</span>
           ) : has ? (
-            lines.map((l, i) => <span key={i} className="block truncate text-sm font-semibold text-midnight">{l}</span>)
+            lines.map((l, i) => <span key={i} className="block text-sm font-semibold text-midnight">{l}</span>)
           ) : (
-            <span className="block text-sm text-slate-500">{emptyLabel ?? copy.episode.add}</span>
+            <span className="block text-sm text-[#8a7a9c]">{emptyLabel ?? copy.episode.noneRecorded}</span>
           )}
         </span>
         <span className="shrink-0 text-sm font-semibold text-maroon">{isOpen ? "" : has ? copy.episode.edit : copy.episode.add}</span>
@@ -383,7 +334,7 @@ function TreatmentSection({ episodeId, today, treatments, previous, onThisUti, l
             return (
               <li key={t.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-midnight">{antibioticName(t.antibiotic_id, t.other_name)}</p>
+                  <p className="text-sm font-semibold text-midnight">{antibioticDisplayName(t.antibiotic_id, t.other_name)}</p>
                   <p className="text-xs text-slate-600">
                     {[t.days && `${t.days} day${t.days === 1 ? "" : "s"}`, t.started_on && `from ${formatDay(t.started_on)}`, t.course_type && t.course_type !== "treatment" ? labelFor(COURSE_TYPES, t.course_type) : "", labelFor(SOURCES, t.source)].filter(Boolean).join(" · ")}
                   </p>
@@ -533,31 +484,6 @@ function TestSection({ episodeId, tests, kits, pending, run }: { episodeId: stri
         </ul>
       )}
       <Button variant="secondary" onClick={() => setAdding(true)}>{copy.episode.addTest}</Button>
-    </div>
-  );
-}
-
-/** Today's diary line, saved when the field loses focus. */
-function NoteToday({ today, initial, run }: { today: string; initial: string; run: Run }) {
-  const [note, setNote] = useState(initial);
-  const [openField, setOpenField] = useState(!!initial);
-  if (!openField) {
-    return <button type="button" className={`${linkBtn} mt-3 -ml-2`} onClick={() => setOpenField(true)}>{copy.episode.noteToday}</button>;
-  }
-  return (
-    <div className="mt-5">
-      <label htmlFor="note-today" className="block text-sm font-semibold text-slate-700 mb-2">{copy.episode.noteToday}</label>
-      <textarea
-        id="note-today"
-        value={note}
-        autoFocus={!initial}
-        onChange={(e) => setNote(e.target.value)}
-        onBlur={() => { if (note.trim() !== initial.trim()) run(() => saveDiaryEntry({ onDate: today, note })); }}
-        rows={2}
-        maxLength={1000}
-        className={inputClass}
-        placeholder={copy.episode.noteTodayPlaceholder}
-      />
     </div>
   );
 }
