@@ -49,20 +49,33 @@ export function Eyebrow({
   );
 }
 
+/** "‹ History": the way back from a deep page, in place of a "Back to" link on the right. */
+export function Breadcrumb({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href} className="inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-maroon -ml-1">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m15 18-6-6 6-6" /></svg>
+      {label}
+    </Link>
+  );
+}
+
 export function PageHeader({
   title,
   subtitle,
   eyebrow,
   action,
+  breadcrumb,
 }: {
   title: string;
   subtitle?: React.ReactNode;
   eyebrow?: string;
   action?: React.ReactNode;
+  breadcrumb?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
       <div className="max-w-2xl">
+        {breadcrumb && <div className="-mt-3 mb-1">{breadcrumb}</div>}
         {eyebrow && <Eyebrow className="text-maroon mb-3">{eyebrow}</Eyebrow>}
         <h1 className="font-display text-4xl sm:text-5xl font-light leading-[1.08] text-midnight">
           {title}

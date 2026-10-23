@@ -12,23 +12,15 @@ import { formatDay } from "@/lib/tracker/stats";
 export function PassportCard({ glance, started }: { glance: PassportGlance; started: boolean }) {
   return (
     <Card data-testid="passport-card">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <CardTitle>{copy.passport.title}</CardTitle>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/portal/passport/diary" className="min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon">{copy.passport.diary}</Link>
-          <Link href="/portal/passport/share" className="min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon">{copy.passport.share}</Link>
-          <Link href="/portal/passport/timeline" className="min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon">{copy.passport.timeline}</Link>
-          <a href="/portal/passport/passport" className="min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon">{copy.passport.download}</a>
-        </div>
-      </div>
+      <CardTitle>{copy.passport.title}</CardTitle>
 
       {!started ? (
         <div>
           <p className="text-sm text-slate-600 mb-4 max-w-xl">{copy.passport.completeBody}</p>
           <div className="flex flex-wrap gap-2">
-            <LinkButton href="/portal/passport/about-me?edit=1" variant="secondary">{copy.passport.aboutYou}</LinkButton>
-            <LinkButton href="/portal/passport/investigations" variant="secondary">{copy.investigations.add}</LinkButton>
-            <LinkButton href="/portal/passport/cultures" variant="secondary">{copy.cultures.add}</LinkButton>
+            <LinkButton href="/portal/passport/record?tab=about" variant="secondary">{copy.passport.aboutYou}</LinkButton>
+            <LinkButton href="/portal/passport/record?tab=investigations" variant="secondary">{copy.investigations.add}</LinkButton>
+            <LinkButton href="/portal/passport/record?tab=results" variant="secondary">{copy.cultures.add}</LinkButton>
           </div>
         </div>
       ) : (
@@ -36,7 +28,7 @@ export function PassportCard({ glance, started }: { glance: PassportGlance; star
           <dl className="grid grid-cols-3 gap-3">
             <Stat label={copy.passport.utis6m} value={String(glance.utis6m)} />
             <Stat label={copy.passport.utis12m} value={String(glance.utis12m)} />
-            <Stat label={copy.passport.lifetime} value={glance.lifetime === null ? "?" : String(glance.lifetime)} hint={glance.lifetime === null ? copy.passport.lifetimeUnknown : undefined} href={glance.lifetime === null ? "/portal/passport/about-me?edit=1" : undefined} />
+            <Stat label={copy.passport.lifetime} value={glance.lifetime === null ? "?" : String(glance.lifetime)} hint={glance.lifetime === null ? copy.passport.lifetimeUnknown : undefined} href={glance.lifetime === null ? "/portal/passport/record?tab=about" : undefined} />
           </dl>
           <div className="space-y-3 text-sm">
             <div>
@@ -44,31 +36,31 @@ export function PassportCard({ glance, started }: { glance: PassportGlance; star
               {glance.activeProphylaxis.length ? (
                 <ul className="space-y-0.5 text-slate-700">{glance.activeProphylaxis.map((line) => <li key={line}>{line}</li>)}</ul>
               ) : (
-                <Link href="/portal/passport/prevention" className="text-slate-500 hover:text-midnight">{copy.passport.prophylaxisNone}</Link>
+                <Link href="/portal/passport/record?tab=taking" className="text-slate-500 hover:text-midnight">{copy.passport.prophylaxisNone}</Link>
               )}
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[.14em] text-slate-500 mb-1">{copy.cultures.mainOrganism}</p>
               {glance.mainOrganism ? (
-                <Link href="/portal/passport/cultures" className="text-slate-700 hover:text-midnight">
+                <Link href="/portal/passport/record?tab=results" className="text-slate-700 hover:text-midnight">
                   <span className="font-semibold text-midnight">{glance.mainOrganism.name}</span>
                   <span className="text-slate-600"> in {glance.mainOrganism.times} of {glance.mainOrganism.of} positive result{glance.mainOrganism.of === 1 ? "" : "s"}</span>
                   {glance.lastCulture && <span className="text-slate-500"> · last {formatDay(glance.lastCulture.on)}</span>}
                 </Link>
               ) : (
-                <Link href="/portal/passport/cultures" className="text-slate-500 hover:text-midnight">{copy.cultures.culturesNone}</Link>
+                <Link href="/portal/passport/record?tab=results" className="text-slate-500 hover:text-midnight">{copy.cultures.culturesNone}</Link>
               )}
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[.14em] text-slate-500 mb-1">{copy.passport.lastInvestigation}</p>
               {glance.lastInvestigation ? (
-                <Link href="/portal/passport/investigations" className="text-slate-700 hover:text-midnight">
+                <Link href="/portal/passport/record?tab=investigations" className="text-slate-700 hover:text-midnight">
                   <span className="font-semibold text-midnight">{glance.lastInvestigation.title}</span> {formatDay(glance.lastInvestigation.on)}
                   {glance.lastInvestigation.detail && <span className="text-slate-600">: {glance.lastInvestigation.detail}</span>}
                   {glance.investigationCount > 1 && <span className="text-slate-500"> · {glance.investigationCount} in total</span>}
                 </Link>
               ) : (
-                <Link href="/portal/passport/investigations" className="text-slate-500 hover:text-midnight">{copy.passport.investigationsNone}</Link>
+                <Link href="/portal/passport/record?tab=investigations" className="text-slate-500 hover:text-midnight">{copy.passport.investigationsNone}</Link>
               )}
             </div>
             {(glance.allergies.length > 0 || glance.medicalHistory.length > 0) && (

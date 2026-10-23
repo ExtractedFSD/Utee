@@ -1,21 +1,6 @@
-import Link from "next/link";
-import { PageHeader } from "@/components/ui";
-import { loadPreventions, requireTracker } from "@/lib/tracker/data";
-import { copy } from "@/lib/tracker/copy";
-import { PreventionManager } from "./PreventionManager";
+import { redirect } from "next/navigation";
 
-export default async function PreventionPage() {
-  const { supabase, user } = await requireTracker();
-  const rows = await loadPreventions(supabase, user.id);
-  return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <PageHeader
-        eyebrow="UTI Passport"
-        title={copy.prevention.title}
-        subtitle={copy.prevention.intro}
-        action={<div className="flex flex-wrap gap-4"><Link href="/portal/passport/setup?mode=prevention" className="text-sm font-semibold text-maroon">{copy.prevention.updateByChat}</Link><Link href="/portal/passport" className="text-sm font-semibold text-maroon">Back to my passport</Link></div>}
-      />
-      <PreventionManager rows={rows} />
-    </div>
-  );
+/** This page now lives under Record; the old address keeps working. */
+export default function Page() {
+  redirect("/portal/passport/record?tab=taking");
 }

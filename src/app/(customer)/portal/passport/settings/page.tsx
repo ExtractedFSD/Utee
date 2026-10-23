@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Card, CardTitle, LinkButton, PageHeader } from "@/components/ui";
+import { Breadcrumb, Card, CardTitle, PageHeader } from "@/components/ui";
 import { trackerContext } from "@/lib/tracker/data";
 import { copy } from "@/lib/tracker/copy";
 import { SettingsPanel } from "./SettingsPanel";
@@ -10,17 +9,7 @@ export default async function TrackerSettingsPage() {
   if (!ctx.consents.tracker) redirect("/portal/passport/consent");
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <PageHeader eyebrow="UTI Passport" title={copy.settings.title} action={<Link href="/portal/passport" className="text-sm font-semibold text-maroon">Back to my passport</Link>} />
-      <Card>
-        <CardTitle>{copy.settings.aboutMe}</CardTitle>
-        <div className="flex flex-wrap gap-2">
-          <LinkButton href="/portal/passport/about-me?edit=1" variant="secondary">Edit my answers</LinkButton>
-          <LinkButton href="/portal/passport/investigations" variant="secondary">{copy.investigations.title}</LinkButton>
-          <LinkButton href="/portal/passport/cultures" variant="secondary">{copy.cultures.title}</LinkButton>
-          <LinkButton href="/portal/passport/diary" variant="secondary">{copy.diary.title}</LinkButton>
-          <LinkButton href="/portal/passport/share" variant="secondary">{copy.settings.share}</LinkButton>
-        </div>
-      </Card>
+      <PageHeader eyebrow="UTI Passport" title={copy.settings.title} breadcrumb={<Breadcrumb href="/portal/passport" label={copy.nav.today} />} />
       <Card>
         <CardTitle>{copy.settings.export}</CardTitle>
         <p className="text-sm text-slate-600 mb-4">{copy.settings.exportBody}</p>

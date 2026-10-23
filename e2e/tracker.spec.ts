@@ -480,8 +480,7 @@ test("tracker: guided quick add saves two UTIs from one message", async ({ brows
   expect(body.triggers[0]).toMatchObject({ trigger: "other", other_text: "Shower gel" });
 
   // Updating what they take by chat: add two, then stop one and start another.
-  await page.goto("/portal/passport/prevention");
-  await page.getByRole("link", { name: "Talk to Una" }).click();
+  await page.goto("/portal/passport/setup?mode=prevention");
   await expect(chat).toHaveAttribute("data-hydrated", "true");
   await expect(chat).toContainText("has anything stopped?");
   await input.fill("I've started D-mannose and cranberry");

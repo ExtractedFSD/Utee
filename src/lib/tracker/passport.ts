@@ -357,7 +357,7 @@ export function timeline(
   for (const c of cultures) {
     if (!c.sample_on) continue;
     const line = cultureLine(c);
-    out.push({ on: c.sample_on, kind: "culture", title: line.title, detail: line.detail, href: "/portal/passport/cultures" });
+    out.push({ on: c.sample_on, kind: "culture", title: line.title, detail: line.detail, href: "/portal/passport/record?tab=results" });
   }
   for (const e of episodes) {
     out.push({ on: e.started_on, kind: "uti", title: "UTI started", detail: e.ended_on ? `Ended ${formatDay(e.ended_on)}` : "Ongoing", href: `/portal/passport/episodes/${e.id}` });
@@ -381,11 +381,11 @@ export function timeline(
   for (const i of investigations) {
     if (!i.performed_on) continue;
     const line = investigationLine(i);
-    out.push({ on: i.performed_on, kind: "investigation", title: line.title, detail: line.detail, href: "/portal/passport/investigations" });
+    out.push({ on: i.performed_on, kind: "investigation", title: line.title, detail: line.detail, href: "/portal/passport/record?tab=investigations" });
   }
   for (const p of preventions) {
-    if (p.started_on) out.push({ on: p.started_on, kind: "prevention_started", title: `Started ${preventionName(p)}`, href: "/portal/passport/prevention" });
-    if (p.stopped_on) out.push({ on: p.stopped_on, kind: "prevention_stopped", title: `Stopped ${preventionName(p)}`, href: "/portal/passport/prevention" });
+    if (p.started_on) out.push({ on: p.started_on, kind: "prevention_started", title: `Started ${preventionName(p)}`, href: "/portal/passport/record?tab=taking" });
+    if (p.stopped_on) out.push({ on: p.stopped_on, kind: "prevention_stopped", title: `Stopped ${preventionName(p)}`, href: "/portal/passport/record?tab=taking" });
   }
   return out.sort((a, b) => (a.on < b.on ? 1 : a.on > b.on ? -1 : 0));
 }

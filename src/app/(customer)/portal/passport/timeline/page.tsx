@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card, EmptyState, PageHeader, Pill } from "@/components/ui";
+import { Breadcrumb, Card, EmptyState, PageHeader, Pill } from "@/components/ui";
 import { requireTracker } from "@/lib/tracker/data";
 import { loadAllWithUtee } from "@/lib/tracker/load";
 import { copy } from "@/lib/tracker/copy";
@@ -46,7 +46,7 @@ export default async function TimelinePage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <PageHeader eyebrow="UTI Passport" title={copy.timeline.title} subtitle={copy.timeline.intro} action={<Link href="/portal/passport" className="text-sm font-semibold text-maroon">Back to my passport</Link>} />
+      <PageHeader eyebrow="UTI Passport" title={copy.timeline.title} subtitle={copy.timeline.intro} breadcrumb={<Breadcrumb href="/portal/passport/history" label={copy.nav.history} />} />
       {events.length === 0 ? (
         <Card><EmptyState title={copy.timeline.empty} /></Card>
       ) : (

@@ -734,6 +734,7 @@ function revalidatePrevention() {
   revalidatePath("/portal/passport");
   revalidatePath("/portal/passport/prevention");
   revalidatePath("/portal/passport/about-me");
+  revalidatePath("/portal/passport/record");
 }
 
 /** Add one or more things to "what I'm taking". Already-active keys are skipped. */

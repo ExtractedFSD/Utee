@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { Card, CardTitle, LinkButton, PageHeader, StatusBadge, buttonBase, buttonVariants } from "@/components/ui";
+import { Card, CardTitle, LinkButton, PageHeader, buttonBase, buttonVariants } from "@/components/ui";
 import { requireTracker, ownKits } from "@/lib/tracker/data";
 import { loadAllWithUtee } from "@/lib/tracker/load";
 import { copy } from "@/lib/tracker/copy";
 import { redFlagFor } from "@/lib/tracker/redflags";
 import { formatDay, patterns, summarise } from "@/lib/tracker/stats";
-import type { KitStatus } from "@/lib/status";
 import { RedFlagBanner } from "./components/RedFlagBanner";
 import { MonthStrip } from "./components/MonthStrip";
 import { QuickCheckin } from "./QuickCheckin";
@@ -16,7 +15,7 @@ import { passportGlance } from "@/lib/tracker/passport";
 
 export default async function TrackerHome() {
   const { supabase, user, profile } = await requireTracker();
-  const [data, kits] = await Promise.all([loadAllWithUtee(supabase, user.id), ownKits(supabase)]);
+  const data = await loadAllWithUtee(supabase, user.id);
   const s = summarise(data.episodes, data.treatments);
   const p = patterns(data.episodes, data.symptoms, data.triggers, data.treatments);
   const open = s.openEpisode;
@@ -24,7 +23,6 @@ export default async function TrackerHome() {
   const latestDay = openRows.reduce((m, x) => (x.logged_on > m ? x.logged_on : m), "");
   const openSymptoms = openRows.filter((x) => x.logged_on === latestDay).map((x) => x.symptom);
   const flag = open ? redFlagFor(openSymptoms, profile.pregnant_or_trying) : { show: false as const };
-  const latestKit = kits[0] ?? null;
   const communityUrl = process.env.NEXT_PUBLIC_COMMUNITY_URL;
   const storeUrl = process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL ?? "#";
   const brandNew = data.episodes.length === 0;
@@ -45,11 +43,12 @@ export default async function TrackerHome() {
       <RedFlagBanner flag={flag} />
 
       {brandNew ? (
-        <Card className="bg-gradient-brand text-white">
+        <Card className="bg-gradient-brand text-white" data-testid="new-hero">
+          <p className="font-display text-3xl font-light mb-2">{copy.dashboard.welcomeHeading}</p>
           <p className="text-sm text-white/85 mb-5 leading-relaxed max-w-xl">{copy.dashboard.welcomeBody}</p>
-          <div className="flex flex-wrap gap-3">
-            <LinkButton href="/portal/passport/log" variant="white">{copy.dashboard.logFirst}</LinkButton>
-            <LinkButton href="/portal/passport/setup?mode=utis" variant="white">{copy.dashboard.quickAdd}</LinkButton>
+          <div className="flex flex-wrap items-center gap-4">
+            <LinkButton href="/portal/passport/setup?mode=utis" variant="white">{copy.dashboard.setUpWithUna}</LinkButton>
+            <Link href="/portal/passport/log" className="text-sm font-semibold text-white underline underline-offset-4">{copy.dashboard.logInstead}</Link>
           </div>
         </Card>
       ) : open ? (
@@ -82,80 +81,44 @@ export default async function TrackerHome() {
       <Card data-testid="prevention-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <CardTitle>{copy.dashboard.prevention}</CardTitle>
-          {taking.length > 0 && <Link href="/portal/passport/prevention" className="text-sm font-semibold text-maroon min-h-[44px] inline-flex items-center">{copy.dashboard.preventionManage}</Link>}
+          {taking.length > 0 && <Link href="/portal/passport/record?tab=taking" className="text-sm font-semibold text-maroon min-h-[44px] inline-flex items-center">{copy.dashboard.preventionManage}</Link>}
         </div>
         {taking.length > 0 ? (
           <PreventionPills rows={taking} />
         ) : (
           <div>
             <p className="text-sm text-slate-600 mb-4 max-w-xl">{copy.dashboard.preventionEmpty}</p>
-            <LinkButton href="/portal/passport/prevention" variant="secondary">{copy.dashboard.preventionAdd}</LinkButton>
+            <LinkButton href="/portal/passport/record?tab=taking" variant="secondary">{copy.dashboard.preventionAdd}</LinkButton>
           </div>
         )}
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="relative" data-testid="last-year-card">
-            <CardTitle>{copy.dashboard.lastYear}</CardTitle>
-            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
-              <Stat label="UTIs, 6 months" value={s.episodes6m} />
-              <Stat label="UTIs, 12 months" value={s.episodes12m} />
-              <Stat label="Treatment courses" value={s.treatmentCourses12m} />
-              <Stat label="Preventive courses" value={s.preventiveCourses12m} />
-            </dl>
-            {s.averageLengthDays !== null && <p className="text-sm text-slate-700 mb-4">Average length: {s.averageLengthDays} days</p>}
-            <MonthStrip months={s.months} />
-            <div className="mt-5">
-              {/* Stretched link: the whole card opens the history page. */}
-              <Link href="/portal/passport/history" className={`${buttonBase} ${buttonVariants.secondary} after:absolute after:inset-0 after:rounded-card`}>
-                {copy.dashboard.seeHistory}
-              </Link>
-            </div>
-          </Card>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="relative" data-testid="last-year-card">
+          <CardTitle>{copy.dashboard.lastYear}</CardTitle>
+          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+            <Stat label="UTIs, 6 months" value={s.episodes6m} />
+            <Stat label="UTIs, 12 months" value={s.episodes12m} />
+            <Stat label="Treatment courses" value={s.treatmentCourses12m} />
+            <Stat label="Preventive courses" value={s.preventiveCourses12m} />
+          </dl>
+          {s.averageLengthDays !== null && <p className="text-sm text-slate-700 mb-4">Average length: {s.averageLengthDays} days</p>}
+          <MonthStrip months={s.months} />
+          <div className="mt-5">
+            {/* Stretched link: the whole card opens the history page. */}
+            <Link href="/portal/passport/history" className={`${buttonBase} ${buttonVariants.secondary} after:absolute after:inset-0 after:rounded-card`}>
+              {copy.dashboard.seeHistory}
+            </Link>
+          </div>
+        </Card>
 
-          <PatternsCard p={p} />
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardTitle>{copy.dashboard.tests}</CardTitle>
-            {latestKit ? (
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-midnight">Kit {latestKit.code}</p>
-                <StatusBadge status={latestKit.status as KitStatus} />
-                <div className="pt-2">
-                  <Link href={`/portal/tests/${latestKit.id}`} className="text-sm font-semibold text-maroon">View in portal</Link>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-600">{copy.dashboard.testsEmpty}</p>
-            )}
-          </Card>
-
-          <Card>
-            <CardTitle>{copy.dashboard.quickActions}</CardTitle>
-            <div className="flex flex-col gap-2">
-              <LinkButton href="/portal/passport/log">{copy.dashboard.logNew}</LinkButton>
-              <LinkButton href="/portal/passport/setup?mode=utis" variant="secondary">{copy.dashboard.quickAdd}</LinkButton>
-              <LinkButton href="/portal/passport/summary" variant="secondary">{copy.dashboard.downloadSummary}</LinkButton>
-              <LinkButton href="/portal/passport/history" variant="secondary">{copy.dashboard.history}</LinkButton>
-              <LinkButton href="/portal/passport/diary" variant="secondary">{copy.dashboard.diary}</LinkButton>
-              <LinkButton href="/portal/passport/share" variant="secondary">{copy.dashboard.share}</LinkButton>
-              <LinkButton href={storeUrl} variant="secondary" external>{copy.dashboard.orderTest}</LinkButton>
-              <p className="text-xs text-slate-500">{copy.dashboard.orderTestNote}</p>
-            </div>
-          </Card>
-
-          {communityUrl && (
-            <Card>
-              <CardTitle>{copy.dashboard.community}</CardTitle>
-              <p className="text-sm text-slate-600 mb-4">{copy.dashboard.communityBody}</p>
-              <LinkButton href={communityUrl} variant="secondary" external>Open community</LinkButton>
-            </Card>
-          )}
-        </div>
+        <PatternsCard p={p} />
       </div>
+
+      <p className="text-center text-xs text-slate-600">
+        <a href={storeUrl} target="_blank" rel="noopener" className="font-semibold text-maroon">{copy.dashboard.orderTest}</a> · {copy.dashboard.orderTestLine}
+        {communityUrl && <> · <a href={communityUrl} target="_blank" rel="noopener" className="font-semibold text-maroon">{copy.dashboard.community}</a></>}
+      </p>
     </div>
   );
 }
