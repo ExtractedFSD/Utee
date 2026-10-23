@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireTracker, loadAll, ownKits } from "@/lib/tracker/data";
 import { SYMPTOMS, TRIGGERS } from "@/lib/tracker/options";
-import { isoDaysAgo, isoToday, orderByUsage } from "@/lib/tracker/stats";
+import { isoToday, orderByUsage } from "@/lib/tracker/stats";
 import { symptomScores } from "@/lib/tracker/diary";
 import { EpisodeEditor } from "./EpisodeEditor";
 
@@ -13,7 +13,6 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
   if (!episode) notFound();
 
   const today = isoToday();
-  const yesterday = isoDaysAgo(1);
   const symptoms = data.symptoms.filter((s) => s.episode_id === id);
   const triggers = data.triggers.filter((t) => t.episode_id === id);
   const treatments = data.treatments.filter((t) => t.episode_id === id);
@@ -28,15 +27,12 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
       pregnantOrTrying={profile.pregnant_or_trying}
       todaySymptoms={symptoms.filter((s) => s.logged_on === today).map((s) => ({ key: s.symptom, other: s.other_text, severity: s.severity ?? null }))}
       allSymptoms={[...new Set(symptoms.map((s) => s.symptom))]}
-      yesterdaySymptoms={symptoms.filter((s) => s.logged_on === yesterday).map((s) => s.symptom)}
       triggers={[...new Map(triggers.map((t) => [t.trigger, { key: t.trigger, other: t.other_text }])).values()]}
       treatments={treatments}
       tests={tests.map((t) => {
         const kit = t.kit_id ? kits.find((k) => k.id === t.kit_id) : null;
         return { ...t, kitCode: kit?.code ?? null, kitStatus: kit?.status ?? null, kitReportReady: kit?.reportReady ?? false };
       })}
-      feelingToday={data.checkins.find((c) => c.on_date === today)?.feeling ?? null}
-      noteToday={data.checkins.find((c) => c.on_date === today)?.note ?? null}
       scores={symptomScores(symptoms, episode)}
       symptomOrder={orderByUsage(SYMPTOMS.map((s) => s.key), data.symptoms.map((s) => ({ key: s.symptom })))}
       triggerOrder={orderByUsage(TRIGGERS.map((t) => t.key), data.triggers.map((t) => ({ key: t.trigger })))}

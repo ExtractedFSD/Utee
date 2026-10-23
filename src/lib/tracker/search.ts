@@ -27,6 +27,12 @@ export function antibioticName(id: string, otherName?: string | null): string {
   return byId.get(id)?.name ?? id;
 }
 
+/** For records and summaries: an unknown antibiotic reads as what it is, not as the picker's option. */
+export function antibioticDisplayName(id: string, otherName?: string | null): string {
+  if (id === "dont_know") return "Antibiotic (name not recorded)";
+  return antibioticName(id, otherName);
+}
+
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 /** Small-typo tolerance: bounded Levenshtein distance. */

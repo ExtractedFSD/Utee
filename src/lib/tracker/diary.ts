@@ -152,3 +152,39 @@ export function feelingStrip(checkins: CheckinRow[], days: number, today = isoTo
   }
   return out;
 }
+
+/** Shade for a feeling on the calendar: lighter is a better day. */
+export const FEELING_SHADE: Record<number, string> = { 1: "#91193b", 2: "#a8345a", 3: "#c0507a", 4: "#df7aa5", 5: "#fe98cb" };
+
+export type CalendarCell = { on: string; feeling: number | null; inUti: boolean; today: boolean; dayOfMonth: number };
+
+/**
+ * The last N days laid out on a Monday-first week grid: `lead` blank cells
+ * before the first day, then one cell a day with the feeling logged and
+ * whether a UTI was open that day.
+ */
+export function calendar(checkins: CheckinRow[], episodes: EpisodeRow[], days: number, today = isoToday()): { lead: number; cells: CalendarCell[] } {
+  const strip = feelingStrip(checkins, days, today);
+  const first = new Date(`${strip[0].on}T00:00:00Z`).getUTCDay(); // 0 = Sunday
+  const lead = (first + 6) % 7;
+  return {
+    lead,
+    cells: strip.map((c) => ({ on: c.on, feeling: c.feeling, inUti: !!episodeOn(episodes, c.on, today), today: c.on === today, dayOfMonth: Number(c.on.slice(8, 10)) })),
+  };
+}
+
+/** One bar per day: the average of that day's 1 to 10 ratings, rounded. */
+export function dayMeans(points: ScorePoint[]): { on: string; day: number; mean: number }[] {
+  return points.map((p) => ({ on: p.on, day: p.day, mean: Math.round(p.score / p.rated) }));
+}
+
+/** "Worst on day 1, easing by day 4." from the daily means. Null until two rated days. */
+export function meanSummary(points: ScorePoint[]): string | null {
+  const m = dayMeans(points);
+  if (m.length < 2) return null;
+  const peak = m.reduce((a, b) => (b.mean > a.mean ? b : a), m[0]);
+  const last = m[m.length - 1];
+  if (last.mean < peak.mean) return `Worst on day ${peak.day}, easing to ${last.mean} out of 10 by day ${last.day}.`;
+  if (last.mean > m[0].mean) return `Rising from ${m[0].mean} on day ${m[0].day} to ${last.mean} out of 10 on day ${last.day}.`;
+  return `Around ${last.mean} out of 10 from day ${m[0].day} to day ${last.day}.`;
+}
