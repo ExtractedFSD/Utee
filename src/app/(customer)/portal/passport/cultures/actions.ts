@@ -40,6 +40,7 @@ async function session() {
 function revalidate() {
   revalidatePath("/portal/passport");
   revalidatePath("/portal/passport/cultures");
+  revalidatePath("/portal/passport/record");
   revalidatePath("/portal/passport/timeline");
 }
 

@@ -11,7 +11,7 @@ export default async function HistoryPage() {
   const data = await loadAll(supabase, user.id);
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <PageHeader eyebrow="UTI Passport" title={copy.history.title} action={<div className="flex flex-wrap gap-2"><LinkButton href="/portal/passport/setup?mode=utis" variant="secondary">{copy.dashboard.quickAdd}</LinkButton><LinkButton href="/portal/passport/log">{copy.dashboard.logNew}</LinkButton></div>} />
+      <PageHeader eyebrow="UTI Passport" title={copy.history.title} action={<div className="flex flex-wrap items-center gap-4"><Link href="/portal/passport/timeline" className="text-sm font-semibold text-maroon">{copy.timeline.title}</Link><Link href="/portal/passport/diary" className="text-sm font-semibold text-maroon">{copy.diary.title}</Link><LinkButton href="/portal/passport/log">{copy.dashboard.logNew}</LinkButton></div>} />
       {data.episodes.length === 0 ? (
         <Card><EmptyState title={copy.history.empty} /></Card>
       ) : (

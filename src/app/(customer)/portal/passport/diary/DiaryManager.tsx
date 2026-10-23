@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { Button, Card, EmptyState, PageHeader, Pill, inputClass } from "@/components/ui";
+import { Breadcrumb, Button, Card, EmptyState, PageHeader, Pill, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { episodeOn, feelingLabel, type DiaryEntry } from "@/lib/tracker/diary";
 import { FEELINGS, SYMPTOMS, labelFor } from "@/lib/tracker/options";
@@ -45,7 +45,7 @@ export function DiaryManager({ today, entries, strip, episodes, symptomOrder }: 
         eyebrow="UTI Passport"
         title={copy.diary.title}
         subtitle={copy.diary.intro}
-        action={<Link href="/portal/passport" className="text-sm font-semibold text-maroon">Back to my passport</Link>}
+        breadcrumb={<Breadcrumb href="/portal/passport/history" label={copy.nav.history} />}
       />
 
       <div className="flex flex-wrap gap-2">

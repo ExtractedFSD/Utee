@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { PageHeader } from "@/components/ui";
+import { Breadcrumb, PageHeader } from "@/components/ui";
 import { loadPreventions, trackerContext } from "@/lib/tracker/data";
 import { copy } from "@/lib/tracker/copy";
 import { aiAvailable } from "@/lib/tracker/guided/extract";
@@ -21,9 +21,8 @@ export default async function GuidedSetupPage({ searchParams }: { searchParams: 
       <PageHeader
         eyebrow="UTI Passport"
         title={quick ? (mode === "prevention" ? copy.guided.titlePrevention : copy.guided.titleQuick) : copy.guided.title}
-        action={quick
-          ? <Link href="/portal/passport" className="text-sm font-semibold text-maroon">Back to my passport</Link>
-          : <Link href="/portal/passport/about-me" className="text-sm font-semibold text-maroon">{copy.guided.preferForm}</Link>}
+        breadcrumb={quick ? <Breadcrumb href="/portal/passport" label={copy.nav.today} /> : undefined}
+        action={quick ? undefined : <Link href="/portal/passport/about-me" className="text-sm font-semibold text-maroon">{copy.guided.preferForm}</Link>}
       />
       <GuidedChat
         mode={quick ? (mode === "prevention" ? "prevention" : "utis") : "full"}

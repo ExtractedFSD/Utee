@@ -155,6 +155,26 @@ export const copy = {
     } as Record<string, string>,
   },
 
+  nav: {
+    label: "Passport sections",
+    today: "Today",
+    history: "History",
+    record: "Record",
+    share: "Share",
+    una: "Una",
+  },
+
+  record: {
+    title: "Record",
+    intro: "Everything a clinician asks about, in one place: you, your results, your investigations and what you take.",
+    tabs: { about: "About you", results: "Results", investigations: "Investigations", taking: "Taking" } as Record<string, string>,
+    resultsIntro: "Cultures and advanced tests, any year.",
+    resultsNote: "S / I / R as reported by the lab. This is your record, not advice.",
+    investigationsIntro: "Scans, bloods and camera tests you have had.",
+    takingIntro: "What you take to help prevent UTIs, now and before.",
+    aboutIntro: "Your details, history and allergies, as they appear on your passport.",
+  },
+
   share: {
     title: "Share my passport",
     intro: "Give a clinician a code that opens a read-only copy of your passport for a limited time. You can remove it at any moment.",
@@ -233,7 +253,11 @@ export const copy = {
   },
 
   dashboard: {
-    welcomeTitle: "Your UTI Passport",
+    welcomeTitle: "Today",
+    setUpWithUna: "Set up with Una",
+    logInstead: "Log a UTI instead",
+    welcomeHeading: "Welcome. Let's set up your passport.",
+    orderTestLine: "available any time, not a recommendation",
     welcomeBody:
       "Log each UTI as it happens and build a passport you can show a GP or clinic. You can also add ones you remember from the past.",
     logFirst: "Log your first UTI",
@@ -283,6 +307,10 @@ export const copy = {
     nudgeThanks: "Thanks, noted.",
     bubbleOpen: "Chat with Una",
     bubbleClose: "Close",
+    sheetSub: "Reads what you type",
+    aiOn: "AI on",
+    aiOff: "AI off",
+    aiChange: "change",
     aiCaveat: "Una uses AI to read what you type. You can switch this off in Settings.",
     aiCaveatOff: "AI reading is off. Una matches plain phrases only.",
     askAbout: "First, a bit about you. Are you before, around or after the menopause? Do you use contraception? Are you pregnant or trying?",
@@ -523,7 +551,7 @@ export const copy = {
   },
 
   episode: {
-    back: "Passport",
+    back: "History",
     title: "Your UTI",
     started: (date: string, day: number) => `Started ${date} · Day ${day}`,
     ended: (date: string, days: number) => `Ended ${date} · ${days} day${days === 1 ? "" : "s"}`,

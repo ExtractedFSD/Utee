@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Eyebrow, Logo } from "@/components/ui";
+import { MobileNav } from "@/components/MobileNav";
 
 async function signOut() {
   "use server";
@@ -80,13 +81,7 @@ export function Shell({
               </form>
             </div>
           </div>
-          <nav className="md:hidden flex gap-1 overflow-x-auto pb-3 -mx-1 px-1">
-            {flat.map((item) => (
-              <Link key={item.href} href={item.href} className={navLink}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <MobileNav items={flat} />
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">{children}</main>
