@@ -6,6 +6,7 @@ import { copy } from "@/lib/tracker/copy";
 import { INVESTIGATION_KINDS, investigationKind, investigationLine, type InvestigationRow } from "@/lib/tracker/passport";
 import type { InvestigationExtract } from "@/lib/tracker/guided/investigation";
 import { verificationFor, verifiedLine, type VerificationRow } from "@/lib/tracker/verify";
+import { SourcePill } from "../components/SourcePill";
 import { formatDay, isoToday } from "@/lib/tracker/stats";
 import { Chip } from "../components/Chips";
 import { Sheet } from "../components/Sheet";
@@ -70,7 +71,7 @@ function toInput(d: Draft): InvestigationInput {
  * opens with a "describe it" box so Una can fill the form; the fields below
  * are always there for checking and for anyone who prefers tapping.
  */
-export function InvestigationsManager({ rows, unaAi, verifications = [] }: { rows: InvestigationRow[]; unaAi: boolean; verifications?: VerificationRow[] }) {
+export function InvestigationsManager({ rows, unaAi, verifications = [], intro }: { rows: InvestigationRow[]; unaAi: boolean; verifications?: VerificationRow[]; intro?: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<"add" | string | null>(null);
@@ -96,41 +97,30 @@ export function InvestigationsManager({ rows, unaAi, verifications = [] }: { row
 
   return (
     <div className="space-y-6">
-      <Card data-testid="investigations-list">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <CardTitle>{copy.investigations.title}</CardTitle>
-          <Button variant="secondary" onClick={startAdd}>{copy.investigations.add}</Button>
-        </div>
-        {rows.length === 0 ? (
-          <p className="text-sm text-slate-600">{copy.investigations.empty}</p>
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {rows.map((r) => {
-              const line = investigationLine(r);
-              return (
-                <li key={r.id}>
-                  <button type="button" onClick={() => startEdit(r)} className="flex w-full min-h-[56px] items-center justify-between gap-4 py-3 text-left">
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-midnight">
-                        {line.title}
-                        {r.performed_on && <span className="font-normal text-slate-500"> · {formatDay(r.performed_on)}</span>}
-                      </span>
-                      <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                        {r.normal === true && <Pill tone="green">{copy.investigations.normalYes}</Pill>}
-                        {r.normal === false && <Pill tone="amber">{copy.investigations.normalNo}</Pill>}
-                        {verificationFor(verifications, "investigation", r.id) && <span title={copy.share.verifiedHint}><Pill tone="green">{verifiedLine(verificationFor(verifications, "investigation", r.id))}</Pill></span>}
-                        {line.detail && <span>{line.detail.replace(/^(Normal|Abnormal[^·]*)( · )?/, "")}</span>}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-sm font-semibold text-maroon">{copy.investigations.edit}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {error && !open && <p className="mt-3 text-sm text-rose-600">{error}</p>}
-      </Card>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm text-[#5a4a6e]">{intro ?? copy.record.investigationsIntro}</p>
+        <Button onClick={startAdd} className="shrink-0">{copy.investigations.add}</Button>
+      </div>
+      <div className="space-y-3" data-testid="investigations-list">
+        {rows.length === 0 && <Card><p className="text-center text-[13px] text-[#5a4a6e]">{copy.investigations.empty}</p></Card>}
+        {rows.map((r) => {
+          const line = investigationLine(r);
+          const verified = verificationFor(verifications, "investigation", r.id);
+          return (
+            <button key={r.id} type="button" onClick={() => startEdit(r)} className="block w-full text-left">
+              <Card className="!p-5 hover:shadow-lg transition-shadow">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-base font-semibold text-midnight">{r.performed_on ? formatDay(r.performed_on) : "Date unknown"} · {line.title}</p>
+                  <SourcePill source={verified ? "verified" : "patient"} />
+                </div>
+                <p className="mt-1 text-sm text-midnight">{line.detail || copy.investigations.noDetail}</p>
+                {verified && <p className="mt-2 text-[12px] text-[#5a4a6e]" title={copy.share.verifiedHint}>{verifiedLine(verified)}</p>}
+              </Card>
+            </button>
+          );
+        })}
+        {error && !open && <p className="text-sm text-rose-600">{error}</p>}
+      </div>
 
       <Sheet open={!!open} title={open === "add" ? copy.investigations.add : def?.short ?? copy.investigations.edit} onClose={close} doneLabel={copy.episode.cancel} testId="sheet-investigation" modal>
         <div className="space-y-5">

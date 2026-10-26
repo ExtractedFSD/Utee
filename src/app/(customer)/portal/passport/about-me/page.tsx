@@ -1,21 +1,27 @@
 import { redirect } from "next/navigation";
-import { Card, PageHeader } from "@/components/ui";
+import { Breadcrumb, PageHeader } from "@/components/ui";
 import { loadPreventions, trackerContext } from "@/lib/tracker/data";
 import { copy } from "@/lib/tracker/copy";
-import { AboutMeForm } from "./AboutMeForm";
+import { AboutMeForm, type Step } from "./AboutMeForm";
 
-export default async function AboutMePage({ searchParams }: { searchParams: Promise<{ edit?: string }> }) {
-  const { edit } = await searchParams;
+/** First-time setup by form (the alternative to Una), in three steps. Once a profile exists this lives under Record. */
+export default async function AboutMePage({ searchParams }: { searchParams: Promise<{ edit?: string; step?: string }> }) {
+  const { edit, step: wanted } = await searchParams;
   const ctx = await trackerContext();
   if (!ctx.consents.tracker) redirect("/portal/passport/consent");
-  if (ctx.profile && !edit) redirect("/portal/passport");
+  // Mid-setup the profile already exists after step 1; only a cold visit goes to Record.
+  if (ctx.profile && !edit && !wanted) redirect("/portal/passport/record?tab=about");
+  const step = ([1, 2, 3].includes(Number(wanted)) ? Number(wanted) : 1) as Step;
   const active = (await loadPreventions(ctx.supabase, ctx.user.id)).filter((p) => !p.stopped_on);
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <PageHeader eyebrow="UTI Passport" title={copy.aboutMe.title} subtitle={copy.aboutMe.intro} />
-      <Card>
-        <AboutMeForm profile={ctx.profile} active={active} next={edit ? "/portal/passport/settings" : "/portal/passport"} />
-      </Card>
+      <PageHeader
+        eyebrow={copy.record.steps.eyebrow(step)}
+        title={copy.record.steps.titles[step - 1]}
+        subtitle={copy.record.steps.reasons[step - 1]}
+        breadcrumb={step > 1 ? <Breadcrumb href={`/portal/passport/about-me?step=${step - 1}`} label={copy.record.steps.back} /> : undefined}
+      />
+      <AboutMeForm profile={ctx.profile} active={active} step={step} stepHref={(n) => `/portal/passport/about-me?step=${n}${edit ? "&edit=1" : ""}`} backHref="/portal/passport/setup" done="/portal/passport" />
     </div>
   );
 }

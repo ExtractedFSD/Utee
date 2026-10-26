@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { Nudges, OpenEpisode } from "../setup/GuidedChat";
 import { PassportNav, navHidden } from "./PassportNav";
 import { UnaSheet } from "./UnaSheet";
@@ -17,18 +17,19 @@ export function PassportShell({ ready, una, children }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname() ?? "";
+  const step = useSearchParams()?.get("step");
   const [unaOpen, setUnaOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
   // Moving to another page closes the sheet; the chat itself is kept until it is closed on purpose.
   useEffect(() => { setUnaOpen(false); }, [pathname]);
-  const bar = ready && !navHidden(pathname);
+  const bar = ready && !navHidden(pathname, step);
   const nav = { unaEnabled: ready, unaOpen, onUna: () => setUnaOpen((o) => !o), hydrated };
   return (
     <>
-      {bar && <PassportNav variant="desktop" {...nav} />}
+      {bar && <Suspense><PassportNav variant="desktop" {...nav} /></Suspense>}
       <div className={bar ? "pb-28 lg:pb-6" : ""}>{children}</div>
-      {bar && <PassportNav variant="phone" {...nav} />}
+      {bar && <Suspense><PassportNav variant="phone" {...nav} /></Suspense>}
       {ready && <UnaSheet open={unaOpen} onClose={() => setUnaOpen(false)} {...una} />}
     </>
   );

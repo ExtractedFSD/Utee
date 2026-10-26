@@ -3,6 +3,8 @@
 import { useRef, useState, useTransition } from "react";
 import { Button, Card, CardTitle, Pill, inputClass } from "@/components/ui";
 import { verificationFor, verifiedLine, type VerificationRow } from "@/lib/tracker/verify";
+import Link from "next/link";
+import { SourcePill } from "../components/SourcePill";
 import { copy } from "@/lib/tracker/copy";
 import {
   CULTURE_METHODS,
@@ -127,7 +129,9 @@ const SIR_STYLE: Record<Sir, string> = {
   R: "bg-rose-100 text-rose-800 border-rose-200",
 };
 
-export function CulturesManager({ rows, utee, unaAi, verifications = [] }: { rows: CultureRow[]; utee: CultureRow[]; unaAi: boolean; verifications?: VerificationRow[] }) {
+export type SimpleTest = { id: string; on: string | null; text: string; detail: string; episodeId: string };
+
+export function CulturesManager({ rows, utee, unaAi, verifications = [], intro, simpleTests = [] }: { rows: CultureRow[]; utee: CultureRow[]; unaAi: boolean; verifications?: VerificationRow[]; intro?: string; simpleTests?: SimpleTest[] }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<"add" | string | null>(null);
@@ -198,49 +202,74 @@ export function CulturesManager({ rows, utee, unaAi, verifications = [] }: { row
 
   return (
     <div className="space-y-6">
-      <Card data-testid="cultures-list">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <CardTitle>{copy.cultures.title}</CardTitle>
-          <Button variant="secondary" onClick={startAdd}>{copy.cultures.add}</Button>
-        </div>
-        {all.length === 0 ? (
-          <p className="text-sm text-slate-600">{copy.cultures.empty}</p>
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {all.map((r) => {
-              const line = cultureLine(r);
-              const fromUtee = r.source === "utee";
-              const inner = (
-                <>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold text-midnight">
-                      {line.title}
-                      {r.sample_on && <span className="font-normal text-slate-500"> · {formatDay(r.sample_on)}</span>}
-                    </span>
-                    <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                      <Pill tone={fromUtee ? "brand" : "slate"}>{fromUtee ? copy.cultures.utee : methodLabel(r)}</Pill>
-                      {!fromUtee && verificationFor(verifications, "culture", r.id) && <span title={copy.share.verifiedHint}><Pill tone="green">{verifiedLine(verificationFor(verifications, "culture", r.id))}</Pill></span>}
-                      <span>{line.detail.replace(/^[^·]*·\s*/, "")}</span>
-                    </span>
-                  </span>
-                  {!fromUtee && <span className="shrink-0 text-sm font-semibold text-maroon">{copy.cultures.edit}</span>}
-                </>
-              );
-              return (
-                <li key={r.id}>
-                  {fromUtee ? (
-                    <div className="flex w-full min-h-[56px] items-center justify-between gap-4 py-3">{inner}</div>
-                  ) : (
-                    <button type="button" onClick={() => startEdit(r)} className="flex w-full min-h-[56px] items-center justify-between gap-4 py-3 text-left">{inner}</button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm text-[#5a4a6e]">{intro ?? copy.record.resultsIntro}</p>
+        <Button onClick={startAdd} className="shrink-0">{copy.cultures.add}</Button>
+      </div>
+      <div className="space-y-3" data-testid="cultures-list">
+        {all.length === 0 && simpleTests.length === 0 && (
+          <Card><p className="text-center text-[13px] text-[#5a4a6e]">{copy.cultures.empty}</p></Card>
         )}
-        {utee.length === 0 && <p className="mt-3 text-xs text-slate-500">{copy.cultures.uteeHint}</p>}
-        {error && !open && <p className="mt-3 text-sm text-rose-600">{error}</p>}
-      </Card>
+        {[...all.map((r) => ({ kind: "culture" as const, on: r.sample_on, row: r })), ...simpleTests.map((t) => ({ kind: "simple" as const, on: t.on, row: t }))]
+          .sort((a, b) => ((a.on ?? "") < (b.on ?? "") ? 1 : -1))
+          .map((item) => {
+            if (item.kind === "simple") {
+              const t = item.row;
+              return (
+                <Link key={`t-${t.id}`} href={`/portal/passport/episodes/${t.episodeId}`} className="block">
+                  <Card className="!p-5 hover:shadow-lg transition-shadow">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-base font-semibold text-midnight">{t.on ? formatDay(t.on) : "Date unknown"} · {t.text}</p>
+                      <SourcePill source="patient" />
+                    </div>
+                    <p className="mt-1 text-sm text-[#5a4a6e]">{t.detail}</p>
+                  </Card>
+                </Link>
+              );
+            }
+            const r = item.row;
+            const fromUtee = r.source === "utee";
+            const verified = !fromUtee && verificationFor(verifications, "culture", r.id);
+            const line = cultureLine(r);
+            const chips = r.organisms.flatMap((o) => Object.entries(r.sensitivities[o.key] ?? {}).map(([ab, sir]) => ({ key: `${o.key}-${ab}`, sir, name: antibioticName(ab, null), organism: r.organisms.length > 1 ? organismShort(o) : null })));
+            const inner = (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-base font-semibold text-midnight">{r.sample_on ? formatDay(r.sample_on) : "Date unknown"} · {fromUtee ? "Utee advanced test" : methodLabel(r)}</p>
+                  <SourcePill source={fromUtee ? "utee" : verified ? "verified" : "patient"} />
+                </div>
+                <p className="mt-1 text-sm text-midnight">
+                  {line.title}
+                  {r.organisms.some((o) => o.count) ? ` · ${r.organisms.filter((o) => o.count).map((o) => o.count).join(", ")}` : ""}
+                </p>
+                {chips.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {chips.map((c) => (
+                      <span key={c.key} className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${c.sir === "S" ? "bg-mint-50 text-emerald-900" : c.sir === "I" ? "bg-sun-50 text-amber-900" : "bg-peach-50 text-maroon"}`}>
+                        {c.sir} · {c.name}{c.organism ? ` (${c.organism})` : ""}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {(r.microscopy.white_cells ?? null) !== null || (r.microscopy.red_cells ?? null) !== null || r.notes ? (
+                  <p className="mt-2 text-[13px] text-[#5a4a6e]">
+                    {[(r.microscopy.white_cells ?? null) !== null && `white cells ${r.microscopy.white_cells}`, (r.microscopy.red_cells ?? null) !== null && `red cells ${r.microscopy.red_cells}`, r.notes].filter(Boolean).join(" · ")}
+                  </p>
+                ) : null}
+                {verified && <p className="mt-2 text-[12px] text-[#5a4a6e]" title={copy.share.verifiedHint}>{verifiedLine(verified)}</p>}
+              </>
+            );
+            return fromUtee ? (
+              <Card key={r.id} className="!p-5">{inner}</Card>
+            ) : (
+              <button key={r.id} type="button" onClick={() => startEdit(r)} className="block w-full text-left">
+                <Card className="!p-5 hover:shadow-lg transition-shadow">{inner}</Card>
+              </button>
+            );
+          })}
+        {utee.length === 0 && <p className="text-center text-[12px] text-[#8a7a9c]">{copy.cultures.uteeHint}</p>}
+        {error && !open && <p className="text-sm text-rose-600">{error}</p>}
+      </div>
 
       <Sheet open={!!open} title={open === "add" ? copy.cultures.add : copy.cultures.edit} onClose={close} doneLabel={copy.episode.cancel} testId="sheet-culture" modal>
         <div className="space-y-5">

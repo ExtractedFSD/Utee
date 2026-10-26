@@ -1,5 +1,5 @@
 import QRCode from "qrcode";
-import { Card, LinkButton, PageHeader } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
 import { requireTracker } from "@/lib/tracker/data";
 import { copy } from "@/lib/tracker/copy";
 import { formatShareCode, shareState, shareUrl, type ShareRow } from "@/lib/tracker/share";
@@ -25,12 +25,8 @@ export default async function SharePage() {
   );
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <PageHeader eyebrow="UTI Passport" title={copy.share.title} subtitle={copy.share.intro} action={<LinkButton href="/portal/passport/passport">{copy.passport.download}</LinkButton>} />
+      <PageHeader eyebrow="UTI Passport" title={copy.share.title} subtitle={copy.share.intro} />
       <ShareManager shares={items} />
-      <Card className="bg-pink-25/60">
-        <p className="text-sm font-semibold text-midnight mb-1">{copy.share.whatTheySee}</p>
-        <p className="text-sm text-slate-600">{copy.share.whatTheySeeBody}</p>
-      </Card>
     </div>
   );
 }
