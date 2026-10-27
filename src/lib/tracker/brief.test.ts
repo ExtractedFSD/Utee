@@ -31,6 +31,6 @@ describe("in brief", () => {
   it("shows only the details given and lists the rest once", () => {
     const d = detailsGiven(profile, { email: "p@example.com", dateOfBirth: null }, null);
     expect(d.given).toEqual([{ k: "Local hospital", v: "Royal Berkshire" }, { k: "Email", v: "p@example.com" }]);
-    expect(d.notGiven).toEqual(["date of birth", "nhs number", "phone", "address"]);
+    expect(d.notGiven).toEqual(["date of birth", "NHS number", "phone", "address"]);
   });
 });
