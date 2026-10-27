@@ -111,6 +111,11 @@ test("store kit: order to report", async ({ browser, request }) => {
   await test.step("Scanning the QR while signed out goes to login and back", async () => {
     await customerPage.goto(`/k/${code}`);
     await expect(customerPage).toHaveURL(new RegExp(`/login\\?next=(%2F|/)k(%2F|/)${code}`));
+    // The page knows this kit was ordered online, and steers a wrong email back to the order's.
+    await expect(customerPage.getByTestId("kit-hint")).toContainText("ordered online");
+    await customerPage.getByLabel("Email address").fill(emailFor("wrong-address"));
+    await customerPage.getByRole("button", { name: "Continue with email" }).click();
+    await expect(customerPage.getByTestId("online-mismatch")).toContainText("the email on the order");
     await loginViaUi(customerPage, customerEmail, `/k/${code}`);
     await expect(customerPage).toHaveURL(`/triage/${code}`);
   });

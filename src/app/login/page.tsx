@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, inputClass, Logo } from "@/components/ui";
-import { prepareSignIn } from "./actions";
+import { kitOrigin, prepareSignIn, type KitOrigin } from "./actions";
 
 /**
  * `next` is attacker-controllable (anyone can hand out a /login?next=… link),
@@ -68,6 +68,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get("next"));
   const fromKit = next.startsWith("/k/");
+  const kitCode = fromKit ? next.slice(3).split(/[/?#]/)[0] : null;
   const linkFailed = searchParams.get("error") === "link";
 
   const [email, setEmail] = useState("");
@@ -75,6 +76,9 @@ function LoginForm() {
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [code, setCode] = useState("");
   const [codeFocused, setCodeFocused] = useState(false);
+  const [kit, setKit] = useState<KitOrigin | null>(null);
+  // The email an online kit refused once; submitting it a second time goes on to create the account.
+  const [onlineMismatch, setOnlineMismatch] = useState<string | null>(null);
   const [step, setStep] = useState<"email" | "details" | "code">(searchParams.get("mode") === "signup" ? "details" : "email");
   const [sentAt, setSentAt] = useState<number | null>(null);
   const [waitUntil, setWaitUntil] = useState<number | null>(null);
@@ -88,6 +92,13 @@ function LoginForm() {
   const checking = useRef(false);
 
   const supabase = createClient();
+
+  useEffect(() => {
+    if (!kitCode) return;
+    let cancelled = false;
+    kitOrigin(kitCode).then((k) => { if (!cancelled) setKit(k); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [kitCode]);
 
   useEffect(() => {
     const pending = readPending();
@@ -159,14 +170,21 @@ function LoginForm() {
     if (!prepared.ok) {
       setBusy(false);
       if (prepared.reason === "no-account") {
-        // No account yet: the same card asks for the two details an account needs.
         setEmail(normalized);
+        if (kit === "online" && onlineMismatch !== normalized) {
+          // The kit was ordered online, so an account exists under the order's
+          // email. Say so before making a second account that can't open it.
+          setOnlineMismatch(normalized);
+          return;
+        }
+        // No account yet: the same card asks for the two details an account needs.
         setStep("details");
         return;
       }
       setError(messages[prepared.reason]);
       return;
     }
+    setOnlineMismatch(null);
     const sent = await requestCode(normalized);
     setBusy(false);
     if (sent) {
@@ -257,6 +275,7 @@ function LoginForm() {
     setSentAt(null);
     setCode("");
     setWaitUntil(null);
+    setOnlineMismatch(null);
     setError(null);
     setNotice(null);
     setStep("email");
@@ -274,6 +293,16 @@ function LoginForm() {
       <div className="bg-white rounded-card shadow-card p-6">
         {step === "email" && (
           <form onSubmit={continueWithEmail} className="space-y-4">
+            {fromKit && kit && kit !== "unknown" && (
+              <div data-testid="kit-hint">
+                <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-maroon">Your Utee kit</p>
+                <p className="text-sm text-[#5a4a6e] mt-1 leading-relaxed">
+                  {kit === "online"
+                    ? "This kit was ordered online, so you already have an account. Sign in with the email on that order and we'll take you to the questionnaire."
+                    : "Enter your email. If you don't have a Utee account yet we'll set one up in a moment, and link this kit to it."}
+                </p>
+              </div>
+            )}
             <div>
               <label htmlFor="login-email" className={label}>Email address</label>
               <input
@@ -288,11 +317,17 @@ function LoginForm() {
                 className={field}
               />
               <p className="text-sm text-[#5a4a6e] mt-2.5 leading-relaxed">
-                {fromKit
+                {fromKit && kit !== "retail"
                   ? "We'll email you a one-time code. No password. Use the email from your Utee order if you have one."
                   : "We'll email you a one-time code. No password, no account to create."}
               </p>
             </div>
+            {onlineMismatch && (
+              <div className="rounded-2xl bg-sun p-4 text-sm text-midnight leading-relaxed" data-testid="online-mismatch">
+                <p>There&apos;s no account for that email. This kit was ordered online, so the account is under the email on the order. Check your order confirmation and sign in with that one.</p>
+                <button type="button" onClick={() => setStep("details")} className="mt-2 min-h-[44px] text-sm font-semibold text-maroon">Create a new account with this email anyway</button>
+              </div>
+            )}
             {error && <p className="text-sm text-rose-600">{error}</p>}
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "One moment…" : "Continue with email"}

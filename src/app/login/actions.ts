@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeKitCode } from "@/lib/kit-code";
 
 type PrepareResult =
   | { ok: true; created: boolean }
@@ -52,4 +53,25 @@ export async function prepareSignIn(
     return { ok: false, reason: "no-account" };
   }
   return { ok: true, created: !error };
+}
+
+export type KitOrigin = "online" | "retail" | "unknown";
+
+/**
+ * Where the kit at the end of a sign-in link was sold, so the page can say
+ * which email to use before anyone types one. Only the origin leaves the
+ * server: never the owner, the order or the kit's progress.
+ *   online:  assigned to an order, so the account already exists under the
+ *            order's email
+ *   retail:  printed stock nobody owns yet, claimed by whoever signs in
+ *   unknown: no such kit, cancelled, or not yet printed
+ */
+export async function kitOrigin(rawCode: string): Promise<KitOrigin> {
+  const code = normalizeKitCode(rawCode);
+  if (!code) return "unknown";
+  const admin = createAdminClient();
+  const { data: kit } = await admin.from("kits").select("status, customer_id").eq("code", code).maybeSingle();
+  if (!kit || kit.status === "voided" || kit.status === "generated") return "unknown";
+  if (kit.customer_id || kit.status !== "printed") return "online";
+  return "retail";
 }
