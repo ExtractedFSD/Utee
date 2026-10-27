@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { formatKitCode } from "@/lib/kit-code";
+import { formatKitCode, normalizeKitCode } from "@/lib/kit-code";
 import { createClient } from "@/lib/supabase/server";
 import { Card, LinkButton, Notice, PageHeader } from "@/components/ui";
 import { formatDate, formatMoney, type KitStatus } from "@/lib/status";
@@ -16,9 +16,9 @@ import { isoToday, summarise } from "@/lib/tracker/stats";
 export default async function PortalHome({
   searchParams,
 }: {
-  searchParams: Promise<{ kit?: string; tracker?: string }>;
+  searchParams: Promise<{ kit?: string; code?: string; tracker?: string }>;
 }) {
-  const { kit: kitFlag, tracker: trackerFlag } = await searchParams;
+  const { kit: kitFlag, code: releasedCode, tracker: trackerFlag } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -60,6 +60,12 @@ export default async function PortalHome({
       )}
       {kitFlag === "voided" && (
         <Notice>That kit code has been cancelled and can&apos;t be used. Please contact us and we&apos;ll sort out a replacement.</Notice>
+      )}
+      {kitFlag === "released" && (
+        <Notice tone="mint">
+          <p className="font-semibold">Kit passed on.</p>
+          <p className="mt-1">It has left your account. The person taking the test registers it by scanning the QR code in the kit, or by entering the code{releasedCode && normalizeKitCode(releasedCode) ? <> <span className="font-mono font-semibold whitespace-nowrap">{formatKitCode(normalizeKitCode(releasedCode)!)}</span></> : null} at portal.myutee.co.uk/start.</p>
+        </Notice>
       )}
       {trackerFlag === "deleted" && <Notice tone="mint">Your UTI Passport data has been deleted.</Notice>}
 

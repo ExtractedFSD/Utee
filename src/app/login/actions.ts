@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeKitCode } from "@/lib/kit-code";
+import { isClaimable } from "@/lib/kits";
 
 type PrepareResult =
   | { ok: true; created: boolean }
@@ -63,15 +64,17 @@ export type KitOrigin = "online" | "retail" | "unknown";
  * server: never the owner, the order or the kit's progress.
  *   online:  assigned to an order, so the account already exists under the
  *            order's email
- *   retail:  printed stock nobody owns yet, claimed by whoever signs in
+ *   retail:  nobody owns it yet (shop stock, or released by its buyer), so
+ *            whoever signs in claims it
  *   unknown: no such kit, cancelled, or not yet printed
  */
 export async function kitOrigin(rawCode: string): Promise<KitOrigin> {
   const code = normalizeKitCode(rawCode);
   if (!code) return "unknown";
   const admin = createAdminClient();
-  const { data: kit } = await admin.from("kits").select("status, customer_id").eq("code", code).maybeSingle();
+  const { data: kit } = await admin.from("kits").select("status, customer_id, released_at").eq("code", code).maybeSingle();
   if (!kit || kit.status === "voided" || kit.status === "generated") return "unknown";
-  if (kit.customer_id || kit.status !== "printed") return "online";
-  return "retail";
+  // A kit the buyer passed on is nobody's until the next scan, like a shop-bought one.
+  if (isClaimable(kit)) return "retail";
+  return "online";
 }

@@ -325,6 +325,7 @@ function LoginForm() {
             {onlineMismatch && (
               <div className="rounded-2xl bg-sun p-4 text-sm text-midnight leading-relaxed" data-testid="online-mismatch">
                 <p>There&apos;s no account for that email. This kit was ordered online, so the account is under the email on the order. Check your order confirmation and sign in with that one.</p>
+                <p className="mt-2">Did someone order it for you? Ask them to open the kit in their Utee portal and pass it on to you. Then it will register to your own account.</p>
                 <button type="button" onClick={() => setStep("details")} className="mt-2 min-h-[44px] text-sm font-semibold text-maroon">Create a new account with this email anyway</button>
               </div>
             )}
