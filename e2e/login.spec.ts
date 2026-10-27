@@ -38,20 +38,20 @@ test("the code step survives a reload and offers a new code", async ({ browser }
   await page.goto("/login?next=%2Fportal");
   await page.getByLabel("Email address").fill(user.email);
   await page.getByRole("button", { name: "Continue with email" }).click();
-  await expect(page.getByLabel("Enter the 6-digit code")).toBeVisible();
+  await expect(page.getByLabel("Enter the 8-digit code")).toBeVisible();
 
   // Coming back from the mail app on a phone often reloads the tab.
   await page.reload();
-  await expect(page.getByLabel("Enter the 6-digit code")).toBeVisible();
+  await expect(page.getByLabel("Enter the 8-digit code")).toBeVisible();
   await expect(page.getByTestId("code-step")).toContainText(user.email);
   await expect(page.getByRole("button", { name: /Resend in \d+s/ })).toBeDisabled();
 
-  // A wrong code checks itself as soon as six digits are in, says so, and clears the boxes.
-  await page.getByLabel("Enter the 6-digit code").fill("000000");
+  // A wrong code checks itself as soon as eight digits are in, says so, and clears the boxes.
+  await page.getByLabel("Enter the 8-digit code").fill("00000000");
   await expect(page.getByText(/didn't work|expired/)).toBeVisible();
-  await expect(page.getByLabel("Enter the 6-digit code")).toHaveValue("");
+  await expect(page.getByLabel("Enter the 8-digit code")).toHaveValue("");
 
-  await page.getByLabel("Enter the 6-digit code").fill(await otpFor(user.email));
+  await page.getByLabel("Enter the 8-digit code").fill(await otpFor(user.email));
   await page.waitForURL(/\/portal/, { timeout: 30_000 });
 
   // Signed in: the pending sign-in is forgotten, so /login starts afresh.

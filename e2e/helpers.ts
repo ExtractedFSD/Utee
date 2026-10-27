@@ -185,9 +185,9 @@ export async function loginViaUi(page: Page, email: string, next: string, signup
     await page.getByLabel("Date of birth").fill(signup.dateOfBirth ?? "1990-05-14");
     await page.getByRole("button", { name: "Create account" }).click();
   }
-  await expect(page.getByLabel("Enter the 6-digit code")).toBeVisible();
+  await expect(page.getByLabel("Enter the 8-digit code")).toBeVisible();
   // Filling the first box with the whole code spreads it across the six and checks it.
-  await page.getByLabel("Enter the 6-digit code").fill(await otpFor(email));
+  await page.getByLabel("Enter the 8-digit code").fill(await otpFor(email));
   await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 30_000 });
   await page.unroute((url) => url.host === SUPABASE_HOST, relay);
 }

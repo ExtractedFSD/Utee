@@ -27,7 +27,8 @@ const PENDING_KEY = "utee.login.pending";
 const PENDING_TTL_MS = 30 * 60 * 1000;
 // Supabase allows one email per address per minute; the countdown matches it.
 const RESEND_COOLDOWN_S = 60;
-const CODE_LENGTH = 6;
+// Supabase emails an 8-digit code for this project (Auth settings, OTP length).
+const CODE_LENGTH = 8;
 
 type Pending = { email: string; sentAt: number };
 
@@ -60,7 +61,7 @@ function writePending(pending: Pending | null) {
  * then sends the code. The code step looks like six boxes but is one
  * invisible input laid over them, so typing, deleting, pasting and the
  * phone's autofill all behave like any text field, and the code checks
- * itself as soon as the sixth digit lands.
+ * itself as soon as the last digit lands.
  */
 function LoginForm() {
   const router = useRouter();
@@ -241,7 +242,7 @@ function LoginForm() {
   function submitCode(e: React.FormEvent) {
     e.preventDefault();
     if (code.length === CODE_LENGTH) void verifyCode(code);
-    else setError("Enter all six digits of the code.");
+    else setError(`Enter all ${CODE_LENGTH} digits of the code.`);
   }
 
   /** Typed, pasted or autofilled: keep the digits, and a full code checks itself. */
@@ -332,13 +333,13 @@ function LoginForm() {
         {step === "code" && (
           <form onSubmit={submitCode} className="space-y-4" data-testid="code-step">
             <div>
-              <p id="login-code-label" className={label}>Enter the 6-digit code</p>
+              <p id="login-code-label" className={label}>Enter the {CODE_LENGTH}-digit code</p>
               <div className="relative">
-                <div className="flex justify-between gap-2" aria-hidden>
+                <div className="flex justify-between gap-1.5" aria-hidden>
                   {Array.from({ length: CODE_LENGTH }, (_, i) => {
                     const active = codeFocused && i === Math.min(code.length, CODE_LENGTH - 1);
                     return (
-                      <div key={i} className={`flex h-[52px] w-full min-w-0 items-center justify-center rounded-xl border bg-white font-display text-2xl text-midnight ${active ? "border-maroon ring-2 ring-pink-50" : "border-maroon-25"} ${busy ? "opacity-60" : ""}`}>
+                      <div key={i} className={`flex h-[52px] w-full min-w-0 items-center justify-center rounded-xl border bg-white font-display text-xl text-midnight ${active ? "border-maroon ring-2 ring-pink-50" : "border-maroon-25"} ${busy ? "opacity-60" : ""}`}>
                         {code[i] ?? ""}
                       </div>
                     );
