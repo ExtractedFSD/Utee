@@ -89,7 +89,7 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
   await test.step("Buyer scans, creates an account, and the kit is claimed", async () => {
     await buyerPage.goto(`/k/${code}`);
     await expect(buyerPage).toHaveURL(/\/login\?next=/);
-    await expect(buyerPage.getByText(/Use the email from your Utee order/)).toBeVisible();
+    await expect(buyerPage.getByTestId("kit-hint")).toContainText("we'll set one up in a moment");
     await loginViaUi(buyerPage, buyerEmail, `/k/${code}`, { name: "Retail Buyer" });
     await expect(buyerPage).toHaveURL(`/triage/${code}`);
 
