@@ -45,12 +45,12 @@ function Field({ id, label, hint, children }: { id: string; label: string; hint?
 
 const card = "rounded-card bg-white p-5 shadow-card space-y-5";
 
-export function AboutMeForm({ profile, active, step, stepHref, backHref, done }: {
+export function AboutMeForm({ profile, active, step, base, backHref, done }: {
   profile: TrackerProfile | null;
   active: PreventionRow[];
   step: Step;
-  /** Where step N lives, for the sticky bar and the progress line. */
-  stepHref: (n: Step) => string;
+  /** The address the steps hang off; step N is `${base}&step=N` (or `?step=N`). */
+  base: string;
   /** Where Back goes from step 1. */
   backHref: string;
   /** Where the last step lands. */
@@ -97,6 +97,7 @@ export function AboutMeForm({ profile, active, step, stepHref, backHref, done }:
     setAddingAllergy(false);
   }
 
+  const stepHref = (n: Step) => `${base}${base.includes("?") ? "&" : "?"}step=${n}`;
   const next = step < 3 ? stepHref((step + 1) as Step) : done;
   const visibleHistory = showAllHistory ? MEDICAL_HISTORY : MEDICAL_HISTORY.filter((o, i) => i < 4 || history.has(o.key));
   const hiddenHistory = MEDICAL_HISTORY.length - visibleHistory.length;
