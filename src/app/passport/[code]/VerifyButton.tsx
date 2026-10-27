@@ -2,22 +2,32 @@
 
 import { useState, useTransition } from "react";
 import { copy } from "@/lib/tracker/copy";
-import type { VerificationEntity } from "@/lib/tracker/verify";
+import type { VerificationEntity, VerificationRow } from "@/lib/tracker/verify";
+import { verifiedLine } from "@/lib/tracker/verify";
 import { verifyEntry } from "./actions";
 
-export function VerifyButton({ code, entity, entityId, verified }: { code: string; entity: VerificationEntity; entityId: string; verified: boolean }) {
+/** For a signed-in clinician: an outlined Mark checked, or the mint pill with their name and date and a small Undo. */
+export function VerifyButton({ code, entity, entityId, verification }: { code: string; entity: VerificationEntity; entityId: string; verification: VerificationRow | null }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const toggle = (on: boolean) => { setError(null); startTransition(async () => { const r = await verifyEntry(code, entity, entityId, on); if (r.error) setError(r.error); }); };
   return (
-    <span className="inline-flex items-center gap-2">
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => { setError(null); startTransition(async () => { const r = await verifyEntry(code, entity, entityId, !verified); if (r.error) setError(r.error); }); }}
-        className={`min-h-[36px] rounded-full border px-3 text-xs font-semibold transition-colors disabled:opacity-60 ${verified ? "border-slate-200 bg-white text-slate-600 hover:bg-slate-50" : "border-maroon bg-maroon text-white hover:bg-brand-700"}`}
-      >
-        {verified ? copy.shared.unverify : copy.shared.verify}
-      </button>
+    <span className="inline-flex flex-wrap items-center gap-2">
+      {verification ? (
+        <>
+          <span className="inline-flex items-center rounded-full bg-mint-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-900">{verifiedLine(verification)}</span>
+          <button type="button" disabled={pending} onClick={() => toggle(false)} className="text-[12px] font-semibold text-maroon disabled:opacity-60">{copy.shared.unverify}</button>
+        </>
+      ) : (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => toggle(true)}
+          className="inline-flex min-h-[40px] items-center rounded-full border border-midnight/15 bg-white px-4 text-[11px] font-semibold uppercase tracking-[.12em] text-midnight hover:bg-pink-25 disabled:opacity-60"
+        >
+          {copy.shared.verify}
+        </button>
+      )}
       {error && <span className="text-xs text-rose-600">{error}</span>}
     </span>
   );

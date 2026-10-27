@@ -762,9 +762,11 @@ test("tracker: share the passport with a clinician by code, verify an entry, rev
     await view.goto(`/passport/${code.toLowerCase()}`);
     await expect(view.getByTestId("shared-passport")).toBeVisible();
     await expect(view.getByTestId("shared-passport")).toContainText("Royal Berkshire Hospital");
+    await expect(view.getByTestId("shared-brief")).toContainText("UTIs in 12 months");
+    await expect(view.getByTestId("shared-brief")).toContainText("Nothing recorded for: cultures");
     await expect(view.getByTestId("shared-investigations")).toContainText("USS KUB");
     await expect(view.getByText("Sign in to Utee as a clinician")).toBeVisible();
-    expect(await view.getByRole("button", { name: "Mark as checked" }).count()).toBe(0);
+    expect(await view.getByRole("button", { name: "Mark checked" }).count()).toBe(0);
     const pdf = await view.request.get(`/passport/${code}/pdf`);
     expect(pdf.status()).toBe(200);
     expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
@@ -789,7 +791,7 @@ test("tracker: share the passport with a clinician by code, verify an entry, rev
     await loginAs(cctx, clinician.email);
     const cpage = await cctx.newPage();
     await cpage.goto(`/passport/${code}`);
-    await cpage.getByRole("button", { name: "Mark as checked" }).click();
+    await cpage.getByRole("button", { name: "Mark checked" }).click();
     await expect(cpage.getByTestId("shared-investigations")).toContainText("Verified by Prof Test Clinician");
     await cctx.close();
     await page.goto("/portal/passport/investigations");
