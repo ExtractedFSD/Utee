@@ -77,11 +77,11 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
   const buyerCtx = await browser.newContext();
   const buyerPage = await buyerCtx.newPage();
 
-  await test.step("Signing in with an unknown email is refused; no account is created", async () => {
+  await test.step("An unknown email is asked for details first; no account is created until it gives them", async () => {
     await buyerPage.goto("/login");
     await buyerPage.getByLabel("Email address").fill(emailFor("nobody"));
-    await buyerPage.getByRole("button", { name: "Email me a code" }).click();
-    await expect(buyerPage.getByText(/couldn't find an account/)).toBeVisible();
+    await buyerPage.getByRole("button", { name: "Continue with email" }).click();
+    await expect(buyerPage.getByTestId("details-step")).toContainText("No account for that email yet");
     const { data } = await admin().from("profiles").select("id").eq("email", emailFor("nobody"));
     expect(data ?? []).toHaveLength(0);
   });
@@ -89,7 +89,7 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
   await test.step("Buyer scans, creates an account, and the kit is claimed", async () => {
     await buyerPage.goto(`/k/${code}`);
     await expect(buyerPage).toHaveURL(/\/login\?next=/);
-    await expect(buyerPage.getByText(/Bought your kit elsewhere/)).toBeVisible();
+    await expect(buyerPage.getByText(/Use the email from your Utee order/)).toBeVisible();
     await loginViaUi(buyerPage, buyerEmail, `/k/${code}`, { name: "Retail Buyer" });
     await expect(buyerPage).toHaveURL(`/triage/${code}`);
 

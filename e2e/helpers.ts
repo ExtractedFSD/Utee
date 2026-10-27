@@ -176,16 +176,18 @@ export async function loginViaUi(page: Page, email: string, next: string, signup
   };
   await page.route((url) => url.host === SUPABASE_HOST, relay);
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
+  await page.getByLabel("Email address").fill(email);
+  await page.getByRole("button", { name: "Continue with email" }).click();
   if (signup) {
-    await page.getByRole("button", { name: "Create account" }).first().click();
+    // No account for that email: the same card asks for a name and date of birth.
+    await expect(page.getByTestId("details-step")).toBeVisible();
     await page.getByLabel("Your name").fill(signup.name);
     await page.getByLabel("Date of birth").fill(signup.dateOfBirth ?? "1990-05-14");
+    await page.getByRole("button", { name: "Create account" }).click();
   }
-  await page.getByLabel("Email address").fill(email);
-  await page.getByRole("button", { name: signup ? "Create account" : "Email me a code" }).last().click();
-  await expect(page.getByLabel("Enter your sign-in code")).toBeVisible();
-  await page.getByLabel("Enter your sign-in code").fill(await otpFor(email));
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByLabel("Enter the 6-digit code")).toBeVisible();
+  // Filling the first box with the whole code spreads it across the six and checks it.
+  await page.getByLabel("Enter the 6-digit code").fill(await otpFor(email));
   await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 30_000 });
   await page.unroute((url) => url.host === SUPABASE_HOST, relay);
 }

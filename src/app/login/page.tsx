@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, inputClass, Logo } from "@/components/ui";
@@ -26,6 +26,7 @@ function safeNext(value: string | null): string {
 const PENDING_KEY = "utee.login.pending";
 const PENDING_TTL_MS = 30 * 60 * 1000;
 const RESEND_COOLDOWN_S = 30;
+const CODE_LENGTH = 6;
 
 type Pending = { email: string; sentAt: number };
 
@@ -51,6 +52,14 @@ function writePending(pending: Pending | null) {
   }
 }
 
+/*
+ * One card, three steps. Email first; the server decides whether that
+ * address has an account. If it does, the code is sent straight away. If
+ * not, the card asks for a name and date of birth, creates the account and
+ * then sends the code. The code step is six boxes that move on by
+ * themselves and accept a paste, and checks the code as soon as the sixth
+ * digit lands.
+ */
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,12 +67,11 @@ function LoginForm() {
   const fromKit = next.startsWith("/k/");
   const linkFailed = searchParams.get("error") === "link";
 
-  const [mode, setMode] = useState<"signin" | "signup">(searchParams.get("mode") === "signup" ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  const [code, setCode] = useState("");
-  const [step, setStep] = useState<"email" | "code">("email");
+  const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
+  const [step, setStep] = useState<"email" | "details" | "code">(searchParams.get("mode") === "signup" ? "details" : "email");
   const [sentAt, setSentAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState<string | null>(
@@ -71,6 +79,8 @@ function LoginForm() {
   );
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const boxes = useRef<(HTMLInputElement | null)[]>([]);
+  const checking = useRef(false);
 
   const supabase = createClient();
 
@@ -118,34 +128,58 @@ function LoginForm() {
     return true;
   }
 
-  async function sendCode(e: React.FormEvent) {
+  const messages: Record<string, string> = {
+    "invalid-email": "Please enter a valid email address.",
+    "name-required": "Please tell us your name.",
+    "dob-required": "Please enter your date of birth.",
+    exists: "There's already an account for that email, so we've sent a code to it.",
+    "no-account": "We couldn't find an account for that email.",
+  };
+
+  async function continueWithEmail(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     setNotice(null);
     const normalized = email.trim().toLowerCase();
-
-    const prepared = await prepareSignIn(normalized, mode, fullName, dateOfBirth);
+    const prepared = await prepareSignIn(normalized, "signin");
     if (!prepared.ok) {
       setBusy(false);
-      const messages: Record<string, string> = {
-        "invalid-email": "Please enter a valid email address.",
-        "name-required": "Please tell us your name.",
-        "dob-required": "Please enter your date of birth.",
-        exists: "There's already an account for that email. Sign in instead.",
-        "no-account": fromKit
-          ? "We couldn't find an account for that email. If you bought your kit in a shop, create an account first."
-          : "We couldn't find an account for that email. Use the email from your Utee order, or create an account.",
-      };
+      if (prepared.reason === "no-account") {
+        // No account yet: the same card asks for the two details an account needs.
+        setEmail(normalized);
+        setStep("details");
+        return;
+      }
       setError(messages[prepared.reason]);
       return;
     }
-
     const sent = await requestCode(normalized);
     setBusy(false);
     if (sent) {
       setEmail(normalized);
-      setCode("");
+      setDigits(Array(CODE_LENGTH).fill(""));
+      setStep("code");
+    }
+  }
+
+  async function createAccount(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    const normalized = email.trim().toLowerCase();
+    const prepared = await prepareSignIn(normalized, "signup", fullName, dateOfBirth);
+    if (!prepared.ok && prepared.reason !== "exists") {
+      setBusy(false);
+      setError(messages[prepared.reason]);
+      return;
+    }
+    const sent = await requestCode(normalized);
+    setBusy(false);
+    if (sent) {
+      setEmail(normalized);
+      setDigits(Array(CODE_LENGTH).fill(""));
       setStep("code");
     }
   }
@@ -158,28 +192,33 @@ function LoginForm() {
     const sent = await requestCode(email);
     setBusy(false);
     if (sent) {
-      setCode("");
+      setDigits(Array(CODE_LENGTH).fill(""));
+      boxes.current[0]?.focus();
       setNotice("New code sent. Only the newest code works, so use the latest email.");
     }
   }
 
-  async function verifyCode(e: React.FormEvent) {
-    e.preventDefault();
+  async function verifyCode(token: string) {
+    if (checking.current) return;
+    checking.current = true;
     setBusy(true);
     setError(null);
     setNotice(null);
     const { error } = await supabase.auth.verifyOtp({
       email: email.trim().toLowerCase(),
-      token: code.trim().replace(/\s+/g, ""),
+      token,
       type: "email",
     });
     setBusy(false);
+    checking.current = false;
     if (error) {
       setError(
         error.code === "otp_expired"
           ? "That code has expired or a newer one was sent. Check for the latest email, or send a new code."
           : "That code didn't work. Check it matches the newest email we sent you."
       );
+      setDigits(Array(CODE_LENGTH).fill(""));
+      boxes.current[0]?.focus();
       return;
     }
     writePending(null);
@@ -187,82 +226,65 @@ function LoginForm() {
     router.refresh();
   }
 
+  function submitCode(e: React.FormEvent) {
+    e.preventDefault();
+    const token = digits.join("");
+    if (token.length === CODE_LENGTH) void verifyCode(token);
+    else setError("Enter all six digits of the code.");
+  }
+
+  /** Typing, pasting or autofilling into any box: digits spread forwards from that box, and a full code checks itself. */
+  function enterDigits(index: number, raw: string) {
+    const clean = raw.replace(/\D/g, "");
+    const nextDigits = [...digits];
+    if (!clean) {
+      nextDigits[index] = "";
+      setDigits(nextDigits);
+      return;
+    }
+    const start = clean.length > 1 ? (clean.length >= CODE_LENGTH ? 0 : index) : index;
+    for (let i = 0; i < clean.length && start + i < CODE_LENGTH; i++) nextDigits[start + i] = clean[i];
+    setDigits(nextDigits);
+    const last = Math.min(start + clean.length, CODE_LENGTH) - 1;
+    boxes.current[Math.min(last + 1, CODE_LENGTH - 1)]?.focus();
+    const token = nextDigits.join("");
+    if (token.length === CODE_LENGTH) void verifyCode(token);
+  }
+
+  function onKey(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !digits[index] && index > 0) {
+      e.preventDefault();
+      const nextDigits = [...digits];
+      nextDigits[index - 1] = "";
+      setDigits(nextDigits);
+      boxes.current[index - 1]?.focus();
+    } else if (e.key === "ArrowLeft" && index > 0) boxes.current[index - 1]?.focus();
+    else if (e.key === "ArrowRight" && index < CODE_LENGTH - 1) boxes.current[index + 1]?.focus();
+  }
+
   function changeEmail() {
     writePending(null);
     setSentAt(null);
-    setCode("");
+    setDigits(Array(CODE_LENGTH).fill(""));
     setError(null);
     setNotice(null);
     setStep("email");
   }
 
+  const label = "block text-base font-semibold text-midnight mb-2";
+  const field = `${inputClass} min-h-[44px] rounded-full px-5 text-base`;
+
   return (
     <div className="w-full max-w-sm">
       <div className="text-center mb-8 text-white">
-        <Logo className="h-14 w-auto mx-auto" />
-        <p className="text-sm text-white/85 mt-3">
-          Track your UTIs, tests, orders and subscriptions.
-        </p>
+        <Logo className="h-16 w-auto mx-auto" />
+        <p className="text-base text-white/90 mt-3">Your UTI Passport, tests and orders.</p>
       </div>
       <div className="bg-white rounded-card shadow-card p-6">
-        {step === "email" ? (
-          <form onSubmit={sendCode} className="space-y-4">
-            <div className="flex rounded-full bg-pink-25 p-1 text-sm font-semibold">
-              {(["signin", "signup"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => {
-                    setMode(m);
-                    setError(null);
-                  }}
-                  className={`flex-1 rounded-full py-2 transition-colors ${
-                    mode === m ? "bg-white text-midnight shadow-card" : "text-slate-600"
-                  }`}
-                  aria-pressed={mode === m}
-                >
-                  {m === "signin" ? "Sign in" : "Create account"}
-                </button>
-              ))}
-            </div>
-            {mode === "signup" && (
-              <div>
-                <label htmlFor="login-name" className="block text-sm font-medium text-slate-700 mb-1">
-                  Your name
-                </label>
-                <input
-                  id="login-name"
-                  type="text"
-                  required
-                  autoComplete="name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="First and last name"
-                  className={inputClass}
-                />
-              </div>
-            )}
-            {mode === "signup" && (
-              <div>
-                <label htmlFor="login-dob" className="block text-sm font-medium text-slate-700 mb-1">
-                  Date of birth
-                </label>
-                <input
-                  id="login-dob"
-                  type="date"
-                  required
-                  autoComplete="bday"
-                  max={new Date().toISOString().slice(0, 10)}
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-            )}
+        {step === "email" && (
+          <form onSubmit={continueWithEmail} className="space-y-4">
             <div>
-              <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1">
-                Email address
-              </label>
+              <label htmlFor="login-email" className={label}>Email address</label>
               <input
                 id="login-email"
                 type="email"
@@ -272,42 +294,84 @@ function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className={inputClass}
+                className={field}
               />
-              <p className="text-xs text-slate-500 mt-1.5">
-                {mode === "signup"
-                  ? fromKit
-                    ? "Bought your kit in a shop? Create an account and we'll link the kit to it. We'll email you a one-time code. No password needed."
-                    : "We'll email you a one-time code to confirm your address. No password needed."
-                  : fromKit
-                    ? "Ordered from the Utee store? Use the email on your order. Bought your kit elsewhere? Create an account first. We'll email you a one-time code. No password needed."
-                    : "Use the email from your Utee order and we'll send you a one-time sign-in code. No password needed."}
+              <p className="text-sm text-[#5a4a6e] mt-2.5 leading-relaxed">
+                {fromKit
+                  ? "We'll email you a one-time code. No password. Use the email from your Utee order if you have one."
+                  : "We'll email you a one-time code. No password, no account to create."}
               </p>
             </div>
             {error && <p className="text-sm text-rose-600">{error}</p>}
             <Button type="submit" disabled={busy} className="w-full">
-              {busy ? "Sending..." : mode === "signup" ? "Create account" : "Email me a code"}
+              {busy ? "One moment…" : "Continue with email"}
             </Button>
           </form>
-        ) : (
-          <form onSubmit={verifyCode} className="space-y-4" data-testid="code-step">
+        )}
+
+        {step === "details" && (
+          <form onSubmit={createAccount} className="space-y-4" data-testid="details-step">
             <div>
-              <label htmlFor="login-code" className="block text-sm font-medium text-slate-700 mb-1">
-                Enter your sign-in code
-              </label>
-              <input
-                id="login-code"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                required
-                autoFocus
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Code from your email"
-                className={`${inputClass} text-center text-lg tracking-widest placeholder:text-base placeholder:tracking-normal`}
-              />
-              <p className="text-xs text-slate-500 mt-1.5">
-                We sent a code to <strong>{email}</strong>. Check your spam folder if it hasn't arrived. Only the newest code works.
+              <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-maroon">New to Utee</p>
+              <p className="text-sm text-[#5a4a6e] mt-1 leading-relaxed">
+                {fromKit
+                  ? "No account for that email yet. Tell us your name and date of birth and we'll link your kit to a new account."
+                  : "No account for that email yet. Tell us your name and date of birth and we'll set one up."}
+              </p>
+            </div>
+            <div>
+              <label htmlFor="login-email-2" className={label}>Email address</label>
+              <input id="login-email-2" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={field} />
+            </div>
+            <div>
+              <label htmlFor="login-name" className={label}>Your name</label>
+              <input id="login-name" type="text" required autoFocus autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="First and last name" className={field} />
+            </div>
+            <div>
+              <label htmlFor="login-dob" className={label}>Date of birth</label>
+              <input id="login-dob" type="date" required autoComplete="bday" max={new Date().toISOString().slice(0, 10)} value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={field} />
+            </div>
+            {error && <p className="text-sm text-rose-600">{error}</p>}
+            <Button type="submit" disabled={busy} className="w-full">
+              {busy ? "One moment…" : "Create account"}
+            </Button>
+            <button type="button" onClick={changeEmail} className="block w-full min-h-[44px] text-sm font-semibold text-maroon">Use a different email</button>
+          </form>
+        )}
+
+        {step === "code" && (
+          <form onSubmit={submitCode} className="space-y-4" data-testid="code-step">
+            <div>
+              <p id="login-code-label" className={label}>Enter the 6-digit code</p>
+              <div className="flex justify-between gap-2" role="group" aria-labelledby="login-code-label">
+                {digits.map((d, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => { boxes.current[i] = el; }}
+                    id={i === 0 ? "login-code" : `login-code-${i + 1}`}
+                    aria-label={i === 0 ? "Enter the 6-digit code" : `Digit ${i + 1}`}
+                    inputMode="numeric"
+                    autoComplete={i === 0 ? "one-time-code" : "off"}
+                    autoFocus={i === 0}
+                    value={d}
+                    onChange={(e) => enterDigits(i, e.target.value)}
+                    onKeyDown={(e) => onKey(i, e)}
+                    onFocus={(e) => e.target.select()}
+                    disabled={busy}
+                    className="h-[52px] w-full min-w-0 rounded-xl border border-maroon-25 bg-white text-center font-display text-2xl text-midnight focus:border-maroon focus:outline-none focus:ring-2 focus:ring-pink-50 disabled:opacity-60"
+                  />
+                ))}
+              </div>
+              <p className="text-sm text-[#5a4a6e] mt-3 leading-relaxed">
+                Sent to <strong className="font-semibold text-midnight">{email}</strong> ·{" "}
+                <button
+                  type="button"
+                  onClick={resendCode}
+                  disabled={busy || cooldownLeft > 0}
+                  className="font-semibold text-maroon disabled:cursor-default disabled:text-[#8a7a9c]"
+                >
+                  {cooldownLeft > 0 ? `Resend in ${cooldownLeft}s` : "Resend"}
+                </button>
               </p>
             </div>
             {notice && <p className="text-sm text-emerald-700">{notice}</p>}
@@ -315,19 +379,8 @@ function LoginForm() {
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "Checking…" : "Sign in"}
             </Button>
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-slate-500">
-              <button
-                type="button"
-                onClick={resendCode}
-                disabled={busy || cooldownLeft > 0}
-                className="hover:text-midnight disabled:cursor-default disabled:hover:text-slate-500"
-              >
-                {cooldownLeft > 0 ? `Send a new code (${cooldownLeft}s)` : "Send a new code"}
-              </button>
-              <button type="button" onClick={changeEmail} className="hover:text-midnight">
-                Use a different email
-              </button>
-            </div>
+            <p className="text-xs text-[#8a7a9c] leading-relaxed">Check your spam folder if it hasn&apos;t arrived. Only the newest code works.</p>
+            <button type="button" onClick={changeEmail} className="block w-full min-h-[44px] text-sm font-semibold text-maroon">Use a different email</button>
           </form>
         )}
       </div>
