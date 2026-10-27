@@ -25,7 +25,8 @@ function safeNext(value: string | null): string {
  */
 const PENDING_KEY = "utee.login.pending";
 const PENDING_TTL_MS = 30 * 60 * 1000;
-const RESEND_COOLDOWN_S = 30;
+// Supabase allows one email per address per minute; the countdown matches it.
+const RESEND_COOLDOWN_S = 60;
 const CODE_LENGTH = 6;
 
 type Pending = { email: string; sentAt: number };
@@ -56,9 +57,10 @@ function writePending(pending: Pending | null) {
  * One card, three steps. Email first; the server decides whether that
  * address has an account. If it does, the code is sent straight away. If
  * not, the card asks for a name and date of birth, creates the account and
- * then sends the code. The code step is six boxes that move on by
- * themselves and accept a paste, and checks the code as soon as the sixth
- * digit lands.
+ * then sends the code. The code step looks like six boxes but is one
+ * invisible input laid over them, so typing, deleting, pasting and the
+ * phone's autofill all behave like any text field, and the code checks
+ * itself as soon as the sixth digit lands.
  */
 function LoginForm() {
   const router = useRouter();
@@ -70,16 +72,18 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
+  const [code, setCode] = useState("");
+  const [codeFocused, setCodeFocused] = useState(false);
   const [step, setStep] = useState<"email" | "details" | "code">(searchParams.get("mode") === "signup" ? "details" : "email");
   const [sentAt, setSentAt] = useState<number | null>(null);
+  const [waitUntil, setWaitUntil] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState<string | null>(
     linkFailed ? "That sign-in link has expired or was already used. Enter your email and we'll send a fresh code." : null
   );
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const boxes = useRef<(HTMLInputElement | null)[]>([]);
+  const codeInput = useRef<HTMLInputElement | null>(null);
   const checking = useRef(false);
 
   const supabase = createClient();
@@ -92,7 +96,9 @@ function LoginForm() {
     setStep("code");
   }, []);
 
-  const cooldownLeft = sentAt ? Math.max(0, RESEND_COOLDOWN_S - Math.floor((now - sentAt) / 1000)) : 0;
+  const ownWait = sentAt ? RESEND_COOLDOWN_S - Math.floor((now - sentAt) / 1000) : 0;
+  const serverWait = waitUntil ? Math.ceil((waitUntil - now) / 1000) : 0;
+  const cooldownLeft = Math.max(0, ownWait, serverWait);
   useEffect(() => {
     if (step !== "code" || cooldownLeft === 0) return;
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -114,13 +120,19 @@ function LoginForm() {
       },
     });
     if (error) {
-      setError(
-        /rate|seconds|too many/i.test(error.message)
-          ? "We've just sent you a code. Give it a minute, then check your inbox and spam folder."
-          : error.message
-      );
+      const secs = /after (\d+) seconds?/i.exec(error.message)?.[1];
+      if (secs) {
+        // Supabase sends one email a minute per address: show its clock, not a guess.
+        const at = Date.now();
+        setNow(at);
+        setWaitUntil(at + Number(secs) * 1000);
+        setError(`We sent a code a moment ago. You can ask for another in ${secs} seconds. Check your inbox and spam folder meanwhile.`);
+      } else if (/rate|too many/i.test(error.message)) {
+        setError("We've sent you several codes in a short time. Give it a few minutes, then check your inbox and spam folder.");
+      } else setError(error.message);
       return false;
     }
+    setWaitUntil(null);
     const at = Date.now();
     setSentAt(at);
     setNow(at);
@@ -158,7 +170,7 @@ function LoginForm() {
     setBusy(false);
     if (sent) {
       setEmail(normalized);
-      setDigits(Array(CODE_LENGTH).fill(""));
+      setCode("");
       setStep("code");
     }
   }
@@ -179,7 +191,7 @@ function LoginForm() {
     setBusy(false);
     if (sent) {
       setEmail(normalized);
-      setDigits(Array(CODE_LENGTH).fill(""));
+      setCode("");
       setStep("code");
     }
   }
@@ -192,9 +204,9 @@ function LoginForm() {
     const sent = await requestCode(email);
     setBusy(false);
     if (sent) {
-      setDigits(Array(CODE_LENGTH).fill(""));
-      boxes.current[0]?.focus();
-      setNotice("New code sent. Only the newest code works, so use the latest email.");
+      setCode("");
+      codeInput.current?.focus();
+      setNotice("New code sent. Only the newest email works, so use that one.");
     }
   }
 
@@ -214,11 +226,11 @@ function LoginForm() {
     if (error) {
       setError(
         error.code === "otp_expired"
-          ? "That code has expired or a newer one was sent. Check for the latest email, or send a new code."
-          : "That code didn't work. Check it matches the newest email we sent you."
+          ? "That code has expired or a newer one was sent. If you have more than one email from us, use the newest one, or ask for a new code."
+          : "That code didn't work. If you have more than one email from us, use the newest one; older codes stop working."
       );
-      setDigits(Array(CODE_LENGTH).fill(""));
-      boxes.current[0]?.focus();
+      setCode("");
+      codeInput.current?.focus();
       return;
     }
     writePending(null);
@@ -228,44 +240,22 @@ function LoginForm() {
 
   function submitCode(e: React.FormEvent) {
     e.preventDefault();
-    const token = digits.join("");
-    if (token.length === CODE_LENGTH) void verifyCode(token);
+    if (code.length === CODE_LENGTH) void verifyCode(code);
     else setError("Enter all six digits of the code.");
   }
 
-  /** Typing, pasting or autofilling into any box: digits spread forwards from that box, and a full code checks itself. */
-  function enterDigits(index: number, raw: string) {
-    const clean = raw.replace(/\D/g, "");
-    const nextDigits = [...digits];
-    if (!clean) {
-      nextDigits[index] = "";
-      setDigits(nextDigits);
-      return;
-    }
-    const start = clean.length > 1 ? (clean.length >= CODE_LENGTH ? 0 : index) : index;
-    for (let i = 0; i < clean.length && start + i < CODE_LENGTH; i++) nextDigits[start + i] = clean[i];
-    setDigits(nextDigits);
-    const last = Math.min(start + clean.length, CODE_LENGTH) - 1;
-    boxes.current[Math.min(last + 1, CODE_LENGTH - 1)]?.focus();
-    const token = nextDigits.join("");
-    if (token.length === CODE_LENGTH) void verifyCode(token);
-  }
-
-  function onKey(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Backspace" && !digits[index] && index > 0) {
-      e.preventDefault();
-      const nextDigits = [...digits];
-      nextDigits[index - 1] = "";
-      setDigits(nextDigits);
-      boxes.current[index - 1]?.focus();
-    } else if (e.key === "ArrowLeft" && index > 0) boxes.current[index - 1]?.focus();
-    else if (e.key === "ArrowRight" && index < CODE_LENGTH - 1) boxes.current[index + 1]?.focus();
+  /** Typed, pasted or autofilled: keep the digits, and a full code checks itself. */
+  function enterCode(raw: string) {
+    const clean = raw.replace(/\D/g, "").slice(0, CODE_LENGTH);
+    setCode(clean);
+    if (clean.length === CODE_LENGTH) void verifyCode(clean);
   }
 
   function changeEmail() {
     writePending(null);
     setSentAt(null);
-    setDigits(Array(CODE_LENGTH).fill(""));
+    setCode("");
+    setWaitUntil(null);
     setError(null);
     setNotice(null);
     setStep("email");
@@ -343,27 +333,36 @@ function LoginForm() {
           <form onSubmit={submitCode} className="space-y-4" data-testid="code-step">
             <div>
               <p id="login-code-label" className={label}>Enter the 6-digit code</p>
-              <div className="flex justify-between gap-2" role="group" aria-labelledby="login-code-label">
-                {digits.map((d, i) => (
-                  <input
-                    key={i}
-                    ref={(el) => { boxes.current[i] = el; }}
-                    id={i === 0 ? "login-code" : `login-code-${i + 1}`}
-                    aria-label={i === 0 ? "Enter the 6-digit code" : `Digit ${i + 1}`}
-                    inputMode="numeric"
-                    autoComplete={i === 0 ? "one-time-code" : "off"}
-                    autoFocus={i === 0}
-                    value={d}
-                    onChange={(e) => enterDigits(i, e.target.value)}
-                    onKeyDown={(e) => onKey(i, e)}
-                    onFocus={(e) => e.target.select()}
-                    disabled={busy}
-                    className="h-[52px] w-full min-w-0 rounded-xl border border-maroon-25 bg-white text-center font-display text-2xl text-midnight focus:border-maroon focus:outline-none focus:ring-2 focus:ring-pink-50 disabled:opacity-60"
-                  />
-                ))}
+              <div className="relative">
+                <div className="flex justify-between gap-2" aria-hidden>
+                  {Array.from({ length: CODE_LENGTH }, (_, i) => {
+                    const active = codeFocused && i === Math.min(code.length, CODE_LENGTH - 1);
+                    return (
+                      <div key={i} className={`flex h-[52px] w-full min-w-0 items-center justify-center rounded-xl border bg-white font-display text-2xl text-midnight ${active ? "border-maroon ring-2 ring-pink-50" : "border-maroon-25"} ${busy ? "opacity-60" : ""}`}>
+                        {code[i] ?? ""}
+                      </div>
+                    );
+                  })}
+                </div>
+                <input
+                  ref={codeInput}
+                  id="login-code"
+                  aria-labelledby="login-code-label"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  value={code}
+                  onChange={(e) => enterCode(e.target.value)}
+                  onFocus={() => setCodeFocused(true)}
+                  onBlur={() => setCodeFocused(false)}
+                  disabled={busy}
+                  className="absolute inset-0 h-full w-full cursor-text opacity-0 text-base"
+                  style={{ caretColor: "transparent" }}
+                />
               </div>
               <p className="text-sm text-[#5a4a6e] mt-3 leading-relaxed">
-                Sent to <strong className="font-semibold text-midnight">{email}</strong> ·{" "}
+                Sent to <strong className="font-semibold text-midnight">{email}</strong>{sentAt ? ` at ${new Date(sentAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""} ·{" "}
                 <button
                   type="button"
                   onClick={resendCode}
