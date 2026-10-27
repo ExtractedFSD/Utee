@@ -38,7 +38,7 @@ export default async function RecordPage({ searchParams }: { searchParams: Promi
           subtitle={copy.record.steps.reasons[step - 1]}
           breadcrumb={<Breadcrumb href="/portal/passport/record?tab=about" label={copy.nav.record} />}
         />
-        <AboutMeForm profile={profile} active={active} step={step} stepHref={(n) => `/portal/passport/record?tab=about&step=${n}`} backHref="/portal/passport/record?tab=about" done="/portal/passport/record?tab=about" />
+        <AboutMeForm profile={profile} active={active} step={step} base="/portal/passport/record?tab=about" backHref="/portal/passport/record?tab=about" done="/portal/passport/record?tab=about" />
       </div>
     );
   }

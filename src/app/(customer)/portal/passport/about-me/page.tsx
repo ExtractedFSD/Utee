@@ -21,7 +21,7 @@ export default async function AboutMePage({ searchParams }: { searchParams: Prom
         subtitle={copy.record.steps.reasons[step - 1]}
         breadcrumb={step > 1 ? <Breadcrumb href={`/portal/passport/about-me?step=${step - 1}`} label={copy.record.steps.back} /> : undefined}
       />
-      <AboutMeForm profile={ctx.profile} active={active} step={step} stepHref={(n) => `/portal/passport/about-me?step=${n}${edit ? "&edit=1" : ""}`} backHref="/portal/passport/setup" done="/portal/passport" />
+      <AboutMeForm profile={ctx.profile} active={active} step={step} base={edit ? "/portal/passport/about-me?edit=1" : "/portal/passport/about-me"} backHref="/portal/passport/setup" done="/portal/passport" />
     </div>
   );
 }
