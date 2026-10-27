@@ -50,6 +50,6 @@ export function detailsGiven(profile: TrackerProfile, patient: { email: string; 
   ];
   return {
     given: rows.filter((r): r is { k: string; v: string } => !!r.v),
-    notGiven: rows.filter((r) => !r.v).map((r) => r.k.toLowerCase()),
+    notGiven: rows.filter((r) => !r.v).map((r) => (r.k === "NHS number" ? r.k : r.k.toLowerCase())),
   };
 }

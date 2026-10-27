@@ -1,5 +1,5 @@
 import { FEELINGS, type Option } from "./options";
-import { antibioticName } from "./search";
+import { antibioticDisplayName, antibioticName } from "./search";
 import { preventionName, preventionShortName, type PreventionLike } from "./prevention";
 import type { EpisodeRow, TreatmentRow } from "./stats";
 import { formatDay } from "./stats";
@@ -274,7 +274,7 @@ export function antibioticHistory(treatments: TreatmentDetail[], allergies: Alle
     const id = t.antibiotic_id === "other" ? `other:${(t.other_name ?? "").trim().toLowerCase()}` : t.antibiotic_id;
     const row = map.get(id) ?? {
       antibiotic_id: t.antibiotic_id,
-      name: antibioticName(t.antibiotic_id, t.other_name),
+      name: antibioticDisplayName(t.antibiotic_id, t.other_name),
       courses: 0,
       worked: 0,
       partly: 0,
@@ -368,7 +368,7 @@ export function timeline(
     out.push({
       on,
       kind: "treatment",
-      title: antibioticName(t.antibiotic_id, t.other_name),
+      title: antibioticDisplayName(t.antibiotic_id, t.other_name),
       detail: [t.days && `${t.days} days`, t.worked && `worked: ${t.worked}`].filter(Boolean).join(" · "),
       href: `/portal/passport/episodes/${t.episode_id}`,
     });

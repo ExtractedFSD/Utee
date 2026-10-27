@@ -8,7 +8,7 @@ import { TEST_KINDS, TEST_RESULTS, labelFor } from "@/lib/tracker/options";
 import { passportText } from "@/lib/tracker/passport-pdf";
 import { firstUtiText, formatNhsNumber, investigationLine, prophylaxisLine } from "@/lib/tracker/passport";
 import { cultureLine, methodLabel, organismShort, sensitivityText } from "@/lib/tracker/cultures";
-import { antibioticName } from "@/lib/tracker/search";
+import { antibioticDisplayName } from "@/lib/tracker/search";
 import { formatShareCode, formatUntil } from "@/lib/tracker/share";
 import type { SharedPassport as Shared } from "@/lib/tracker/share-load";
 import { episodeLength, formatDay } from "@/lib/tracker/stats";
@@ -212,13 +212,13 @@ export function SharedPassport({ shared, code, canVerify }: { shared: Shared; co
                 return (
                   <li key={e.id} className="py-3 first:pt-0 last:pb-0 text-sm">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="font-semibold text-midnight">{formatDay(e.started_on)} to {e.ended_on ? formatDay(e.ended_on) : "ongoing"}{e.ended_on ? ` (${episodeLength(e)} days)` : ""}</p>
+                      <p className="font-semibold text-midnight">{formatDay(e.started_on)} to {e.ended_on ? formatDay(e.ended_on) : "ongoing"}{e.ended_on ? ` (${episodeLength(e)} day${episodeLength(e) === 1 ? "" : "s"})` : ""}</p>
                       <SourcePill source="patient" />
                     </div>
                     {symptoms.length > 0 && <p className="text-[#5a4a6e]">Symptoms: {symptoms.join(", ").replace(/_/g, " ")}</p>}
                     {shape && <p className="text-xs text-[#8a7a9c]">{shape.replace(/\.$/, "")} (each symptom rated 1 to 10 by the patient, added up per day).</p>}
                     {treatments.map((x) => (
-                      <p key={x.id} className="text-midnight">{antibioticName(x.antibiotic_id, x.other_name)}{[x.dose, x.frequency?.replace(/_/g, " "), x.route === "iv" ? "IV" : x.route === "oral" ? "oral" : null, x.days && `${x.days} days`, x.started_on && `from ${formatDay(x.started_on)}`, x.worked && `patient: worked ${x.worked}`, x.reaction && `reaction: ${x.reaction}`].filter(Boolean).map((y) => `, ${y}`).join("")}</p>
+                      <p key={x.id} className="text-midnight">{antibioticDisplayName(x.antibiotic_id, x.other_name)}{[x.dose, x.frequency?.replace(/_/g, " "), x.route === "iv" ? "IV" : x.route === "oral" ? "oral" : null, x.days && `${x.days} days`, x.started_on && `from ${formatDay(x.started_on)}`, x.worked && `patient: worked ${x.worked}`, x.reaction && `reaction: ${x.reaction}`].filter(Boolean).map((y) => `, ${y}`).join("")}</p>
                     ))}
                     {tests.map((x) => <p key={x.id} className="text-[#5a4a6e]">{labelFor(TEST_KINDS, x.kind)}{x.tested_on ? ` ${formatDay(x.tested_on)}` : ""}{x.kit_id ? ", Utee test" : x.result ? `, ${labelFor(TEST_RESULTS, x.result).toLowerCase()}` : ""}{x.notes ? `. ${x.notes}` : ""}</p>)}
                     {diary.length > 0 && (
