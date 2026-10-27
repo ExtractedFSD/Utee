@@ -376,6 +376,10 @@ test("tracker: a Utee test links without re-entry", async ({ browser }) => {
   await pregnant.click();
   await expect(pregnant).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Save and continue" }).click();
+  await expect(page).toHaveURL(/about-me\?step=2/);
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await expect(page).toHaveURL(/about-me\?step=3/);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText(`Kit ${kit.code}`)).toBeVisible();
 
   await page.getByRole("link", { name: "Use a form instead" }).click();
@@ -630,20 +634,24 @@ test("tracker: passport details, an investigation and the passport PDF", async (
   await page.getByRole("link", { name: "Prefer a form?" }).click();
   await expect(page).toHaveURL(/\/portal\/passport\/about-me/);
 
-  await test.step("About you takes the passport fields, all optional", async () => {
-    await page.getByRole("radiogroup", { name: "first_uti_onset" }).getByRole("button", { name: "As an adult" }).click();
+  await test.step("About you takes the passport fields over three steps, all optional", async () => {
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await expect(page.getByText("Your UTI history")).toBeVisible();
+    await page.getByRole("radiogroup", { name: "first_uti_onset_ui" }).getByRole("button", { name: "As an adult" }).click();
     await page.getByLabel("Roughly which year? (optional)").fill("2015");
     await page.getByLabel(/Roughly how many UTIs/).fill("20");
-    await page.getByTestId("medical-history").getByRole("button", { name: "Diabetes" }).click();
-    await page.getByRole("button", { name: "+ Add an antibiotic" }).click();
+    await page.getByTestId("medical-history").getByRole("checkbox", { name: "Diabetes" }).click();
+    await page.getByRole("button", { name: "+ Add" }).click();
     await page.getByTestId("allergy-form").getByRole("combobox", { name: "Search by name or brand" }).fill("trimeth");
     await page.getByTestId("allergy-form").getByRole("option").first().click();
     await page.getByLabel("What happened?").fill("Rash");
     await page.getByTestId("allergy-form").getByRole("button", { name: "Add", exact: true }).click();
     await expect(page.getByTestId("allergy-list")).toContainText("Trimethoprim");
+    await page.getByRole("button", { name: "Save and continue" }).click();
+    await expect(page.getByText("Contact and hospital")).toBeVisible();
     await page.getByLabel("Your local hospital").fill("Royal Berkshire Hospital");
     await page.getByLabel("NHS number (optional)").fill("123 456 7890");
-    await page.getByRole("button", { name: "Save and continue" }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page).toHaveURL(/\/portal\/passport$/);
     const { data: profile } = await admin().from("tracker_profiles").select("local_hospital, nhs_number, first_uti_onset, first_uti_year, lifetime_utis, medical_history, allergies").eq("user_id", user.id).single();
     expect(profile).toMatchObject({ local_hospital: "Royal Berkshire Hospital", nhs_number: "1234567890", first_uti_onset: "adult", first_uti_year: 2015, lifetime_utis: 20, medical_history: ["diabetes"] });
@@ -718,17 +726,19 @@ test("tracker: share the passport with a clinician by code, verify an entry, rev
   await page.getByLabel(/I agree to Utee storing/).check();
   await page.getByRole("button", { name: "Start my UTI Passport" }).click();
   await page.getByRole("link", { name: "Prefer a form?" }).click();
-  await page.getByLabel("Your local hospital").fill("Royal Berkshire Hospital");
   await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByLabel("Your local hospital").fill("Royal Berkshire Hospital");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page).toHaveURL(/\/portal\/passport$/);
   await admin().from("tracker_investigations").insert({ user_id: user.id, kind: "uss_kub", performed_on: "2025-08-12", normal: true, findings: [], values: { pvr_ml: 30 }, source: "patient" });
 
   let code = "";
   await test.step("Creating a code asks for consent and shows the code, link and QR", async () => {
     await page.goto("/portal/passport/share");
-    await page.getByRole("button", { name: "Create a share code" }).click();
+    await page.getByRole("button", { name: "New share code" }).click();
     const sheet = page.getByTestId("sheet-share");
-    await sheet.getByLabel("Who is it for? (optional)").fill("Dr Patel");
+    await sheet.getByLabel("Who is this for?").fill("Dr Patel");
     await sheet.getByRole("button", { name: "30 days" }).click();
     await sheet.getByRole("button", { name: "Create a share code" }).click();
     await expect(sheet.getByText("Tick the box to share.")).toBeVisible();
@@ -790,9 +800,10 @@ test("tracker: share the passport with a clinician by code, verify an entry, rev
 
   await test.step("Removing the code closes the door at once", async () => {
     await page.goto("/portal/passport/share");
-    await page.getByTestId("share-list").getByRole("button", { name: "Remove" }).first().click();
-    await page.getByTestId("share-list").getByRole("button", { name: "Remove" }).last().click();
-    await expect(page.getByText("Past codes")).toBeVisible();
+    await page.getByTestId("share-created").getByRole("button", { name: "More" }).click();
+    await page.getByRole("menuitem", { name: "Remove" }).click();
+    await page.getByTestId("share-created").getByRole("button", { name: "Remove" }).click();
+    await expect(page.getByText("No active codes.")).toBeVisible();
     const anon = await browser.newContext();
     const view = await anon.newPage();
     await view.goto(`/passport/${code}`);

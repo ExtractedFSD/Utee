@@ -126,7 +126,6 @@ export function EpisodeEditor({
             {menuOpen && (
               <div role="menu" className="absolute right-0 top-12 z-30 min-w-[220px] rounded-2xl bg-white p-2 shadow-card">
                 <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); setDateSheet(true); }} className="w-full min-h-[44px] rounded-xl px-3 text-left text-sm font-semibold text-midnight hover:bg-pink-25">{copy.episode.changeStart}</button>
-                <a role="menuitem" href="/portal/passport/summary" className="block w-full min-h-[44px] rounded-xl px-3 py-3 text-left text-sm font-semibold text-midnight hover:bg-pink-25">{copy.episode.downloadSummary}</a>
                 <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); setConfirmDelete(true); }} className="w-full min-h-[44px] rounded-xl px-3 text-left text-sm font-semibold text-maroon hover:bg-pink-25">{copy.episode.delete}</button>
               </div>
             )}

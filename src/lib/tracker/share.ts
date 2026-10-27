@@ -69,3 +69,15 @@ export function expiresAtFor(days: number, from = new Date()): string {
 export function formatUntil(iso: string): string {
   return new Date(iso).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
 }
+
+/** "Expires in 23 hours", "in 41 days", "in 12 minutes". Null once passed. */
+export function expiresIn(iso: string, now = new Date()): string | null {
+  const ms = new Date(iso).getTime() - now.getTime();
+  if (ms <= 0) return null;
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `Expires in ${minutes} minute${minutes === 1 ? "" : "s"}`;
+  const hours = Math.round(ms / 3_600_000);
+  if (hours < 48) return `Expires in ${hours} hour${hours === 1 ? "" : "s"}`;
+  const days = Math.round(ms / 86_400_000);
+  return `Expires in ${days} day${days === 1 ? "" : "s"}`;
+}

@@ -180,6 +180,24 @@ export function Field({
 export const inputClass =
   "block w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-midnight placeholder-slate-400 focus:border-maroon focus:outline-none focus:ring-2 focus:ring-pink-50";
 
+/** An on/off setting: 44 by 26, maroon when on, with a label and an optional line under it. */
+export function Toggle({ checked, onChange, label, description, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; description?: string; disabled?: boolean }) {
+  return (
+    <label className="flex items-start justify-between gap-4 py-3">
+      <span className="min-w-0">
+        <span className="block text-sm text-midnight">{label}</span>
+        {description && <span className="block text-[13px] text-[#5a4a6e] mt-0.5">{description}</span>}
+      </span>
+      <span className="relative shrink-0 pt-0.5">
+        <input type="checkbox" role="switch" aria-checked={checked} checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
+        <span className={`block h-[26px] w-[44px] rounded-full transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-maroon/40 ${checked ? "bg-maroon" : "bg-maroon-25"} ${disabled ? "opacity-60" : ""}`} aria-hidden>
+          <span className={`block h-5 w-5 translate-y-[3px] rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[21px]" : "translate-x-[3px]"}`} />
+        </span>
+      </span>
+    </label>
+  );
+}
+
 export function EmptyState({ title, body }: { title: string; body?: string }) {
   return (
     <div className="text-center py-12">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { copy } from "@/lib/tracker/copy";
 
 /*
@@ -26,14 +26,15 @@ export function sectionFor(pathname: string): Section {
   return "today";
 }
 
-/** Full-screen flows (consent, the setup chat) stand alone, without the bar. */
-export function navHidden(pathname: string): boolean {
-  return /\/portal\/passport\/(consent|setup|log)/.test(pathname);
+/** Full-screen flows (consent, the setup chat, pages with a sticky save bar) stand alone, without the bar. */
+export function navHidden(pathname: string, step?: string | null): boolean {
+  return /\/portal\/passport\/(consent|setup|log|about-me)/.test(pathname) || (!!step && /\/portal\/passport\/record/.test(pathname));
 }
 
 export function PassportNav({ variant, unaEnabled, unaOpen, onUna, hydrated }: { variant: "phone" | "desktop"; unaEnabled: boolean; unaOpen: boolean; onUna: () => void; hydrated: boolean }) {
   const pathname = usePathname() ?? "";
-  if (navHidden(pathname)) return null;
+  const step = useSearchParams()?.get("step");
+  if (navHidden(pathname, step)) return null;
   const active = sectionFor(pathname);
 
   if (variant === "desktop") {

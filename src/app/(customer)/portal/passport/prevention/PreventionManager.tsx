@@ -1,7 +1,7 @@
 "use client";
 
 import { useOptimistic, useState, useTransition } from "react";
-import { Button, Card, CardTitle, Pill, inputClass } from "@/components/ui";
+import { Button, Card, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import type { PreventionRow } from "@/lib/tracker/data";
 import { HELPING, preventionGroup, preventionName } from "@/lib/tracker/prevention";
@@ -13,12 +13,21 @@ import { Sheet } from "../components/Sheet";
 import { addPreventions, deletePrevention, restartPrevention, updatePrevention } from "../actions";
 
 const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
+/** Category colours, the same as the pills on Today. */
+const TONE: Record<string, string> = {
+  supplement: "bg-sun text-amber-900",
+  topical: "bg-peach-50 text-maroon",
+  medicine: "bg-lavender-50 text-violet-900",
+  hormonal: "bg-sky-50 text-sky-900",
+  vaccine: "bg-mint-50 text-emerald-900",
+  other: "bg-slate-100 text-slate-700",
+};
 
 /**
  * Current list first, each row opening to its details (start date, "is it
  * helping?", notes, stop). Stopped things stay below as history.
  */
-export function PreventionManager({ rows }: { rows: PreventionRow[] }) {
+export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intro?: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -45,58 +54,58 @@ export function PreventionManager({ rows }: { rows: PreventionRow[] }) {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm text-[#5a4a6e]">{intro ?? copy.record.takingIntro}</p>
+        <Button onClick={() => setAdding(true)} className="shrink-0">{copy.prevention.add}</Button>
+      </div>
       <Card data-testid="prevention-current">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <CardTitle>{copy.prevention.current}</CardTitle>
-          <Button variant="secondary" onClick={() => setAdding(true)}>{copy.prevention.add}</Button>
-        </div>
         {current.length === 0 ? (
-          <p className="text-sm text-slate-600">{copy.prevention.nothingYet}</p>
+          <p className="text-center text-[13px] text-[#5a4a6e]">{copy.prevention.nothingYet}</p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-[rgba(29,0,58,.08)]">
             {current.map((r) => {
               const g = preventionGroup(r.option_key);
               const helping = helpingNow[r.id];
               return (
-                <li key={r.id}>
-                  <button type="button" onClick={() => setOpenId(r.id)} aria-expanded={openId === r.id} className="flex w-full min-h-[56px] items-center justify-between gap-4 py-3 text-left">
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-midnight">{preventionName(r)}</span>
-                      <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                        {g && <Pill tone={g.tone}>{g.label}</Pill>}
-                        {r.started_on && <span>{copy.prevention.since(formatDay(r.started_on))}</span>}
-                        {helping && <span>{copy.prevention.helping} {HELPING.find((h) => h.key === helping)?.label}</span>}
-                      </span>
+                <li key={r.id} className="flex items-center justify-between gap-3 py-3">
+                  <button type="button" onClick={() => setOpenId(r.id)} aria-expanded={openId === r.id} className="min-w-0 flex-1 text-left">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-midnight">{preventionName(r)}</span>
+                      {g && <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[.08em] ${TONE[g.key] ?? TONE.other}`}>{g.label}</span>}
                     </span>
-                    <span className="shrink-0 text-sm font-semibold text-maroon">{copy.prevention.edit}</span>
+                    <span className="mt-0.5 block text-[13px] text-[#5a4a6e]">
+                      {[r.started_on && copy.prevention.sinceShort(formatDay(r.started_on).replace(/ \d{4}$/, "")), helping === "yes" ? copy.prevention.helpsTick : helping ? `${copy.prevention.helping} ${HELPING.find((h) => h.key === helping)?.label.toLowerCase()}` : null].filter(Boolean).join(" · ")}
+                      {!helping && (r.started_on ? " · " : "")}
+                      {!helping && <span className="font-semibold text-maroon">{copy.prevention.notRated}</span>}
+                    </span>
                   </button>
+                  <button type="button" className={linkBtn} onClick={() => setOpenId(r.id)}>{copy.prevention.edit}</button>
                 </li>
               );
             })}
           </ul>
         )}
+        {past.length > 0 && (
+          <details className="mt-3 border-t border-[rgba(29,0,58,.08)] pt-3" data-testid="prevention-past">
+            <summary className="cursor-pointer select-none text-sm font-semibold text-maroon min-h-[44px] inline-flex items-center">{copy.prevention.stopped} ({past.length})</summary>
+            <ul className="divide-y divide-[rgba(29,0,58,.08)]">
+              {past.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-midnight">{preventionName(r)}</span>
+                    <span className="block text-[13px] text-[#5a4a6e]">
+                      {copy.prevention.between(r.started_on && formatDay(r.started_on), formatDay(r.stopped_on!))}
+                      {r.helping ? ` · ${copy.prevention.helping} ${HELPING.find((h) => h.key === r.helping)?.label.toLowerCase()}` : ""}
+                    </span>
+                  </span>
+                  <button type="button" className={linkBtn} disabled={pending} onClick={() => run(() => restartPrevention(r.id))}>{copy.prevention.restart}</button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
         {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
       </Card>
-
-      {past.length > 0 && (
-        <Card data-testid="prevention-past">
-          <CardTitle>{copy.prevention.past}</CardTitle>
-          <ul className="divide-y divide-slate-100">
-            {past.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-midnight">{preventionName(r)}</span>
-                  <span className="block text-xs text-slate-500">
-                    {copy.prevention.between(r.started_on && formatDay(r.started_on), formatDay(r.stopped_on!))}
-                    {r.helping ? ` · ${copy.prevention.helping} ${HELPING.find((h) => h.key === r.helping)?.label}` : ""}
-                  </span>
-                </span>
-                <button type="button" className={linkBtn} disabled={pending} onClick={() => run(() => restartPrevention(r.id))}>{copy.prevention.restart}</button>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
 
       <Sheet open={!!open} title={open ? preventionName(open) : ""} onClose={() => setOpenId(null)} testId="sheet-prevention" modal>
         {open && (

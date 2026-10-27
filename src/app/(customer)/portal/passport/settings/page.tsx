@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Breadcrumb, Card, CardTitle, PageHeader } from "@/components/ui";
+import { Breadcrumb, PageHeader } from "@/components/ui";
 import { trackerContext } from "@/lib/tracker/data";
 import { copy } from "@/lib/tracker/copy";
 import { SettingsPanel } from "./SettingsPanel";
@@ -10,16 +10,6 @@ export default async function TrackerSettingsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <PageHeader eyebrow="UTI Passport" title={copy.settings.title} breadcrumb={<Breadcrumb href="/portal/passport" label={copy.nav.today} />} />
-      <Card>
-        <CardTitle>{copy.settings.export}</CardTitle>
-        <p className="text-sm text-slate-600 mb-4">{copy.settings.exportBody}</p>
-        <div className="flex flex-wrap gap-2">
-          <a href="/portal/passport/export?format=json" className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] bg-white text-midnight border border-midnight/15 hover:bg-pink-25">{copy.settings.exportJson}</a>
-          <a href="/portal/passport/export?format=csv" className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] bg-white text-midnight border border-midnight/15 hover:bg-pink-25">{copy.settings.exportCsv}</a>
-          <a href="/portal/passport/export?format=fhir" className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] bg-white text-midnight border border-midnight/15 hover:bg-pink-25">{copy.settings.exportFhir}</a>
-        </div>
-        <p className="text-xs text-slate-500 mt-3">{copy.settings.exportFhirNote}</p>
-      </Card>
       <SettingsPanel
         consents={ctx.consents}
         reminderDaily={ctx.profile?.reminder_daily ?? false}
