@@ -35,7 +35,7 @@ export async function GET(
   const admin = createAdminClient();
   const [{ data: profile }, { data: kit }] = await Promise.all([
     admin.from("profiles").select("role").eq("id", user.id).single(),
-    admin.from("kits").select("id, code, status, customer_id").eq("code", code).maybeSingle(),
+    admin.from("kits").select("id, code, status, customer_id, released_at").eq("code", code).maybeSingle(),
   ]);
 
   if (!kit) return NextResponse.redirect(url(`/portal?kit=not-found`));

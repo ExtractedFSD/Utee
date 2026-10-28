@@ -8,6 +8,7 @@ import { royalMailTrackingUrl } from "@/lib/tracking";
 import { formatDateTime, type KitStatus } from "@/lib/status";
 import { TriageSummary } from "@/components/TriageSummary";
 import type { StoredTriage } from "@/lib/triage/questions";
+import { PassOnKit } from "./PassOnKit";
 
 export default async function TestDetailPage({
   params,
@@ -112,6 +113,8 @@ export default async function TestDetailPage({
               </div>
             </Card>
           ))}
+
+          {needsTriage && !symptoms && <PassOnKit kitId={kit.id} kitCode={formatKitCode(kit.code)} />}
 
           {symptoms && (
             <Card>

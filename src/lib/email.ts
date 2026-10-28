@@ -149,6 +149,27 @@ export const emails = {
     ),
   }),
 
+  kitPassedOn: (kitCode: string, rawCode: string) => ({
+    subject: `A Utee test kit has been passed on to you (${kitCode})`,
+    html: wrap(
+      "A Utee test kit is yours to register",
+      p(`Someone has ordered a Utee UTI test kit for you and passed it on. Its code is <strong>${kitCode}</strong>.`) +
+        p(`When the kit is in your hands, scan the QR code inside it or open the link below. You'll sign in with your own email address (we'll set up an account for you if you don't have one), and the kit, your symptoms and your result will be on your account only.`) +
+        button(`${APP_URL}/k/${rawCode}`, "Register this kit") +
+        p(`<strong>Before you take your sample</strong>, complete the short symptom form. The lab can't process the sample without it.`)
+    ),
+  }),
+
+  kitReleased: (kitCode: string, recipientEmail: string | null) => ({
+    subject: `Test kit ${kitCode} has been passed on`,
+    html: wrap(
+      "You've passed this kit on",
+      p(`Test kit <strong>${kitCode}</strong> is no longer on your account.${recipientEmail ? ` We've emailed its code to <strong>${recipientEmail}</strong>.` : " Give its code to the person taking the test."}`) +
+        p(`Whoever scans the kit next will register it to their own account. Their symptom form and result will be theirs, not yours. If this was a mistake, contact us and we'll sort it out.`) +
+        button(`${APP_URL}/portal`, "Open my portal")
+    ),
+  }),
+
   kitShipped: (kitCode: string, trackingNumber: string) => ({
     subject: "Your Utee test kit is on its way",
     html: wrap(
