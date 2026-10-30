@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { copy } from "@/lib/tracker/copy";
 import type { ChatMessage } from "@/lib/tracker/data";
@@ -54,11 +53,9 @@ export function UnaSheet({ open, onClose, aiAvailable, pregnantOrTrying, activeP
         <div className="flex items-center justify-between gap-3 px-5 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-maroon font-display text-xl leading-none text-white" aria-hidden>U</span>
-            <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
               <p className="text-sm font-semibold text-midnight">{name}</p>
-              <p className="truncate text-xs text-[#8a7a9c]">
-                {copy.guided.sheetSub} · {aiAvailable ? copy.guided.aiOn : copy.guided.aiOff} · <Link href="/portal/passport/settings" className="font-semibold text-maroon">{copy.guided.aiChange}</Link>
-              </p>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${aiAvailable ? "bg-sky-50 text-sky-900" : "bg-slate-100 text-slate-600"}`}>{aiAvailable ? copy.guided.aiOn : copy.guided.aiOff}</span>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
