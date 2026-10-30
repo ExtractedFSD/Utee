@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Button, Card, LinkButton, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
@@ -703,7 +704,9 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
             <textarea id="guided-input" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder={copy.guided.placeholder} rows={2} className={`${inputClass} flex-1 resize-none`} disabled={busy} />
             <Button onClick={send} disabled={busy || !text.trim()}>{copy.guided.send}</Button>
           </div>
-          <p className="mt-2 text-[11px] text-slate-400">{aiAvailable ? copy.guided.aiCaveat : copy.guided.aiCaveatOff}</p>
+          <p className="mt-2 text-[11px] text-slate-400">
+            {aiAvailable ? copy.guided.aiCaveat : copy.guided.aiCaveatOff} <Link href="/portal/passport/settings" className="font-semibold text-maroon">{copy.guided.aiSettings}</Link>
+          </p>
         </Card>
       )}
 
