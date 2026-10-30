@@ -3,10 +3,8 @@ import { Breadcrumb, Card, PageHeader } from "@/components/ui";
 import { loadAll, loadCultures, loadInvestigations, loadPreventions, loadVerifications, requireTracker } from "@/lib/tracker/data";
 import { loadUteeCultures } from "@/lib/tracker/load";
 import { copy } from "@/lib/tracker/copy";
-import { CONTRACEPTION, MENOPAUSE_STAGES, PREGNANT, TEST_KINDS, TEST_RESULTS, labelFor } from "@/lib/tracker/options";
-import { FIRST_UTI_ONSET, MEDICAL_HISTORY, firstUtiText, formatNhsNumber } from "@/lib/tracker/passport";
-import { preventionShortName } from "@/lib/tracker/prevention";
-import { antibioticName } from "@/lib/tracker/search";
+import { TEST_KINDS, TEST_RESULTS, labelFor } from "@/lib/tracker/options";
+import { aboutStepSummaries } from "@/lib/tracker/about-summary";
 import { formatDay } from "@/lib/tracker/stats";
 import { AboutMeForm, type Step } from "../about-me/AboutMeForm";
 import { CulturesManager, type SimpleTest } from "../cultures/CulturesManager";
@@ -67,12 +65,8 @@ export default async function RecordPage({ searchParams }: { searchParams: Promi
           <p className="text-sm text-[#5a4a6e]">{copy.record.aboutIntro}</p>
           {await (async () => {
             const active = (await loadPreventions(supabase, user.id)).filter((p) => !p.stopped_on);
-            const none = copy.record.steps.none;
-            const values: string[][] = [
-              [labelFor(MENOPAUSE_STAGES, profile.menopause_stage), labelFor(CONTRACEPTION, profile.contraception), labelFor(PREGNANT, profile.pregnant_or_trying), active.length ? active.map(preventionShortName).join(", ") : none],
-              [firstUtiText(profile) ?? none, profile.lifetime_utis !== null ? `${profile.lifetime_utis} UTIs in all` : none, profile.medical_history.length ? profile.medical_history.map((k) => (k === "other" ? profile.medical_history_other?.trim() || "Other" : MEDICAL_HISTORY.find((o) => o.key === k)?.label ?? k)).join(", ") : none, profile.allergies?.length ? profile.allergies.map((a) => antibioticName(a.antibiotic_id, a.other_name)).join(", ") : none],
-              [profile.phone ?? none, profile.local_hospital ?? none, [profile.address_line1, profile.city, profile.postcode].filter(Boolean).join(", ") || none, formatNhsNumber(profile.nhs_number) ?? none],
-            ];
+            // Each answer written so it reads without its question; empty steps describe what goes there.
+            const values = aboutStepSummaries(profile, active);
             return (
               <Card data-testid="about-overview">
                 <ol className="divide-y divide-[rgba(29,0,58,.08)]">
@@ -81,7 +75,7 @@ export default async function RecordPage({ searchParams }: { searchParams: Promi
                       <Link href={`/portal/passport/record?tab=about&step=${i + 1}`} className="flex min-h-[56px] items-center justify-between gap-4 py-3">
                         <span className="min-w-0">
                           <span className="block text-sm font-semibold text-midnight">{title}</span>
-                          <span className="block text-[13px] text-[#5a4a6e]">{values[i].filter((v) => v !== none).join(" · ") || copy.record.steps.overview[i]}</span>
+                          <span className="block text-[13px] text-[#5a4a6e]">{values[i].join(" · ") || copy.record.steps.overview[i]}</span>
                         </span>
                         <span className="shrink-0 text-sm font-semibold text-maroon">{copy.record.steps.edit}</span>
                       </Link>
