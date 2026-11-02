@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Card, CardTitle, Button, inputClass } from "@/components/ui";
 import type { KitStatus } from "@/lib/status";
-import { closeKit, refreshTracking, simulateTracking, revertKitStage } from "../../actions";
+import { closeKit, refreshTracking, reissueReturnPostage, simulateTracking, revertKitStage } from "../../actions";
 
 export function KitAdminControls({
   kitId,
@@ -83,6 +83,29 @@ export function KitAdminControls({
                 </p>
               )}
             </div>
+          </div>
+        )}
+
+        {status === "activated" && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Return postage</p>
+            <p className="text-xs text-slate-500">
+              Issues a new Royal Mail Tracked Returns label for a patient who lost theirs. The old
+              label is superseded, tracking moves to the new number, and the patient is emailed.
+            </p>
+            <Button
+              variant="secondary"
+              disabled={pending}
+              onClick={() =>
+                run(async () => {
+                  const result = await reissueReturnPostage(kitId);
+                  if (result.ok) setMessage(`New label issued: ${result.trackingNumber}`);
+                  return result;
+                })
+              }
+            >
+              Issue new return postage
+            </Button>
           </div>
         )}
 

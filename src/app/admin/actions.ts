@@ -9,6 +9,7 @@ import { sendEmail, emails } from "@/lib/email";
 import { KIT_REVERT_MAP, type KitStatus } from "@/lib/status";
 import { formatKitCode, generateKitCode, normalizeKitCode } from "@/lib/kits";
 import { getShipment, registerShipment, trackingEventFromWebhook, trackshipEnabled } from "@/lib/trackship";
+import { issueReturnPostage, senderAddressFor } from "@/lib/postage";
 
 /** Pre-print a batch of kit QR labels (status 'created', unassigned stock). */
 const BATCH_MAX = 5000;
@@ -247,8 +248,11 @@ export async function dispatchKit(input: {
   if (!order.customer_id) return { error: "Order has no linked customer account" };
 
   const outbound = input.outboundTracking.trim();
+  // Return postage is bought by the patient when they are ready to post, so
+  // the return number is optional here: only a kit packed with a pre-paid
+  // return label still has one to record.
   const returnTrk = input.returnTracking.trim();
-  if (!outbound || !returnTrk) return { error: "Both tracking numbers are required" };
+  if (!outbound) return { error: "The outbound tracking number is required" };
   // Carrier events are matched by tracking number alone, so a number shared
   // between shipments could never be routed to the right one.
   if (outbound === returnTrk) {
@@ -257,7 +261,7 @@ export async function dispatchKit(input: {
   const { data: clashes } = await admin
     .from("shipments")
     .select("tracking_number, kits:kit_id(code)")
-    .in("tracking_number", [outbound, returnTrk]);
+    .in("tracking_number", returnTrk ? [outbound, returnTrk] : [outbound]);
   if (clashes?.length) {
     const clash = clashes[0];
     const clashKit = (clash.kits as unknown as { code: string } | null)?.code ?? "another kit";
@@ -282,7 +286,7 @@ export async function dispatchKit(input: {
 
   const { error: shipmentError } = await admin.from("shipments").insert([
     { kit_id: kit.id, direction: "outbound", tracking_number: outbound },
-    { kit_id: kit.id, direction: "return", tracking_number: returnTrk },
+    ...(returnTrk ? [{ kit_id: kit.id, direction: "return", tracking_number: returnTrk }] : []),
   ]);
   if (shipmentError) {
     // Release the kit so it isn't stranded half-assigned with no shipments.
@@ -316,7 +320,7 @@ export async function dispatchKit(input: {
     actorId: user.id,
     newStatus: "shipped",
   });
-  await registerTracking(admin, kit.id, kitCode, [outbound, returnTrk]);
+  await registerTracking(admin, kit.id, kitCode, returnTrk ? [outbound, returnTrk] : [outbound]);
 
   await sendEmail({ to: order.email, kitId: kit.id, kind: "kitShipped", ...emails.kitShipped(shown, outbound) });
 
@@ -344,6 +348,25 @@ async function registerTracking(admin: ReturnType<typeof createAdminClient>, kit
       metadata: { provider: "trackship", trackingNumber, ok: result.ok, raw: result.raw ?? null },
     });
   }
+}
+
+/**
+ * A replacement return label for a patient who lost theirs. The old one is
+ * marked superseded, the kit's return shipment moves to the new number, and
+ * the patient is emailed.
+ */
+export async function reissueReturnPostage(kitId: string) {
+  const user = await requireRole(["admin"]);
+  const admin = createAdminClient();
+  const { data: kit } = await admin.from("kits").select("id, code, status, customer_id, order_id, profiles:customer_id(email, full_name)").eq("id", kitId).maybeSingle();
+  if (!kit) return { error: "Kit not found" };
+  const owner = kit.profiles as unknown as { email: string; full_name: string | null } | null;
+  const sender = await senderAddressFor(admin, kit, owner?.full_name ?? null);
+  if (!sender) return { error: "No address is known for this patient. Ask them to request postage from their kit page, where they can type one." };
+  const result = await issueReturnPostage(admin, kit, { id: user.id, role: user.role, email: null }, sender, { replace: true, notify: owner?.email ?? null });
+  if ("error" in result) return { error: result.error };
+  revalidatePath(`/admin/kits/${kitId}`);
+  return { ok: true, trackingNumber: result.label.tracking_number };
 }
 
 /** Utee's answer to a parked specimen: the lab should test the same sample again. */
