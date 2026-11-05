@@ -40,13 +40,28 @@ export type HeroState =
 
 type Run = (fn: () => Promise<unknown>, optimistic?: () => void) => void;
 
-const FACES: Record<string, string> = {
-  "1": "M8 16.5c1.2-1.6 2.5-2.4 4-2.4s2.8.8 4 2.4",
-  "2": "M8.5 16c1-.9 2.2-1.4 3.5-1.4s2.5.5 3.5 1.4",
-  "3": "M8.5 15.5h7",
-  "4": "M8.5 14.6c1 .9 2.2 1.4 3.5 1.4s2.5-.5 3.5-1.4",
-  "5": "M8 14c1.2 1.6 2.5 2.4 4 2.4s2.8-.8 4-2.4",
+/*
+ * The five mouths, worst to best: an open filled "oh", a frown, a flat
+ * line, a smile, and an open filled grin. Filled mouths mark the extremes.
+ */
+const FACES: Record<string, { d: string; filled?: boolean }> = {
+  "1": { d: "M12 12.6a2.3 2.6 0 1 0 0 5.2a2.3 2.6 0 1 0 0-5.2z", filled: true },
+  "2": { d: "M8.3 17.2c1.1-1.5 2.4-2.2 3.7-2.2s2.6.7 3.7 2.2" },
+  "3": { d: "M8.3 15.6h7.4" },
+  "4": { d: "M8.3 14.2c1.1 1.5 2.4 2.2 3.7 2.2s2.6-.7 3.7-2.2" },
+  "5": { d: "M7.6 14h8.8a4.4 4.4 0 0 1-8.8 0z", filled: true },
 };
+
+function Face({ feeling }: { feeling: string }) {
+  const m = FACES[feeling];
+  return (
+    <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="8.7" cy="9.2" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="15.3" cy="9.2" r="1.2" fill="currentColor" stroke="none" />
+      <path d={m.d} fill={m.filled ? "currentColor" : "none"} />
+    </svg>
+  );
+}
 
 const hero = "rounded-card bg-gradient-brand p-5 text-white";
 const shadow = { boxShadow: "0 10px 30px rgba(145,25,59,.25)" };
@@ -125,28 +140,8 @@ function OpenHero({ uti, streak, pregnantOrTrying }: { uti: OpenUti; streak: Str
         </div>
         <p className="mt-1 text-sm text-white/85">{copy.dashboard.startedAnd(formatDayShort(uti.startedOn))}</p>
 
-        <div className="mt-4 flex justify-between gap-1" role="radiogroup" aria-label={copy.episode.feelingQuestion}>
-          {FEELINGS.map((f) => {
-            const n = Number(f.key);
-            const on = feeling === n;
-            return (
-              <button
-                key={f.key}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                aria-label={f.label}
-                disabled={pending}
-                onClick={() => run(() => setFeeling(uti.id, n), () => setFeelingNow(n))}
-                className={`flex h-[52px] w-[52px] items-center justify-center rounded-full border transition-colors disabled:opacity-70 ${on ? "border-white bg-white text-maroon shadow-card" : "border-white/60 text-white hover:bg-white/10"}`}
-              >
-                <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M9 9.5h.01M15 9.5h.01" strokeWidth="2" />
-                  <path d={FACES[f.key]} />
-                </svg>
-              </button>
-            );
-          })}
+        <div className="mt-4">
+          <Faces value={feeling} pending={pending} onPick={(n) => run(() => setFeeling(uti.id, n), () => setFeelingNow(n))} />
         </div>
 
         <StreakLine streak={streak} done={feeling !== null} className="mt-3" />
@@ -245,7 +240,7 @@ function OpenHero({ uti, streak, pregnantOrTrying }: { uti: OpenUti; streak: Str
   );
 }
 
-/** The five faces, 52px circles; selected is white with maroon strokes. Shared by both heroes. */
+/** The five faces, worst to best, each named underneath; selected is white with maroon strokes. Shared by both heroes. */
 function Faces({ value, pending, onPick }: { value: number | null; pending: boolean; onPick: (n: number) => void }) {
   return (
     <div className="flex justify-between gap-1" role="radiogroup" aria-label={copy.episode.feelingQuestion}>
@@ -261,12 +256,12 @@ function Faces({ value, pending, onPick }: { value: number | null; pending: bool
             aria-label={f.label}
             disabled={pending}
             onClick={() => onPick(n)}
-            className={`flex h-[52px] w-[52px] items-center justify-center rounded-full border transition-colors disabled:opacity-70 ${on ? "border-white bg-white text-maroon shadow-card" : "border-white/60 text-white hover:bg-white/10"}`}
+            className="flex min-w-0 flex-col items-center gap-1.5 disabled:opacity-70"
           >
-            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M9 9.5h.01M15 9.5h.01" strokeWidth="2" />
-              <path d={FACES[f.key]} />
-            </svg>
+            <span className={`flex h-[52px] w-[52px] items-center justify-center rounded-full border transition-colors ${on ? "border-white bg-white text-maroon shadow-card" : "border-white/60 text-white"}`}>
+              <Face feeling={f.key} />
+            </span>
+            <span className={`text-[11px] font-semibold leading-none ${on ? "text-white" : "text-white/80"}`}>{f.label}</span>
           </button>
         );
       })}
