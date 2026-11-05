@@ -31,10 +31,12 @@ export type OpenUti = {
   unrated: { id: string; name: string }[];
 };
 
+export type Streak = { current: number; best: number; todayDone: boolean };
+
 export type HeroState =
   | { kind: "new" }
-  | { kind: "between"; daysSince: number; result: { kitId: string; code: string } | null }
-  | { kind: "open"; uti: OpenUti };
+  | { kind: "between"; daysSince: number; result: { kitId: string; code: string } | null; feelingToday: number | null; noteToday: string | null; streak: Streak }
+  | { kind: "open"; uti: OpenUti; streak: Streak };
 
 type Run = (fn: () => Promise<unknown>, optimistic?: () => void) => void;
 
@@ -62,25 +64,11 @@ export function TodayHero({ state, pregnantOrTrying }: { state: HeroState; pregn
       </div>
     );
   }
-  if (state.kind === "between") {
-    return (
-      <div className={hero} style={shadow} data-testid="between-hero">
-        <p className="font-display text-3xl font-light leading-tight">{copy.dashboard.sinceLast(state.daysSince)}</p>
-        {state.result && (
-          <p className="mt-2 text-sm text-white/85">
-            {copy.dashboard.resultReady(state.result.code)} · <Link href={`/portal/tests/${state.result.kitId}`} className="font-semibold text-white underline underline-offset-4">{copy.dashboard.seeResult}</Link>
-          </p>
-        )}
-        <div className="mt-5">
-          <LinkButton href="/portal/passport/log" variant="white">{copy.dashboard.logNew}</LinkButton>
-        </div>
-      </div>
-    );
-  }
-  return <OpenHero uti={state.uti} pregnantOrTrying={pregnantOrTrying} />;
+  if (state.kind === "between") return <BetweenHero state={state} />;
+  return <OpenHero uti={state.uti} streak={state.streak} pregnantOrTrying={pregnantOrTrying} />;
 }
 
-function OpenHero({ uti, pregnantOrTrying }: { uti: OpenUti; pregnantOrTrying: string }) {
+function OpenHero({ uti, streak, pregnantOrTrying }: { uti: OpenUti; streak: Streak; pregnantOrTrying: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -160,6 +148,8 @@ function OpenHero({ uti, pregnantOrTrying }: { uti: OpenUti; pregnantOrTrying: s
             );
           })}
         </div>
+
+        <StreakLine streak={streak} done={feeling !== null} className="mt-3" />
 
         {chipsOpen && (
           <div className="mt-5" data-testid="hero-symptoms">
@@ -251,6 +241,124 @@ function OpenHero({ uti, pregnantOrTrying }: { uti: OpenUti; pregnantOrTrying: s
         </div>
       </Sheet>
       <span className="sr-only">{feeling ? labelFor(FEELINGS, String(feeling)) : ""}</span>
+    </div>
+  );
+}
+
+/** The five faces, 52px circles; selected is white with maroon strokes. Shared by both heroes. */
+function Faces({ value, pending, onPick }: { value: number | null; pending: boolean; onPick: (n: number) => void }) {
+  return (
+    <div className="flex justify-between gap-1" role="radiogroup" aria-label={copy.episode.feelingQuestion}>
+      {FEELINGS.map((f) => {
+        const n = Number(f.key);
+        const on = value === n;
+        return (
+          <button
+            key={f.key}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            aria-label={f.label}
+            disabled={pending}
+            onClick={() => onPick(n)}
+            className={`flex h-[52px] w-[52px] items-center justify-center rounded-full border transition-colors disabled:opacity-70 ${on ? "border-white bg-white text-maroon shadow-card" : "border-white/60 text-white hover:bg-white/10"}`}
+          >
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M9 9.5h.01M15 9.5h.01" strokeWidth="2" />
+              <path d={FACES[f.key]} />
+            </svg>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** "5-day streak · best 12", or the nudge to check in. `done` is today's optimistic state. */
+function StreakLine({ streak, done, className = "" }: { streak: Streak; done: boolean; className?: string }) {
+  const current = done && !streak.todayDone ? streak.current + 1 : streak.current;
+  const best = Math.max(streak.best, current);
+  return (
+    <p className={`flex items-center gap-2 text-sm text-white/90 ${className}`} data-testid="streak" aria-live="polite">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3c1 3 4 4.5 4 8.5a4 4 0 0 1-8 0c0-1.5.5-2.5 1-3.5.5 1 1.5 1.5 2.5 1.5C11.5 7.5 11 5 12 3z" /></svg>
+      {current > 0 ? <><span className="font-semibold">{copy.dashboard.streak(current)}</span>{best > current ? <span className="text-white/70">· {copy.dashboard.streakBest(best)}</span> : null}{!done ? <span className="text-white/70">· {copy.dashboard.streakKeep}</span> : null}</> : <span>{copy.dashboard.streakStart}</span>}
+    </p>
+  );
+}
+
+/*
+ * Between UTIs the hero is two halves: the UTI side (days clear, Log a UTI)
+ * and the diary side (today's face, a note, the streak). One tap on a face
+ * saves the day; the streak counts every day with an entry, UTI or not.
+ */
+function BetweenHero({ state }: { state: Extract<HeroState, { kind: "between" }> }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [feeling, setFeelingNow] = useOptimistic(state.feelingToday, (_: number | null, next: number) => next);
+  const [noteOpen, setNoteOpen] = useState(!!state.noteToday);
+  const [note, setNote] = useState(state.noteToday ?? "");
+  const today = isoToday();
+
+  const run: Run = (fn, optimistic) => {
+    setError(null);
+    startTransition(async () => {
+      optimistic?.();
+      const r = await fn();
+      const err = (r as { error?: string } | null | undefined)?.error;
+      if (err) setError(err);
+      else {
+        setSaved(true);
+        if (savedTimer.current) clearTimeout(savedTimer.current);
+        savedTimer.current = setTimeout(() => setSaved(false), 1500);
+      }
+    });
+  };
+  useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current); }, []);
+
+  return (
+    <div className={`${hero} grid gap-5 p-0 sm:grid-cols-2 sm:gap-0`} style={shadow} data-testid="between-hero">
+      <div className="p-5 sm:border-r sm:border-white/20">
+        <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-white/85">{copy.nav.today}</p>
+        <p className="mt-1 font-display text-3xl font-light leading-tight">{copy.dashboard.sinceLast(state.daysSince)}</p>
+        {state.result && (
+          <p className="mt-2 text-sm text-white/85">
+            {copy.dashboard.resultReady(state.result.code)} · <Link href={`/portal/tests/${state.result.kitId}`} className="font-semibold text-white underline underline-offset-4">{copy.dashboard.seeResult}</Link>
+          </p>
+        )}
+        <div className="mt-5">
+          <LinkButton href="/portal/passport/log" variant="white">{copy.dashboard.logNew}</LinkButton>
+        </div>
+      </div>
+      <div className="border-t border-white/20 p-5 sm:border-t-0" data-testid="diary-half">
+        <div className="flex items-start justify-between gap-3">
+          <p className="font-display text-[22px] font-light leading-tight">{copy.dashboard.diaryTitle}</p>
+          <span aria-live="polite" className={`shrink-0 text-sm text-white/90 transition-opacity ${saved ? "opacity-100" : "opacity-0"}`}>{copy.episode.saved} ✓</span>
+        </div>
+        <div className="mt-3">
+          <Faces value={feeling} pending={pending} onPick={(n) => run(() => setFeeling(null, n), () => setFeelingNow(n))} />
+        </div>
+        <StreakLine streak={state.streak} done={feeling !== null} className="mt-3" />
+        {noteOpen && (
+          <textarea
+            value={note}
+            autoFocus={!state.noteToday}
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={() => { if (note.trim() !== (state.noteToday ?? "").trim()) run(() => saveDiaryEntry({ onDate: today, note })); }}
+            rows={2}
+            maxLength={1000}
+            className={`${inputClass} mt-3 text-midnight`}
+            aria-label={copy.episode.noteToday}
+            placeholder={copy.episode.noteTodayPlaceholder}
+          />
+        )}
+        {error && <p className="mt-2 text-sm text-white">{error}</p>}
+        <div className="mt-3 flex items-center justify-between gap-3 text-sm font-semibold">
+          {!noteOpen ? <button type="button" onClick={() => setNoteOpen(true)} className="min-h-[44px] underline underline-offset-4">{copy.dashboard.addNote}</button> : <span />}
+          <Link href="/portal/passport/history?view=days" className="min-h-[44px] inline-flex items-center underline underline-offset-4">{copy.dashboard.seeDiary}</Link>
+        </div>
+      </div>
     </div>
   );
 }
