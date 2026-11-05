@@ -344,6 +344,13 @@ export const copy = {
     openEpisodeLink: "Open this UTI",
     seeHistory: "See full history",
     feelBetter: "I feel better",
+    diaryTitle: "How are you feeling today?",
+    diaryLine: "A face a day keeps your passport telling the full story, UTI or not.",
+    streak: (n: number) => `${n}-day streak`,
+    streakKeep: "Check in today to keep it going",
+    streakStart: "Check in today to start a streak",
+    streakBest: (n: number) => `best ${n}`,
+    seeDiary: "See my diary",
     sinceLast: (days: number) =>
       days === 0 ? "Your last UTI ended today" : `${days} day${days === 1 ? "" : "s"} since your last UTI ended`,
     logNew: "Log a UTI",

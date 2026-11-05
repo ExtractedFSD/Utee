@@ -12,6 +12,7 @@ import { PassportCard } from "./components/PassportCard";
 import { PatternsCard } from "./components/PatternsCard";
 import { PreventionPills } from "./components/PreventionPills";
 import { TodayHero, type HeroState } from "./components/TodayHero";
+import { checkinStreak } from "@/lib/tracker/diary";
 
 /*
  * Today. The hero decides what the person is here to do; the cards below it
@@ -28,6 +29,7 @@ export default async function TodayPage() {
   const open = s.openEpisode;
   const brandNew = data.episodes.length === 0;
 
+  const streak = checkinStreak(data.checkins, today);
   let state: HeroState;
   if (brandNew) state = { kind: "new" };
   else if (open) {
@@ -46,11 +48,13 @@ export default async function TodayPage() {
         symptomOrder: orderByUsage(SYMPTOMS.map((x) => x.key), data.symptoms.map((x) => ({ key: x.symptom }))),
         unrated: data.treatments.filter((t) => t.episode_id === open.id && !t.worked).map((t) => ({ id: t.id, name: antibioticName(t.antibiotic_id, t.other_name) })),
       },
+      streak,
     };
   } else {
     // A Utee result published in the last week is worth a line on the hero.
     const recent = kits.find((k) => k.reportReady && k.reportAt && daysBetween(k.reportAt.slice(0, 10), today) <= 7);
-    state = { kind: "between", daysSince: s.daysSinceLast ?? 0, result: recent ? { kitId: recent.id, code: recent.code } : null };
+    const checkin = data.checkins.find((c) => c.on_date === today);
+    state = { kind: "between", daysSince: s.daysSinceLast ?? 0, result: recent ? { kitId: recent.id, code: recent.code } : null, feelingToday: checkin?.feeling ?? null, noteToday: checkin?.note ?? null, streak };
   }
 
   const taking = data.preventions.filter((x) => !x.stopped_on);

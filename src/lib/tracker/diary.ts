@@ -188,3 +188,24 @@ export function meanSummary(points: ScorePoint[]): string | null {
   if (last.mean > m[0].mean) return `Rising from ${m[0].mean} on day ${m[0].day} to ${last.mean} out of 10 on day ${last.day}.`;
   return `Around ${last.mean} out of 10 from day ${m[0].day} to day ${last.day}.`;
 }
+
+/*
+ * How many days in a row the diary has an entry (a feeling or a note),
+ * counting back from today, or from yesterday when today is not done yet so
+ * the run is still alive. `best` is the longest run ever.
+ */
+export function checkinStreak(checkins: CheckinRow[], today: string): { current: number; best: number; todayDone: boolean } {
+  const days = new Set(checkins.filter((c) => c.feeling !== null || (c.note ?? "").trim()).map((c) => c.on_date));
+  const back = (iso: string, n: number) => new Date(Date.parse(iso) - n * 86400000).toISOString().slice(0, 10);
+  const todayDone = days.has(today);
+  let current = 0;
+  for (let d = todayDone ? today : back(today, 1); days.has(d); d = back(d, 1)) current += 1;
+  let best = 0;
+  for (const d of days) {
+    if (days.has(back(d, 1))) continue;
+    let n = 0;
+    for (let x = d; days.has(x); x = new Date(Date.parse(x) + 86400000).toISOString().slice(0, 10)) n += 1;
+    best = Math.max(best, n);
+  }
+  return { current, best, todayDone };
+}
