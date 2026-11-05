@@ -356,7 +356,7 @@ function BetweenHero({ state }: { state: Extract<HeroState, { kind: "between" }>
         {error && <p className="mt-2 text-sm text-white">{error}</p>}
         <div className="mt-3 flex items-center justify-between gap-3 text-sm font-semibold">
           {!noteOpen ? <button type="button" onClick={() => setNoteOpen(true)} className="min-h-[44px] underline underline-offset-4">{copy.dashboard.addNote}</button> : <span />}
-          <Link href="/portal/passport/history?view=day" className="min-h-[44px] inline-flex items-center underline underline-offset-4">{copy.dashboard.seeDiary}</Link>
+          <Link href="/portal/passport/history?view=days" className="min-h-[44px] inline-flex items-center underline underline-offset-4">{copy.dashboard.seeDiary}</Link>
         </div>
       </div>
     </div>
