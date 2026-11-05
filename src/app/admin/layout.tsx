@@ -18,6 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/kits/batches", label: "Kit batches" },
         { href: "/admin/users", label: "Users" },
         { href: "/admin/emails", label: "Email log" },
+        { href: "/admin/postage", label: "Postage" },
       ],
     });
   }

@@ -9,6 +9,8 @@ import { formatDateTime, type KitStatus } from "@/lib/status";
 import { TriageSummary } from "@/components/TriageSummary";
 import type { StoredTriage } from "@/lib/triage/questions";
 import { PassOnKit } from "./PassOnKit";
+import { ReturnPostage } from "./ReturnPostage";
+import { currentReturnLabel, POSTAGE_STATUSES } from "@/lib/postage";
 
 export default async function TestDetailPage({
   params,
@@ -48,6 +50,9 @@ export default async function TestDetailPage({
 
   const status = kit.status as KitStatus;
   const needsTriage = ["assigned", "shipped", "delivered"].includes(status);
+  const label = await currentReturnLabel(supabase, kit.id);
+  const postage = label ? { trackingNumber: label.tracking_number, createdAt: label.created_at, hasQr: !!label.qr_png, hasPdf: !!label.label_pdf, stub: label.provider === "stub" } : null;
+  const canRequestPostage = (POSTAGE_STATUSES as readonly string[]).includes(status);
 
   return (
     <div className="space-y-6">
@@ -67,6 +72,10 @@ export default async function TestDetailPage({
           </div>
           <LinkButton href={`/triage/${kit.code}`} variant="white">Complete symptom form</LinkButton>
         </Callout>
+      )}
+
+      {(postage || canRequestPostage) && !["report_ready", "closed"].includes(status) && (
+        <ReturnPostage kitId={kit.id} kitCode={formatKitCode(kit.code)} postage={postage} canRequest={canRequestPostage} />
       )}
 
       {report?.status === "complete" && report.report_path && (

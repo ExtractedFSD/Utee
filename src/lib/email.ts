@@ -139,6 +139,17 @@ export const emails = {
     ),
   }),
 
+  returnPostage: (kitCode: string, trackingNumber: string, kitId: string) => ({
+    subject: `Your postage for test kit ${kitCode}`,
+    html: wrap(
+      "Your return postage is ready",
+      p(`Your Royal Mail Tracked Returns postage for kit <strong>${kitCode}</strong> is ready. Tracking number: <strong>${trackingNumber}</strong>.`) +
+        p(`Open your kit page and either <strong>show the QR code</strong> at any Post Office counter, where they print the label for you, or <strong>print the label</strong> at home and stick it on the return box. Then hand the box in at the counter. Post it the same day you take your sample if you can.`) +
+        button(`${APP_URL}/portal/tests/${kitId}`, "Show my postage") +
+        p(`Your sample must have the symptom form and the kit code with it, which it does if you followed the kit instructions. You can follow the parcel's journey to the lab on the same page.`)
+    ),
+  }),
+
   kitClaimed: (kitCode: string) => ({
     subject: `Your Utee test kit ${kitCode} is registered`,
     html: wrap(

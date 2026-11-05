@@ -142,8 +142,10 @@ export function KitTools({ pendingOrders, initialCode }: { pendingOrders: Pendin
       <Card>
         <CardTitle>1 · Dispatch a kit</CardTitle>
         <p className="text-sm text-slate-500 mb-4">
-          When packing an order: scan or enter the kit code, pick the order, and enter both Royal
-          Mail tracking numbers. The patient is emailed their instructions automatically.
+          When packing an order: scan or enter the kit code, pick the order, and enter the outbound
+          Royal Mail tracking number. Return postage is created by the patient from their kit page
+          when they are ready to post, so the return number is only needed for a kit packed with a
+          pre-paid label. The patient is emailed their instructions automatically.
         </p>
         <div className="space-y-3">
           <Field label="Kit code">
@@ -164,7 +166,7 @@ export function KitTools({ pendingOrders, initialCode }: { pendingOrders: Pendin
                 className={inputClass}
               />
             </Field>
-            <Field label="Return tracking no.">
+            <Field label="Return tracking no. (optional)">
               <input
                 value={returnTracking}
                 onChange={(e) => setReturnTracking(e.target.value)}
