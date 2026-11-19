@@ -12,9 +12,9 @@ import { answerTransferRequest, passOnKit } from "./actions";
  */
 export type PendingAsk = { id: string; name: string; email: string };
 
-export function PassOnKit({ kitId, kitCode, asks = [] }: { kitId: string; kitCode: string; asks?: PendingAsk[] }) {
+export function PassOnKit({ kitId, kitCode, asks = [], standalone = false }: { kitId: string; kitCode: string; asks?: PendingAsk[]; standalone?: boolean }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(standalone);
   const [email, setEmail] = useState("");
   const [sure, setSure] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,12 +32,16 @@ export function PassOnKit({ kitId, kitCode, asks = [] }: { kitId: string; kitCod
 
   return (
     <div className="rounded-card bg-white p-6 shadow-card" data-testid="pass-on">
-      <h2 className="font-display text-2xl font-light text-midnight">Is this test for someone else?</h2>
-      <p className="mt-2 text-sm text-[#5a4a6e] leading-relaxed">
-        If you ordered kit {kitCode} for another person, pass it on so it registers to their own account. Their symptom form and result will be theirs, not on your account.
-      </p>
+      {!standalone && (
+        <>
+          <h2 className="font-display text-2xl font-light text-midnight">Is this test for someone else?</h2>
+          <p className="mt-2 text-sm text-[#5a4a6e] leading-relaxed">
+            If you ordered kit {kitCode} for another person, pass it on so it registers to their own account. Their symptom form and result will be theirs, not on your account.
+          </p>
+        </>
+      )}
       {asks.length > 0 && (
-        <ul className="mt-4 space-y-2" data-testid="pending-asks">
+        <ul className={`${standalone ? "" : "mt-4 "}space-y-2`} data-testid="pending-asks">
           {asks.map((a) => (
             <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-pink-25 p-4">
               <p className="min-w-0 text-sm text-midnight"><span className="font-semibold">{a.name}</span> <span className="text-[#5a4a6e]">({a.email}) asked to use this kit</span></p>
@@ -67,7 +71,7 @@ export function PassOnKit({ kitId, kitCode, asks = [] }: { kitId: string; kitCod
           {error && <p className="text-sm text-rose-600">{error}</p>}
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={!sure || pending}>{pending ? "One moment…" : "Pass it on"}</Button>
-            <button type="button" onClick={() => { setOpen(false); setError(null); }} className="min-h-[44px] px-2 text-sm font-semibold text-maroon">Cancel</button>
+            {standalone ? <a href={`/portal/tests/${kitId}`} className="min-h-[44px] inline-flex items-center px-2 text-sm font-semibold text-maroon">Cancel</a> : <button type="button" onClick={() => { setOpen(false); setError(null); }} className="min-h-[44px] px-2 text-sm font-semibold text-maroon">Cancel</button>}
           </div>
         </form>
       )}
