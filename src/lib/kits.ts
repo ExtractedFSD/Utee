@@ -54,6 +54,8 @@ export async function claimKit(
       customer_id: customer.id,
       status: "delivered",
       assigned_at: new Date().toISOString(),
+      // They scanned the code on the box, so it is in their hands.
+      received_at: new Date().toISOString(),
     })
     .eq("id", kit.id)
     .in("status", ["printed", ...PRE_TRIAGE_STATUSES])
@@ -98,7 +100,7 @@ export async function releaseKit(
 
   const { data: released, error } = await admin
     .from("kits")
-    .update({ customer_id: null, released_at: new Date().toISOString(), released_by: buyer.id })
+    .update({ customer_id: null, released_at: new Date().toISOString(), released_by: buyer.id, received_at: null })
     .eq("id", kit.id)
     .eq("customer_id", buyer.id)
     .in("status", [...PRE_TRIAGE_STATUSES])
@@ -123,4 +125,39 @@ export async function releaseKit(
   }
   await sendEmail({ to: buyer.email, kitId: kit.id, kind: "kitReleased", ...emails.kitReleased(shown, recipientEmail) });
   return { code: kit.code };
+}
+
+/**
+ * The patient has the kit in their hands: they scanned its QR code, typed
+ * the code, or said so on the kit page. Recorded once, and only while the kit
+ * is unused and theirs. The symptom form is offered only after this, so
+ * nobody answers it while the parcel is still in the post. Returns whether
+ * this call was the one that recorded it.
+ */
+export async function markKitReceived(
+  admin: SupabaseClient,
+  kitId: string,
+  customerId: string,
+  via: "scan" | "button"
+): Promise<boolean> {
+  const { data, error } = await admin
+    .from("kits")
+    .update({ received_at: new Date().toISOString() })
+    .eq("id", kitId)
+    .eq("customer_id", customerId)
+    .is("received_at", null)
+    .in("status", [...PRE_TRIAGE_STATUSES])
+    .select("id");
+  if (error) throw new Error(`kit received update failed: ${error.message}`);
+  if (!data?.length) return false;
+  await logKitEvent(admin, {
+    kitId,
+    type: "fulfilment",
+    label: "Kit received",
+    detail: via === "scan" ? "Confirmed by scanning the QR code on the kit." : "Confirmed on the kit page.",
+    actorRole: "customer",
+    actorId: customerId,
+    metadata: { via },
+  });
+  return true;
 }

@@ -122,7 +122,8 @@ export async function decideKitTransfer(
   }
   const { data: moved } = await admin
     .from("kits")
-    .update({ customer_id: request.requester_id, released_at: new Date().toISOString(), released_by: request.owner_id })
+    // The requester scanned the box to ask, so the kit is already in their hands.
+    .update({ customer_id: request.requester_id, released_at: new Date().toISOString(), released_by: request.owner_id, received_at: new Date().toISOString() })
     .eq("id", kit.id)
     .eq("customer_id", request.owner_id)
     .in("status", [...PRE_TRIAGE_STATUSES])

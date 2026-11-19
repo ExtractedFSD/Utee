@@ -88,7 +88,7 @@ export async function submitTriage(code: string, input: TriageInput) {
 
   const { data: kit } = await admin
     .from("kits")
-    .select("id, code, status, customer_id")
+    .select("id, code, status, customer_id, received_at")
     .eq("code", code)
     .single();
   if (!kit || kit.customer_id !== user.id) {
@@ -96,6 +96,9 @@ export async function submitTriage(code: string, input: TriageInput) {
   }
   if (!["assigned", "shipped", "delivered"].includes(kit.status)) {
     return { error: "Symptoms have already been submitted for this kit." };
+  }
+  if (!kit.received_at) {
+    return { error: "Please confirm your kit has arrived first, from the kit page or by scanning its QR code." };
   }
 
   const parsed = triageSchema.safeParse(input);
