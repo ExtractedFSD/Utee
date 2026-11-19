@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadAll, type TrackerData } from "./data";
 import { organismsFromLabSheet, type CultureRow } from "./cultures";
+import { readStoredPatient } from "@/lib/triage/patient";
 
 /**
  * A Utee test's result joins the passport by itself once the clinic has
@@ -15,11 +16,15 @@ export async function loadUteeCultures(userId: string): Promise<CultureRow[]> {
   const admin = createAdminClient();
   const { data: kits } = await admin
     .from("kits")
-    .select("id, code, received_by_lab_at, lab_complete_at, clinic_reports(status, completed_at), lab_results(outcome, organisms, comments)")
+    .select("id, code, received_by_lab_at, lab_complete_at, clinic_reports(status, completed_at), lab_results(outcome, organisms, comments), triage_submissions(patient)")
     .eq("customer_id", userId)
     .eq("status", "report_ready");
   const rows: CultureRow[] = [];
   for (const k of kits ?? []) {
+    // A test done on behalf of a dependant is theirs, not this passport's.
+    const triage = (k.triage_submissions as unknown as { patient?: unknown }[] | { patient?: unknown } | null) ?? null;
+    const who = readStoredPatient(Array.isArray(triage) ? triage[0]?.patient : triage?.patient);
+    if (who?.for === "dependant") continue;
     const reports = (k.clinic_reports as unknown as { status: string }[] | null) ?? [];
     if (!reports.some((r) => r.status === "complete")) continue;
     const results = (k.lab_results as unknown as { outcome: string; organisms: string[] | null }[] | null) ?? [];

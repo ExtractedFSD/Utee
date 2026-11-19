@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { readStoredPatient, relationshipLabel } from "@/lib/triage/patient";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -41,10 +42,11 @@ export default async function AdminKitPage({
         .from("shipments")
         .select("direction, tracking_number, status, last_event, updated_at")
         .eq("kit_id", id),
-      admin.from("triage_submissions").select("submitted_at").eq("kit_id", id).maybeSingle(),
+      admin.from("triage_submissions").select("submitted_at, patient").eq("kit_id", id).maybeSingle(),
       admin.from("lab_results").select("outcome, uploaded_at").eq("kit_id", id).maybeSingle(),
       admin.from("clinic_reports").select("status, completed_at").eq("kit_id", id).maybeSingle(),
     ]);
+  const who = readStoredPatient((triage as { patient?: unknown } | null)?.patient);
   const { data: labIssue } =
     kit.status === "lab_query"
       ? await admin
@@ -105,6 +107,7 @@ export default async function AdminKitPage({
           </Link>
         )}
         {triage && <Pill tone="brand">Triage {formatDateTime(triage.submitted_at)}</Pill>}
+        {who && <Pill tone={who.enteredBy === "account_holder" ? "amber" : "slate"}>{who.enteredBy === "account_holder" ? `For ${who.name} (${relationshipLabel(who.relationship).toLowerCase()})` : `For ${who.name}`}</Pill>}
         {labResult && status !== "lab_query" && <Pill tone="amber">Lab: {labResult.outcome}</Pill>}
         {status === "lab_query" && (
           <Pill tone="red">

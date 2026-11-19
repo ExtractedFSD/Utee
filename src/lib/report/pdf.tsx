@@ -153,7 +153,7 @@ export type ReportSignature = {
 export type ReportInput = {
   /** Display form, e.g. UT-7K4M-92QX. */
   kitCode: string;
-  patient: { name: string | null; dateOfBirth: string | null };
+  patient: { name: string | null; dateOfBirth: string | null; note?: string | null };
   dates: { sampleReceived: string | null; labCompleted: string | null; report: string };
   sheet: SheetSummary;
   content: ReportContent;
@@ -254,6 +254,7 @@ function Cover({ input }: { input: ReportInput }) {
         <View style={{ borderTopWidth: 0.8, borderTopColor: "rgba(255,255,255,0.3)", paddingTop: 18, flexDirection: "row", flexWrap: "wrap" }}>
           <CoverMeta k="Prepared for" v={patient.name ?? "Utee patient"} />
           <CoverMeta k="Date of birth" v={patient.dateOfBirth ? formatLongDate(patient.dateOfBirth) : "Not provided"} />
+          {patient.note ? <CoverMeta k="Entered by" v={patient.note.replace(/^Details entered by /, "")} /> : null}
           <CoverMeta k="Kit code" v={kitCode} />
           <CoverMeta k="Sample received by lab" v={formatLongDate(dates.sampleReceived)} />
           <CoverMeta k="Report date" v={formatLongDate(dates.report)} />

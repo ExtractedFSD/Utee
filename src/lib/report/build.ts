@@ -1,4 +1,5 @@
 import "server-only";
+import { enteredByLine, readStoredPatient } from "@/lib/triage/patient";
 import fs from "node:fs";
 import path from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -28,7 +29,7 @@ export type ReportRow = {
 
 export type ReportCase = {
   kit: { id: string; code: string; status: string; received_by_lab_at: string | null; lab_complete_at: string | null };
-  patient: { name: string | null; dateOfBirth: string | null };
+  patient: { name: string | null; dateOfBirth: string | null; note?: string | null };
   sheet: SheetSummary | null;
   report: ReportRow | null;
 };
@@ -49,8 +50,9 @@ export async function loadReportCase(admin: SupabaseClient, kitId: string): Prom
     .maybeSingle();
   if (!kit) return null;
 
-  const [{ data: lab }, { data: report }] = await Promise.all([
+  const [{ data: lab }, { data: triage }, { data: report }] = await Promise.all([
     admin.from("lab_results").select("outcome, organisms").eq("kit_id", kitId).maybeSingle(),
+    admin.from("triage_submissions").select("patient").eq("kit_id", kitId).maybeSingle(),
     admin
       .from("clinic_reports")
       .select("status, content, signatures, report_path, completed_at, generated_at, clinic_user_id")
@@ -59,6 +61,11 @@ export async function loadReportCase(admin: SupabaseClient, kitId: string): Prom
   ]);
 
   const profile = kit.profiles as unknown as { full_name: string | null; date_of_birth: string | null } | null;
+  // The identity confirmed on the symptom form wins over the account's details.
+  const who = readStoredPatient(triage?.patient);
+  const patient = who
+    ? { name: who.name, dateOfBirth: who.dateOfBirth, note: enteredByLine(who, profile?.full_name ?? null) }
+    : { name: profile?.full_name ?? null, dateOfBirth: profile?.date_of_birth ?? null, note: null };
   return {
     kit: {
       id: kit.id,
@@ -67,7 +74,7 @@ export async function loadReportCase(admin: SupabaseClient, kitId: string): Prom
       received_by_lab_at: kit.received_by_lab_at,
       lab_complete_at: kit.lab_complete_at,
     },
-    patient: { name: profile?.full_name ?? null, dateOfBirth: profile?.date_of_birth ?? null },
+    patient,
     sheet: lab ? { outcome: lab.outcome as SheetSummary["outcome"], organisms: (lab.organisms as string[]) ?? [] } : null,
     report: report
       ? {

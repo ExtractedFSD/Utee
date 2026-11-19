@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { enteredByLine, readStoredPatient, sexLabel } from "@/lib/triage/patient";
+import { formatDay } from "@/lib/tracker/stats";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatKitCode } from "@/lib/kit-code";
@@ -49,13 +51,17 @@ export default async function CasePage({
     email: string;
   } | null;
   const symptoms = (triage?.symptoms ?? null) as StoredTriage | null;
+  const who = readStoredPatient((triage as { patient?: unknown } | null)?.patient);
   const status = kit.status as KitStatus;
+  const subtitle = who
+    ? `${who.name} · born ${formatDay(who.dateOfBirth)} · ${sexLabel(who.sex)}${who.enteredBy === "account_holder" ? ` · ${enteredByLine(who, patient?.full_name ?? null)}` : ""}${patient ? ` · account ${patient.email}` : ""}`
+    : patient ? `${patient.full_name ?? "Unnamed patient"} · ${patient.email}` : undefined;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={`Case ${formatKitCode(kit.code)}`}
-        subtitle={patient ? `${patient.full_name ?? "Unnamed patient"} · ${patient.email}` : undefined}
+        subtitle={subtitle}
         action={<StatusBadge status={status} />}
       />
 
