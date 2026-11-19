@@ -34,8 +34,9 @@ test("the buyer can pass an unused kit on, and the next person to scan it claims
   await loginAs(buyerCtx, buyer.email);
   const page = await buyerCtx.newPage();
   await page.goto(`/portal/tests/${kit.id}`);
+  await page.getByTestId("pass-on").getByRole("link", { name: "Pass this kit on" }).click();
+  await expect(page).toHaveURL(new RegExp(`/portal/tests/${kit.id}/pass-on`));
   const card = page.getByTestId("pass-on");
-  await card.getByRole("button", { name: "Pass this kit on" }).click();
   await card.getByRole("checkbox").check();
   await card.getByRole("button", { name: "Pass it on" }).click();
   await expect(page).toHaveURL(/\/portal\?kit=released/);
@@ -82,6 +83,8 @@ test("someone given a kit can ask for it, and the buyer passes it on with one ta
   await loginAs(buyerCtx, buyer.email);
   const bpage = await buyerCtx.newPage();
   await bpage.goto(`/portal/tests/${kit.id}`);
+  await expect(bpage.getByTestId("asks-waiting")).toContainText("Gift Recipient has asked to use this kit");
+  await bpage.goto(`/portal/tests/${kit.id}/pass-on`);
   const ask = bpage.getByTestId("pending-asks");
   await expect(ask).toContainText("Gift Recipient");
   await ask.getByRole("button", { name: "Pass it on" }).click();

@@ -8,7 +8,6 @@ import { royalMailTrackingUrl } from "@/lib/tracking";
 import { formatDateTime, type KitStatus } from "@/lib/status";
 import { TriageSummary } from "@/components/TriageSummary";
 import type { StoredTriage } from "@/lib/triage/questions";
-import { PassOnKit } from "./PassOnKit";
 import { ReturnPostage } from "./ReturnPostage";
 import { currentReturnLabel, POSTAGE_STATUSES } from "@/lib/postage";
 import { pendingTransferRequests } from "@/lib/kit-transfer";
@@ -127,7 +126,14 @@ export default async function TestDetailPage({
             </Card>
           ))}
 
-          {needsTriage && !symptoms && <PassOnKit kitId={kit.id} kitCode={formatKitCode(kit.code)} asks={asks} />}
+          {needsTriage && !symptoms && (
+            <Card data-testid="pass-on">
+              <CardTitle>Is this test for someone else?</CardTitle>
+              <p className="text-sm text-[#5a4a6e] leading-relaxed">If you ordered this kit for another person, pass it on so it registers to their own account and the result is in their name.</p>
+              {asks.length > 0 && <p className="mt-3 rounded-2xl bg-mint-50 px-4 py-3 text-sm font-semibold text-emerald-900" data-testid="asks-waiting">{asks.length === 1 ? `${asks[0].name} has asked to use this kit` : `${asks.length} people have asked to use this kit`}</p>}
+              <div className="mt-4"><LinkButton href={`/portal/tests/${kit.id}/pass-on`} variant="secondary">Pass this kit on</LinkButton></div>
+            </Card>
+          )}
 
           {symptoms && (
             <Card>
