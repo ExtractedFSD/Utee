@@ -26,7 +26,7 @@ type Updating = { episode: OpenEpisode; read: ExistingExtract; feeling: number |
 type About = { menopause_stage: string | null; contraception: string | null; pregnant_or_trying: string | null };
 type Draft = { uti: UtiExtract; asked: Q[]; flagged: boolean; source?: string };
 type Q =
-  | "menopause" | "contraception" | "pregnant" | "aboutOverview"
+  | "menopause" | "contraception" | "coilType" | "pregnant" | "aboutOverview"
   | "wasTaking" | "started" | "ended" | "endedOn" | "symptoms" | "triggers" | "treatment" | "days" | "worked" | "tests" | "overview" | "change"
   | "preventionOverview"
   | "openCheck" | "closeWhen" | "closeWorked" | "closeOverview"
@@ -71,6 +71,8 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
   const [pending, startTransition] = useTransition();
   const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set once the AI reader fails mid-conversation (bad key, outage): Una says so and the footer stops claiming AI is on.
+  const [aiDown, setAiDown] = useState(false);
   const [about, setAbout] = useState<About>(initialAbout ?? { menopause_stage: null, contraception: null, pregnant_or_trying: null });
   const [active, setActive] = useState<string[]>(activePreventions);
   const [prevention, setPrevention] = useState<PreventionExtract>({ keys: activePreventions, stopped_keys: [], other_name: null, antibiotic_id: null });
@@ -449,6 +451,11 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
       say(copy.guided.gotNothing); return;
     }
     if (question === "preventionOverview") { if (yes) { savePrevention(); return; } }
+    if (question === "coilType") {
+      const c = /copper|non[- ]?hormon/.test(lower) ? "coil_copper" : /hormon|mirena|kyleena|jaydess|levosert|benilexa/.test(lower) ? "coil_hormonal" : /not sure|don'?t know|unsure|no idea|can'?t remember/.test(lower) ? "other" : null;
+      if (c) { answerAbout({ contraception: c }); return; }
+      say(`${copy.guided.didntCatch} ${copy.guided.ask.coilType}`); return;
+    }
     if (question === "aboutOverview" && !yes) { /* falls through to the about reader below */ }
     if (question === "closeOverview" && closing) {
       if (yes) { saveClosing(); return; }
@@ -472,6 +479,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
       const r = await extractGuided(extractStep, t, contextFor(question));
       setReading(false);
       if ("error" in r) { setError(r.error); return; }
+      if (r.aiFailed && !aiDown) { setAiDown(true); say(copy.guided.aiDown); }
       if (step === "about") {
         const a = r.result as AboutExtract;
         const lower = t.toLowerCase();
@@ -482,7 +490,12 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
           pregnant_or_trying: a.pregnant_or_trying ?? (question === "pregnant" ? (preferNot ? "prefer_not" : /^\s*(no|nope|not)\b/.test(lower) ? "no" : /^\s*(yes|yeah|yep|trying)\b/.test(lower) ? "yes" : about.pregnant_or_trying) : about.pregnant_or_trying),
         };
         const answered = JSON.stringify(merged) !== JSON.stringify(about);
-        if (!answered && question !== "aboutOverview") { say(copy.guided.gotNothing); return; }
+        if (!answered && question === "contraception" && /\bcoil\b|\biud\b/.test(lower)) { setQ("coilType"); say(copy.guided.ask.coilType); return; }
+        if (!answered && question !== "aboutOverview") {
+          // Repeat the question that was asked, not the general prompt about UTIs.
+          const again = question === "menopause" ? copy.guided.ask.menopause : question === "contraception" ? copy.guided.ask.contraception : question === "pregnant" ? copy.guided.ask.pregnant : null;
+          say(again ? `${copy.guided.didntCatch} ${again}` : copy.guided.gotNothing); return;
+        }
         setAbout(merged);
         askAbout(merged);
       } else if (question === "preventionOverview") {
@@ -705,7 +718,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
             <Button onClick={send} disabled={busy || !text.trim()}>{copy.guided.send}</Button>
           </div>
           <p className="mt-2 text-[11px] text-slate-400">
-            {aiAvailable ? copy.guided.aiCaveat : copy.guided.aiCaveatOff} <Link href="/portal/passport/settings" className="font-semibold text-maroon">{copy.guided.aiSettings}</Link>
+            {aiAvailable && !aiDown ? copy.guided.aiCaveat : aiDown ? copy.guided.aiCaveatDown : copy.guided.aiCaveatOff} <Link href="/portal/passport/settings" className="font-semibold text-maroon">{copy.guided.aiSettings}</Link>
           </p>
         </Card>
       )}
