@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { patientSchema, toStoredPatient } from "@/lib/triage/patient";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logKitEvent } from "@/lib/events";
@@ -53,6 +54,7 @@ const triageSchema = z
     change24h: z.number().int().min(CHANGE_MIN).max(CHANGE_MAX).nullable(),
     duration: z.string().max(60),
     pregnant: z.enum(["yes", "no", "not_applicable"]),
+    patient: patientSchema,
     notes: z.string().max(2000),
     consent: z.literal(true, { errorMap: () => ({ message: "Consent is required" }) }),
     research: z.boolean(),
@@ -101,7 +103,8 @@ export async function submitTriage(code: string, input: TriageInput) {
     return { error: parsed.error.errors[0]?.message ?? "Please check the form" };
   }
 
-  const { consent: _consent, research, ...answers } = parsed.data;
+  const { consent: _consent, research, patient: patientIn, ...answers } = parsed.data;
+  const patient = toStoredPatient(patientIn);
   void _consent;
   const hadUti = answers.history.previousUti === "yes";
   const symptoms: TriageAnswers = {
@@ -140,6 +143,7 @@ export async function submitTriage(code: string, input: TriageInput) {
       kit_id: kit.id,
       customer_id: user.id,
       symptoms,
+      patient,
       consent_given: true,
       consent_text: CONSENT_TEXT,
       research_consent: research,
@@ -152,12 +156,21 @@ export async function submitTriage(code: string, input: TriageInput) {
     return { error: "Could not save your answers. Please try again." };
   }
 
+  // The account holder confirming their own details fills gaps on the account, so online buyers end up as complete as sign-ups.
+  if (patient.for === "me") {
+    const { data: prof } = await admin.from("profiles").select("full_name, date_of_birth").eq("id", user.id).maybeSingle();
+    const fill: Record<string, string> = {};
+    if (prof && !prof.date_of_birth) fill.date_of_birth = patient.dateOfBirth;
+    if (prof && !prof.full_name?.trim()) fill.full_name = patient.name;
+    if (Object.keys(fill).length) await admin.from("profiles").update(fill).eq("id", user.id);
+  }
+
   try {
     await logKitEvent(admin, {
       kitId: kit.id,
       type: "triage",
       label: "Symptoms submitted",
-      detail: "Symptom form completed and consent recorded.",
+      detail: patient.for === "dependant" ? `Symptom form completed on behalf of ${patient.name} and consent recorded.` : "Symptom form completed and consent recorded.",
       actorRole: "customer",
       actorId: user.id,
       newStatus: "activated",

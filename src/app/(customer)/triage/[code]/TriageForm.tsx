@@ -32,8 +32,10 @@ import {
   type YesNo,
 } from "@/lib/triage/questions";
 import { submitTriage, type TriageInput } from "./actions";
+import { DEPENDANT_CONFIRM, RELATIONSHIP, SEX, TEST_FOR, type Relationship, type Sex, type TestFor } from "@/lib/triage/patient";
+import Link from "next/link";
 
-const STEPS = ["Safety check", "Your UTIs", "Your symptoms", "Anything else"] as const;
+const STEPS = ["Who it's for", "Safety check", "Your UTIs", "Your symptoms", "Anything else"] as const;
 
 const radioClass = "h-4 w-4 border-slate-300 text-brand-600 focus:ring-brand-500";
 const checkClass = "mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500";
@@ -146,7 +148,7 @@ function StepHeader({ step, title, intro }: { step: number; title: string; intro
 
 type Chosen = { id: string; name: string; worked?: Worked };
 
-export function TriageForm({ code }: { code: string }) {
+export function TriageForm({ code, kitId, account }: { code: string; kitId: string; account: { name: string | null; dateOfBirth: string | null } }) {
   const [step, setStep] = useState(0);
   const [urgent, setUrgent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,6 +159,12 @@ export function TriageForm({ code }: { code: string }) {
   const [previousUti, setPreviousUti] = useState<PreviousUti | undefined>();
   const [episodes6m, setEpisodes6m] = useState("");
   const [episodes12m, setEpisodes12m] = useState("");
+  const [testFor, setTestFor] = useState<TestFor | undefined>();
+  const [patientName, setPatientName] = useState(account.name ?? "");
+  const [patientDob, setPatientDob] = useState(account.dateOfBirth ?? "");
+  const [patientSex, setPatientSex] = useState<Sex | undefined>();
+  const [relationship, setRelationship] = useState<Relationship | undefined>();
+  const [dependantConfirmed, setDependantConfirmed] = useState(false);
   const [antibiotics, setAntibiotics] = useState<Chosen[]>([]);
   const [addingAntibiotic, setAddingAntibiotic] = useState(false);
   const [selected, setSelected] = useState<Set<SymptomKey>>(new Set());
@@ -175,6 +183,10 @@ export function TriageForm({ code }: { code: string }) {
     if (step > 0 || urgent) window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step, urgent]);
 
+  const dobOk = /^\d{4}-\d{2}-\d{2}$/.test(patientDob) && patientDob <= new Date().toISOString().slice(0, 10) && patientDob >= "1900-01-01";
+  const identityComplete =
+    (testFor === "me" && patientName.trim().length >= 2 && dobOk && patientSex !== undefined) ||
+    (testFor === "dependant" && patientName.trim().length >= 2 && dobOk && patientSex !== undefined && relationship !== undefined && dependantConfirmed);
   const countOk = (v: string) => /^\d{1,3}$/.test(v.trim());
   const hadUti = previousUti === "yes";
   const safetyComplete = SAFETY_QUESTIONS.every((q) => safety[q.key] !== undefined);
@@ -196,12 +208,17 @@ export function TriageForm({ code }: { code: string }) {
   function next() {
     setError(null);
     if (step === 0) {
+      if (testFor === undefined) return fail("Tell us who this test is for.");
+      if (testFor === "other_adult") return fail("Pass the kit on to them first. They then do this form on their own account.");
+      if (!identityComplete) return fail("Please fill in every detail.");
+    }
+    if (step === 1) {
       if (!safetyComplete) return fail("Please answer every question.");
       if (safetyFlagged) return setUrgent(true);
     }
-    if (step === 1 && !historyComplete) return fail("Please answer every question.");
-    if (step === 2 && !symptomsComplete) return fail("Please answer every question.");
-    if (step === 2) setSymptomsSkipped(false);
+    if (step === 2 && !historyComplete) return fail("Please answer every question.");
+    if (step === 3 && !symptomsComplete) return fail("Please answer every question.");
+    if (step === 3) setSymptomsSkipped(false);
     setAttempted(false);
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }
@@ -217,7 +234,7 @@ export function TriageForm({ code }: { code: string }) {
     setChange24h(undefined);
     setDuration("");
     setSymptomsSkipped(true);
-    setStep(3);
+    setStep(4);
   }
 
   function back() {
@@ -259,6 +276,7 @@ export function TriageForm({ code }: { code: string }) {
     if (pregnant === undefined) return fail("Please answer the pregnancy question.");
     if (!consent) return fail("Please tick the consent box.");
     const input: TriageInput = {
+      patient: { for: testFor === "dependant" ? "dependant" : "me", name: patientName, dateOfBirth: patientDob, sex: patientSex as Sex, relationship, dependantConfirmed },
       safety: safety as Record<SafetyKey, YesNo>,
       history: {
         previousUti: previousUti!,
@@ -330,7 +348,7 @@ export function TriageForm({ code }: { code: string }) {
               type="button"
               onClick={() => {
                 setUrgent(false);
-                setStep(1);
+                setStep(2);
               }}
               className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-white/50 px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] text-white hover:bg-white/10"
             >
@@ -345,6 +363,63 @@ export function TriageForm({ code }: { code: string }) {
     )}
     <form onSubmit={submit} className="space-y-6" data-step={step}>
       {step === 0 && (
+        <Card className="space-y-5" data-testid="who-for">
+          <StepHeader step={0} title="Who is this test for?" intro="The result, and anything a clinician prescribes from it, will be in this person's name. So we need to be sure who that is." />
+          <div className="space-y-2" role="radiogroup" aria-label="Who is this test for?">
+            {TEST_FOR.map((o) => (
+              <label key={o.key} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${testFor === o.key ? "border-maroon bg-pink-25" : "border-slate-200"}`}>
+                <input type="radio" name="testFor" value={o.key} checked={testFor === o.key} onChange={() => { setTestFor(o.key); setError(null); }} className={`${radioClass} mt-1`} />
+                <span>
+                  <span className="block text-sm font-semibold text-midnight">{o.label}</span>
+                  <span className="block text-[13px] text-[#5a4a6e]">{o.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {testFor === "other_adult" && (
+            <div className="rounded-2xl bg-sun p-4 text-sm text-midnight leading-relaxed" data-testid="pass-on-prompt">
+              <p className="font-semibold">Pass the kit on to them first.</p>
+              <p className="mt-1">Open the kit in your portal and use &ldquo;Pass this kit on&rdquo;. It moves to their account, they sign in with their own email, and they answer these questions themselves. That way the result and any prescription are theirs, and you don&apos;t see their health details.</p>
+              <p className="mt-3"><Link href={`/portal/tests/${kitId}`} className="inline-flex min-h-[44px] items-center rounded-full bg-maroon px-5 text-[12px] font-semibold uppercase tracking-[.14em] text-white">Open the kit to pass it on</Link></p>
+            </div>
+          )}
+
+          {(testFor === "me" || testFor === "dependant") && (
+            <div className="space-y-4" data-testid="patient-details">
+              <p className="text-sm text-slate-700">{testFor === "me" ? "Check these are right. They go on your report." : "Their details, as they should appear on the report."}</p>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-slate-700">Full name{missing(patientName.trim().length >= 2)}</span>
+                <input name="patientName" value={patientName} onChange={(e) => setPatientName(e.target.value)} autoComplete={testFor === "me" ? "name" : "off"} className={inputClass} />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-slate-700">Date of birth{missing(dobOk)}</span>
+                <input name="patientDob" type="date" value={patientDob} onChange={(e) => setPatientDob(e.target.value)} max={new Date().toISOString().slice(0, 10)} min="1900-01-01" autoComplete={testFor === "me" ? "bday" : "off"} className={inputClass} />
+              </label>
+              <div>
+                <p className="mb-2 text-sm font-medium text-slate-700">Sex{missing(patientSex !== undefined)}</p>
+                <RadioRow name="patientSex" value={patientSex} options={SEX} onChange={setPatientSex} />
+                <p className="mt-1 text-xs text-slate-500">UTIs are assessed differently by sex, so the clinician needs this.</p>
+              </div>
+              {testFor === "dependant" && (
+                <>
+                  <div>
+                    <p className="mb-2 text-sm font-medium text-slate-700">Your relationship to them{missing(relationship !== undefined)}</p>
+                    <RadioRow name="relationship" value={relationship} options={RELATIONSHIP} onChange={setRelationship} />
+                  </div>
+                  <label className="flex items-start gap-2 text-sm text-slate-700">
+                    <input type="checkbox" name="dependantConfirmed" checked={dependantConfirmed} onChange={(e) => setDependantConfirmed(e.target.checked)} className={checkClass} />
+                    <span>{DEPENDANT_CONFIRM}{missing(dependantConfirmed)}</span>
+                  </label>
+                  <p className="text-xs text-slate-500">Their result will show in your kit list, marked as theirs, and will not be added to your own UTI Passport.</p>
+                </>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {step === 1 && (
         <Card className="space-y-5">
           <StepHeader
             step={0}
@@ -366,9 +441,9 @@ export function TriageForm({ code }: { code: string }) {
         </Card>
       )}
 
-      {step === 1 && (
+      {step === 2 && (
         <Card className="space-y-5">
-          <StepHeader step={1} title="Your UTIs" intro={INTRO} />
+          <StepHeader step={2} title="Your UTIs" intro={INTRO} />
           <p className="text-sm font-medium text-slate-700">{HISTORY_INTRO}</p>
           <div>
             <p className="text-sm text-slate-700 mb-2">
@@ -496,10 +571,10 @@ export function TriageForm({ code }: { code: string }) {
         </Card>
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <>
           <Card className="space-y-5">
-            <StepHeader step={2} title="Your symptoms" intro="Tick everything you have right now." />
+            <StepHeader step={3} title="Your symptoms" intro="Tick everything you have right now." />
             <div className="space-y-2.5">
               {SYMPTOM_QUESTIONS.map((q) => {
                 const on = selected.has(q.key);
@@ -619,7 +694,7 @@ export function TriageForm({ code }: { code: string }) {
         </>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <>
           {symptomsSkipped && (
             <div className="rounded-card border border-sun bg-sun-50 px-5 py-4 text-sm text-amber-800" data-testid="symptoms-skipped">
@@ -630,7 +705,7 @@ export function TriageForm({ code }: { code: string }) {
             </div>
           )}
           <Card className="space-y-5">
-            <StepHeader step={3} title="Anything else" />
+            <StepHeader step={4} title="Anything else" />
             <div>
               <span className="block text-sm font-medium text-slate-700 mb-2">
                 Are you currently pregnant?

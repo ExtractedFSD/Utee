@@ -31,7 +31,7 @@ export default async function TriagePage({
         title="Before you take your sample"
         subtitle={`Kit ${formatKitCode(kit.code)}. Please answer these questions now, then take your sample straight afterwards so your symptoms and sample arrive together.`}
       />
-      <TriageForm code={kit.code} />
+      <TriageForm code={kit.code} kitId={kit.id} account={{ name: user.fullName, dateOfBirth: user.dateOfBirth }} />
     </div>
   );
 }

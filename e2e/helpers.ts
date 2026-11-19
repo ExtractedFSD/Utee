@@ -420,10 +420,33 @@ export async function completeTriage(
     pregnant?: "yes" | "no" | "not_applicable";
     notes?: string;
     research?: boolean;
+    /** Who the test is for, step 0; defaults to the account holder, female, born 1990. */
+    dateOfBirth?: string;
+    sex?: "female" | "male" | "intersex" | "prefer_not";
+    /** Answer on behalf of someone the account holder looks after. */
+    dependant?: { name: string; dateOfBirth: string; relationship?: "parent" | "carer" | "other" };
   } = {}
 ) {
   const form = page.locator("form[data-step]");
   await expect(form).toHaveAttribute("data-step", "0");
+  // Who the test is for: the account holder with their details confirmed, or a dependant they answer for.
+  if (opts.dependant) {
+    await page.locator('input[name="testFor"][value="dependant"]').check();
+    await page.locator('input[name="patientName"]').fill(opts.dependant.name);
+    await page.locator('input[name="patientDob"]').fill(opts.dependant.dateOfBirth);
+    await page.locator(`input[name="patientSex"][value="${opts.sex ?? "female"}"]`).check();
+    await page.locator(`input[name="relationship"][value="${opts.dependant.relationship ?? "parent"}"]`).check();
+    await page.locator('input[name="dependantConfirmed"]').check();
+  } else {
+    await page.locator('input[name="testFor"][value="me"]').check();
+    const name = page.locator('input[name="patientName"]');
+    if (!(await name.inputValue()).trim()) await name.fill("Test Patient");
+    const dob = page.locator('input[name="patientDob"]');
+    if (!(await dob.inputValue()).trim()) await dob.fill(opts.dateOfBirth ?? "1990-05-14");
+    await page.locator(`input[name="patientSex"][value="${opts.sex ?? "female"}"]`).check();
+  }
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(form).toHaveAttribute("data-step", "1");
   for (let i = 1; i <= 8; i++) {
     const key = `d${i}`;
     await page.locator(`input[name="${key}"][value="${opts.flag === key ? "yes" : "no"}"]`).check();
@@ -436,7 +459,7 @@ export async function completeTriage(
     await expect(popup.getByRole("link", { name: "Call NHS 111" })).toHaveAttribute("href", "tel:111");
     await popup.getByRole("button", { name: "Continue with my test" }).click();
   }
-  await expect(form).toHaveAttribute("data-step", "1");
+  await expect(form).toHaveAttribute("data-step", "2");
 
   const previousUti = opts.previousUti ?? "no";
   await page.locator(`input[name="previousUti"][value="${previousUti}"]`).check();
@@ -460,7 +483,7 @@ export async function completeTriage(
     }
   }
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(form).toHaveAttribute("data-step", "2");
+  await expect(form).toHaveAttribute("data-step", "3");
 
   if (opts.skipSymptoms) {
     await page.getByRole("button", { name: "Skip this step" }).click();
@@ -479,7 +502,7 @@ export async function completeTriage(
     await page.locator('select[name="duration"]').selectOption(opts.duration ?? "1–3 days");
     await page.getByRole("button", { name: "Continue" }).click();
   }
-  await expect(form).toHaveAttribute("data-step", "3");
+  await expect(form).toHaveAttribute("data-step", "4");
   if (opts.skipSymptoms) await expect(page.getByTestId("symptoms-skipped")).toBeVisible();
   await page.locator(`input[name="pregnant"][value="${opts.pregnant ?? "no"}"]`).check();
 
