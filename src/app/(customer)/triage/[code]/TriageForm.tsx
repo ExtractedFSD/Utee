@@ -368,7 +368,18 @@ export function TriageForm({ code, kitId, account }: { code: string; kitId: stri
           <div className="space-y-2" role="radiogroup" aria-label="Who is this test for?">
             {TEST_FOR.map((o) => (
               <label key={o.key} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${testFor === o.key ? "border-maroon bg-pink-25" : "border-slate-200"}`}>
-                <input type="radio" name="testFor" value={o.key} checked={testFor === o.key} onChange={() => { setTestFor(o.key); setError(null); }} className={`${radioClass} mt-1`} />
+                <input type="radio" name="testFor" value={o.key} checked={testFor === o.key} onChange={() => {
+                  setTestFor(o.key);
+                  setError(null);
+                  // The details belong to whoever is chosen: the account's for "me", blank for someone else.
+                  if (o.key !== testFor) {
+                    setPatientName(o.key === "me" ? account.name ?? "" : "");
+                    setPatientDob(o.key === "me" ? account.dateOfBirth ?? "" : "");
+                    setPatientSex(undefined);
+                    setRelationship(undefined);
+                    setDependantConfirmed(false);
+                  }
+                }} className={`${radioClass} mt-1`} />
                 <span>
                   <span className="block text-sm font-semibold text-midnight">{o.label}</span>
                   <span className="block text-[13px] text-[#5a4a6e]">{o.hint}</span>
