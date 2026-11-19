@@ -16,12 +16,14 @@ export default async function TriagePage({
   const admin = createAdminClient();
   const { data: kit } = await admin
     .from("kits")
-    .select("id, code, status, customer_id")
+    .select("id, code, status, customer_id, received_at")
     .eq("code", code)
     .maybeSingle();
 
   if (!kit || kit.customer_id !== user.id) notFound();
-  if (!["assigned", "shipped", "delivered"].includes(kit.status)) {
+  // Already used, or not yet in their hands (scanning the box, or the button
+  // on the kit page, records that): the kit page says what to do instead.
+  if (!["assigned", "shipped", "delivered"].includes(kit.status) || !kit.received_at) {
     redirect(`/portal/tests/${kit.id}`);
   }
 

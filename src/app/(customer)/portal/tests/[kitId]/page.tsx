@@ -9,6 +9,7 @@ import { formatDateTime, type KitStatus } from "@/lib/status";
 import { TriageSummary } from "@/components/TriageSummary";
 import type { StoredTriage } from "@/lib/triage/questions";
 import { ReturnPostage } from "./ReturnPostage";
+import { KitArrived } from "./KitArrived";
 import { currentReturnLabel, POSTAGE_STATUSES } from "@/lib/postage";
 import { pendingTransferRequests } from "@/lib/kit-transfer";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -23,7 +24,7 @@ export default async function TestDetailPage({
 
   const { data: kit } = await supabase
     .from("kits")
-    .select("id, code, status")
+    .select("id, code, status, received_at")
     .eq("id", kitId)
     .single();
   if (!kit) notFound();
@@ -51,6 +52,9 @@ export default async function TestDetailPage({
 
   const status = kit.status as KitStatus;
   const needsTriage = ["assigned", "shipped", "delivered"].includes(status);
+  // Until the kit is in their hands (scanned, or confirmed below) the symptom
+  // form stays closed, so it isn't filled in while the parcel is in the post.
+  const inHand = !!kit.received_at;
   const label = await currentReturnLabel(supabase, kit.id);
   const postage = label ? { trackingNumber: label.tracking_number, createdAt: label.created_at, hasQr: !!label.qr_png, hasPdf: !!label.label_pdf, stub: label.provider === "stub" } : null;
   const canRequestPostage = (POSTAGE_STATUSES as readonly string[]).includes(status);
@@ -64,8 +68,10 @@ export default async function TestDetailPage({
         action={<StatusBadge status={status} />}
       />
 
-      {needsTriage && (
-        <Callout className="flex flex-wrap items-center justify-between gap-4">
+      {needsTriage && !inHand && <KitArrived kitId={kit.id} />}
+
+      {needsTriage && inHand && (
+        <Callout data-testid="symptoms-prompt" className="flex flex-wrap items-center justify-between gap-4">
           <div className="max-w-xl">
             <p className="font-display text-2xl font-light">Before you take your sample</p>
             <p className="text-sm text-white/85 mt-1 leading-relaxed">

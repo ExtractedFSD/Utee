@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { claimKit, isClaimable, normalizeKitCode } from "@/lib/kits";
+import { claimKit, isClaimable, markKitReceived, normalizeKitCode } from "@/lib/kits";
 
 /**
  * QR code entry point, the QR on the kit box and urine pot encodes
@@ -84,6 +84,8 @@ export async function GET(
         return NextResponse.redirect(url(`/portal?kit=not-yours&code=${kit.code}`));
       }
       const preTriage = ["assigned", "shipped", "delivered"].includes(kit.status);
+      // Scanning the box means it has arrived: that unlocks the symptom form.
+      if (preTriage) await markKitReceived(admin, kit.id, user.id, "scan");
       return NextResponse.redirect(
         url(preTriage ? `/triage/${kit.code}` : `/portal/tests/${kit.id}`)
       );

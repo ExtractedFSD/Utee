@@ -75,12 +75,25 @@ function parseJsonText(text: string): unknown {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
-export async function extract<S extends GuidedStep>(step: S, text: string, today: string, allowAi = true, context?: string): Promise<{ result: Extracted<S>; source: "ai" | "local" }> {
-  const local = () => ({
+/** After the API rejects our key, skip it for a while rather than fail every message slowly. */
+let authFailedAt = 0;
+const AUTH_BACKOFF_MS = 5 * 60_000;
+
+export type ExtractResult<S extends GuidedStep> = {
+  result: Extracted<S>;
+  source: "ai" | "local";
+  /** The AI reader was meant to run but could not (bad key, outage, refusal), so this is the plain-phrase reading. */
+  aiFailed?: boolean;
+};
+
+export async function extract<S extends GuidedStep>(step: S, text: string, today: string, allowAi = true, context?: string): Promise<ExtractResult<S>> {
+  const local = (aiFailed = false): ExtractResult<S> => ({
     result: (step === "about" ? parseAbout(text) : step === "prevention" ? parsePrevention(text) : step === "free" ? parseFree(text, today) : parseUtis(text, today)) as Extracted<S>,
     source: "local" as const,
+    ...(aiFailed ? { aiFailed: true } : {}),
   });
   if (!aiAvailable() || !allowAi) return local();
+  if (Date.now() - authFailedAt < AUTH_BACKOFF_MS) return local(true);
   try {
     const client = new Anthropic({ timeout: 25_000, maxRetries: 1 });
     if (step === "free") {
@@ -92,10 +105,10 @@ export async function extract<S extends GuidedStep>(step: S, text: string, today
         output_config: { effort: "low" },
       });
       if (process.env.UNA_LOG_USAGE) console.error(`[guided] usage free ${JSON.stringify(response.usage)}`);
-      if (response.stop_reason === "refusal") return local();
+      if (response.stop_reason === "refusal") return local(true);
       const reply = response.content.filter((b) => b.type === "text").map((b) => b.text).join("");
       const loose = looseFreeSchema.safeParse(parseJsonText(reply));
-      if (!loose.success) { console.error("[guided] free-form reply did not match the shape"); return local(); }
+      if (!loose.success) { console.error("[guided] free-form reply did not match the shape"); return local(true); }
       return { result: normaliseFree(loose.data) as Extracted<S>, source: "ai" };
     }
     const response = await client.messages.parse({
@@ -106,12 +119,15 @@ export async function extract<S extends GuidedStep>(step: S, text: string, today
       output_config: { effort: "low", format: zodOutputFormat(SCHEMAS[step]) },
     });
     if (process.env.UNA_LOG_USAGE) console.error(`[guided] usage ${step} ${JSON.stringify(response.usage)}`);
-    if (response.stop_reason === "refusal" || !response.parsed_output) return local();
+    if (response.stop_reason === "refusal" || !response.parsed_output) return local(true);
     const parsed = step === "free" ? normaliseFree(response.parsed_output as z.infer<typeof looseFreeSchema>) : response.parsed_output;
     return { result: parsed as Extracted<S>, source: "ai" };
   } catch (err) {
-    if (err instanceof Anthropic.APIError) console.error(`[guided] extraction failed (${err.status}): ${err.message.slice(0, 300)}`);
-    else console.error("[guided] extraction failed");
-    return local();
+    if (err instanceof Anthropic.APIError) {
+      console.error(`[guided] extraction failed (${err.status}): ${err.message.slice(0, 300)}`);
+      // 401/403: the key is wrong or revoked. Nothing a retry will fix; the plain reader takes over and the person is told.
+      if (err.status === 401 || err.status === 403) authFailedAt = Date.now();
+    } else console.error("[guided] extraction failed");
+    return local(true);
   }
 }

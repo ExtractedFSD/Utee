@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
-import { releaseKit } from "@/lib/kits";
+import { markKitReceived, releaseKit } from "@/lib/kits";
 import { issueReturnPostage, senderAddressFor } from "@/lib/postage";
 import { decideKitTransfer, transferRequestById } from "@/lib/kit-transfer";
 import type { PostalAddress } from "@/lib/royalmail-request";
@@ -81,4 +82,23 @@ export async function answerTransferRequest(requestId: string, approve: boolean)
   revalidatePath(`/portal/tests/${request.kit_id}`);
   revalidatePath("/portal");
   return result;
+}
+
+/**
+ * "I have my kit": the patient confirms the parcel has arrived, which unlocks
+ * the symptom form, and they go straight to it. Scanning the QR code does the
+ * same without this step.
+ */
+export async function confirmKitReceived(kitId: string): Promise<{ error: string } | void> {
+  const user = await requireRole(["customer"]);
+  const admin = createAdminClient();
+  const { data: kit } = await admin.from("kits").select("id, code, customer_id, status, received_at").eq("id", kitId).maybeSingle();
+  if (!kit || kit.customer_id !== user.id) return { error: "This kit isn't linked to your account." };
+  if (!kit.received_at) {
+    const done = await markKitReceived(admin, kit.id, user.id, "button");
+    if (!done) return { error: "This kit can't be used any more. Please contact us if that doesn't look right." };
+  }
+  revalidatePath("/portal");
+  revalidatePath(`/portal/tests/${kitId}`);
+  redirect(`/triage/${kit.code}`);
 }
