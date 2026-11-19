@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { releaseKit } from "@/lib/kits";
 import { issueReturnPostage, senderAddressFor } from "@/lib/postage";
+import { decideKitTransfer, transferRequestById } from "@/lib/kit-transfer";
 import type { PostalAddress } from "@/lib/royalmail-request";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -68,4 +69,16 @@ export async function requestReturnPostage(kitId: string, typed?: PostalAddress)
   revalidatePath(`/portal/tests/${kitId}`);
   revalidatePath("/portal");
   return { ok: true };
+}
+
+/** The owner answers a pending ask from their kit page instead of the email. */
+export async function answerTransferRequest(requestId: string, approve: boolean): Promise<{ outcome: string; kitCode: string } | { error: string }> {
+  const user = await requireRole(["customer"]);
+  const admin = createAdminClient();
+  const request = await transferRequestById(admin, requestId);
+  if (!request || request.owner_id !== user.id) return { error: "That request isn't on your account." };
+  const result = await decideKitTransfer(admin, request, approve, "portal");
+  revalidatePath(`/portal/tests/${request.kit_id}`);
+  revalidatePath("/portal");
+  return result;
 }

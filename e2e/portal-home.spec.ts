@@ -58,3 +58,40 @@ test("the buyer can pass an unused kit on, and the next person to scan it claims
   expect(after?.status).toBe("delivered");
   await recipientCtx.close();
 });
+
+test("someone given a kit can ask for it, and the buyer passes it on with one tap", async ({ browser }) => {
+  const buyer = await createUser("customer", "ask-buyer");
+  const recipient = await createUser("customer", "ask-recipient", "Gift Recipient");
+  registerUser(buyer.id);
+  registerUser(recipient.id);
+  const kit = await insertKit();
+  await admin().from("kits").update({ customer_id: buyer.id, status: "delivered" }).eq("id", kit.id);
+
+  // The recipient scans, is refused, and asks.
+  const recipientCtx = await browser.newContext();
+  await loginAs(recipientCtx, recipient.email);
+  const rpage = await recipientCtx.newPage();
+  await rpage.goto(`/k/${kit.code}`);
+  await expect(rpage).toHaveURL(new RegExp(`kit=not-yours&code=${kit.code}`));
+  await rpage.getByRole("button", { name: "Ask them to pass it on" }).click();
+  await expect(rpage).toHaveURL(/kit=requested/);
+  await expect(rpage.getByText("We've asked the person who ordered it.")).toBeVisible();
+
+  // The buyer sees the ask on the kit page and approves there (the email link does the same).
+  const buyerCtx = await browser.newContext();
+  await loginAs(buyerCtx, buyer.email);
+  const bpage = await buyerCtx.newPage();
+  await bpage.goto(`/portal/tests/${kit.id}`);
+  const ask = bpage.getByTestId("pending-asks");
+  await expect(ask).toContainText("Gift Recipient");
+  await ask.getByRole("button", { name: "Pass it on" }).click();
+  await expect(bpage).toHaveURL(/kit=released/);
+  await buyerCtx.close();
+
+  // It is the recipient's now, with no second scan needed to claim it.
+  const { data: after } = await admin().from("kits").select("customer_id").eq("id", kit.id).single();
+  expect(after?.customer_id).toBe(recipient.id);
+  await rpage.goto(`/k/${kit.code}`);
+  await expect(rpage).toHaveURL(`/triage/${kit.code}`);
+  await recipientCtx.close();
+});

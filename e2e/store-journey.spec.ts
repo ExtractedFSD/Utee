@@ -291,7 +291,7 @@ test("store kit: order to report", async ({ browser, request }) => {
     await loginAs(otherCtx, other.email);
     const otherPage = await otherCtx.newPage();
     await otherPage.goto(`/k/${code}`);
-    await expect(otherPage).toHaveURL("/portal?kit=not-yours");
+    await expect(otherPage).toHaveURL(/\/portal\?kit=not-yours/);
     await expect(otherPage.getByText("isn't linked to your account")).toBeVisible();
     const denied = await otherPage.request.get(`/portal/tests/${kitId}/report`);
     expect(denied.status()).toBe(404);

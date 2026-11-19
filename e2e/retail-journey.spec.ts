@@ -175,7 +175,7 @@ test("retail kit: scan to lab", async ({ browser, request }) => {
     await loginAs(ctx, stranger.email);
     const page = await ctx.newPage();
     await page.goto(`/k/${code}`);
-    await expect(page).toHaveURL("/portal?kit=not-yours");
+    await expect(page).toHaveURL(/\/portal\?kit=not-yours/);
     await ctx.close();
   });
 
