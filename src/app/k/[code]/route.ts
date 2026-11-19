@@ -81,7 +81,7 @@ export async function GET(
       }
       if (kit.customer_id !== user.id) {
         // Kit not linked to this customer, don't leak whose it is.
-        return NextResponse.redirect(url(`/portal?kit=not-yours`));
+        return NextResponse.redirect(url(`/portal?kit=not-yours&code=${kit.code}`));
       }
       const preTriage = ["assigned", "shipped", "delivered"].includes(kit.status);
       return NextResponse.redirect(

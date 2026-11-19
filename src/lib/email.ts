@@ -160,6 +160,36 @@ export const emails = {
     ),
   }),
 
+  kitTransferRequested: (kitCode: string, requesterName: string, requesterEmail: string, approveUrl: string, declineUrl: string) => ({
+    subject: `${requesterName} would like to use test kit ${kitCode}`,
+    html: wrap(
+      "Pass this kit on?",
+      p(`<strong>${requesterName}</strong> (${requesterEmail}) has scanned Utee test kit <strong>${kitCode}</strong>, which was ordered on your account, and asked to use it.`) +
+        p(`If you bought it for them, tap the button and the kit moves to their account. Their symptom form and result will be theirs, not yours. No need to sign in.`) +
+        button(approveUrl, "Yes, pass it on") +
+        p(`Not expecting this? <a href="${declineUrl}" style="color:${BRAND};font-weight:600;">Say no</a> and nothing changes. This link works for 7 days.`)
+    ),
+  }),
+
+  kitTransferApproved: (kitCode: string, rawCode: string) => ({
+    subject: `Test kit ${kitCode} is now on your account`,
+    html: wrap(
+      "The kit is yours",
+      p(`The person who ordered test kit <strong>${kitCode}</strong> has passed it on to you. It is now on your account.`) +
+        p(`<strong>Next step:</strong> complete the short symptom form <em>before</em> taking your sample. The lab can't process the sample without it.`) +
+        button(`${APP_URL}/k/${rawCode}`, "Open my kit")
+    ),
+  }),
+
+  kitTransferDeclined: (kitCode: string) => ({
+    subject: `Test kit ${kitCode} was not passed on`,
+    html: wrap(
+      "The kit stays with the person who ordered it",
+      p(`The person who ordered test kit <strong>${kitCode}</strong> has chosen not to pass it on, so it stays on their account.`) +
+        p(`If you think that's a mistake, speak to them, or contact us and we'll help.`)
+    ),
+  }),
+
   kitPassedOn: (kitCode: string, rawCode: string) => ({
     subject: `A Utee test kit has been passed on to you (${kitCode})`,
     html: wrap(

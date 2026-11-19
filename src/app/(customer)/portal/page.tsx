@@ -3,6 +3,7 @@ import Image from "next/image";
 import { formatKitCode, normalizeKitCode } from "@/lib/kit-code";
 import { createClient } from "@/lib/supabase/server";
 import { Card, LinkButton, Notice, PageHeader } from "@/components/ui";
+import { RequestKitAccess } from "./RequestKitAccess";
 import { formatDate, formatMoney, type KitStatus } from "@/lib/status";
 import { copy } from "@/lib/tracker/copy";
 import { loadAll, trackerConsents, trackerProfile } from "@/lib/tracker/data";
@@ -51,8 +52,15 @@ export default async function PortalHome({
 
       {kitFlag === "not-yours" && (
         <Notice>
-          That kit isn&apos;t linked to your account. If you believe this is a mistake,
-          please contact us with your order number.
+          <p className="font-semibold">That kit isn&apos;t linked to your account.</p>
+          <p className="mt-1">If someone ordered it for you, ask them to pass it on. They get an email and approve with one tap, and the kit moves to your account.</p>
+          {releasedCode && normalizeKitCode(releasedCode) ? <RequestKitAccess code={normalizeKitCode(releasedCode)!} /> : <p className="mt-1">If you believe this is a mistake, please contact us with your order number.</p>}
+        </Notice>
+      )}
+      {kitFlag === "requested" && (
+        <Notice tone="mint">
+          <p className="font-semibold">We&apos;ve asked the person who ordered it.</p>
+          <p className="mt-1">They have an email with a one-tap button. You&apos;ll get an email as soon as the kit is on your account; then scan it again or open the link in that email.</p>
         </Notice>
       )}
       {kitFlag === "not-found" && (

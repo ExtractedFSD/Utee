@@ -11,6 +11,8 @@ import type { StoredTriage } from "@/lib/triage/questions";
 import { PassOnKit } from "./PassOnKit";
 import { ReturnPostage } from "./ReturnPostage";
 import { currentReturnLabel, POSTAGE_STATUSES } from "@/lib/postage";
+import { pendingTransferRequests } from "@/lib/kit-transfer";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function TestDetailPage({
   params,
@@ -53,6 +55,8 @@ export default async function TestDetailPage({
   const label = await currentReturnLabel(supabase, kit.id);
   const postage = label ? { trackingNumber: label.tracking_number, createdAt: label.created_at, hasQr: !!label.qr_png, hasPdf: !!label.label_pdf, stub: label.provider === "stub" } : null;
   const canRequestPostage = (POSTAGE_STATUSES as readonly string[]).includes(status);
+  // Asks from people who scanned this kit; only while it is still unused. Admin client: the rows are keyed by requester, not kit owner.
+  const asks = needsTriage && !symptoms ? await pendingTransferRequests(createAdminClient(), kit.id) : [];
 
   return (
     <div className="space-y-6">
@@ -123,7 +127,7 @@ export default async function TestDetailPage({
             </Card>
           ))}
 
-          {needsTriage && !symptoms && <PassOnKit kitId={kit.id} kitCode={formatKitCode(kit.code)} />}
+          {needsTriage && !symptoms && <PassOnKit kitId={kit.id} kitCode={formatKitCode(kit.code)} asks={asks} />}
 
           {symptoms && (
             <Card>
