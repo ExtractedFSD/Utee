@@ -122,19 +122,20 @@ const EndCard: React.FC<{ vertical: boolean }> = ({ vertical }) => {
   const a = spring({ frame, fps, config: { damping: 16, stiffness: 140 } });
   const b = spring({ frame: frame - 12, fps, config: { damping: 16, stiffness: 140 } });
   const c = spring({ frame: frame - 24, fps, config: { damping: 14, stiffness: 160 } });
-  const base = vertical ? width : height;
+  // Sized to fit the caption band in 9:16; roomier in 16:9.
+  const base = vertical ? width * 0.78 : height;
   return (
-    <div style={{ textAlign: vertical ? "center" : "left", color: "#fff", marginTop: vertical ? height * 0.02 : 0 }}>
-      <Img src={staticFile("logo-white.png")} style={{ width: base * 0.34, opacity: a, transform: `translateY(${(1 - a) * 30}px)` }} />
-      <div style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: base * 0.075, lineHeight: 1.1, marginTop: base * 0.05, opacity: b, transform: `translateY(${(1 - b) * 30}px)` }}>
+    <div style={{ textAlign: vertical ? "center" : "left", color: "#fff", display: "flex", flexDirection: "column", alignItems: vertical ? "center" : "flex-start" }}>
+      <Img src={staticFile("logo-white.png")} style={{ width: base * 0.26, opacity: a, transform: `translateY(${(1 - a) * 24}px)` }} />
+      <div style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: base * 0.066, lineHeight: 1.08, marginTop: base * 0.035, opacity: b, transform: `translateY(${(1 - b) * 24}px)` }}>
         Your UTI history,
         <br />
         in your pocket.
       </div>
-      <div style={{ fontFamily: BODY, fontWeight: 600, fontSize: base * 0.034, letterSpacing: "0.12em", textTransform: "uppercase", marginTop: base * 0.06, display: "inline-block", background: "#fff", color: "#91193b", padding: `${base * 0.02}px ${base * 0.045}px`, borderRadius: 999, opacity: c, transform: `scale(${0.9 + c * 0.1})` }}>
+      <div style={{ fontFamily: BODY, fontWeight: 600, fontSize: base * 0.03, letterSpacing: "0.12em", textTransform: "uppercase", marginTop: base * 0.045, display: "inline-block", background: "#fff", color: "#91193b", padding: `${base * 0.018}px ${base * 0.04}px`, borderRadius: 999, opacity: c, transform: `scale(${0.9 + c * 0.1})` }}>
         Order a Utee test
       </div>
-      <div style={{ fontFamily: BODY, fontSize: base * 0.03, marginTop: base * 0.035, opacity: c * 0.9 }}>portal.myutee.co.uk</div>
+      <div style={{ fontFamily: BODY, fontSize: base * 0.027, marginTop: base * 0.028, opacity: c * 0.9 }}>portal.myutee.co.uk</div>
     </div>
   );
 };
