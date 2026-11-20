@@ -13,3 +13,8 @@ next-env.d.ts
 test-results/
 playwright-report/
 e2e/.registry.json
+
+# Promo video: saved sign-in and raw recordings
+promo/.auth/
+promo/recordings/
+promo/out/
