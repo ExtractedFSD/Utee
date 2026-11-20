@@ -43,8 +43,8 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   const drift = { ...pose, rotateY: pose.rotateY + Math.sin(frame / 38) * 1.6, rotateX: pose.rotateX + Math.cos(frame / 47) * 0.8 };
 
   const vertical = layout === "vertical";
-  // Vertical: the caption's last line sits on the bottom of the top band, and
-  // the phone is centred in the space between that line and the bottom edge.
+  // Vertical: the phone is fixed in the lower band and the caption is
+  // centred in the band above it, so both stay put from scene to scene.
   const phoneWidth = vertical ? width * 0.54 : height * 0.42;
   const captionSize = vertical ? width * 0.085 : height * 0.1;
   const swap = prev ? interpolate(into, [0, 8], [0, 1], { extrapolateRight: "clamp" }) : 1;
@@ -79,7 +79,7 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
               bottom: vertical ? height * (1 - CAPTION_BAND) : 0,
               display: "flex",
               flexDirection: "column",
-              justifyContent: vertical ? "flex-end" : "center",
+              justifyContent: "center",
               alignItems: vertical ? "center" : "flex-start",
               padding: vertical ? `0 ${width * 0.08}px 0` : `0 0 0 ${width * 0.08}`,
               pointerEvents: "none",
