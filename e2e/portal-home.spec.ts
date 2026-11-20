@@ -19,6 +19,11 @@ test("urologist appointment stays locked until a Utee test is on the account", a
   await page.reload();
   await expect(page.getByTestId("urologist-locked")).toHaveCount(0);
   await expect(page.getByTestId("urologist")).toContainText("Coming soon");
+
+  // "All kits" lists every kit on the account.
+  await page.getByRole("link", { name: /All kits/ }).click();
+  await expect(page).toHaveURL(/\/portal\/tests$/);
+  await expect(page.getByTestId("all-kits")).toContainText(kit.code.slice(0, 4));
   await ctx.close();
 });
 
