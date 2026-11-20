@@ -9,8 +9,10 @@ import { SCENES, type Pose } from "./scenes";
 
 export type Layout = "vertical" | "landscape";
 
-/** Share of the 9:16 frame, from the top, that holds the caption. */
+/** Share of the 9:16 frame, from the top, that holds the caption (text centred in it). */
 const CAPTION_BAND = 0.24;
+/** Where the caption's last line lands; the phone is centred between here and the bottom edge. */
+const PHONE_BAND_TOP = 0.19;
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const lerpPose = (a: Pose, b: Pose, t: number): Pose => ({
@@ -54,7 +56,7 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   // to cover the cross-fade into the next scene).
   const phoneLayer = (s: typeof scene, opacity: number) => (
     <Sequence key={`phone-${s.key}`} from={barStart(s.fromBar)} durationInFrames={s.bars * BAR_FRAMES + 12} layout="none">
-      <div style={{ position: "absolute", left: 0, right: 0, top: vertical ? height * CAPTION_BAND : 0, bottom: 0, opacity, display: "flex", alignItems: "center", justifyContent: vertical ? "center" : "flex-end", paddingRight: vertical ? 0 : width * 0.09 }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: vertical ? height * PHONE_BAND_TOP : 0, bottom: 0, opacity, display: "flex", alignItems: "center", justifyContent: vertical ? "center" : "flex-end", paddingRight: vertical ? 0 : width * 0.09 }}>
         <Phone pose={drift} clip={s.clip} clipFrom={s.clipFrom} rate={s.rate} width={phoneWidth} />
       </div>
     </Sequence>
