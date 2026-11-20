@@ -1,6 +1,6 @@
 import React from "react";
-import { OffthreadVideo, staticFile, useCurrentFrame } from "remotion";
-import { beatPulse, FPS } from "./beats";
+import { OffthreadVideo, staticFile } from "remotion";
+import { FPS } from "./beats";
 import type { Pose } from "./scenes";
 
 /*
@@ -17,15 +17,12 @@ export const Phone: React.FC<{
   clipFrom?: number;
   rate?: number;
   width: number;
-  kick?: number;
-}> = ({ pose, clip, clipFrom = 0, rate = 1, width, kick = 0 }) => {
-  const frame = useCurrentFrame();
+}> = ({ pose, clip, clipFrom = 0, rate = 1, width }) => {
   const bezel = width * 0.035;
   const w = width;
   const h = (SCREEN_H / SCREEN_W) * width + bezel * 2 - bezel * 2;
   const radius = width * 0.16;
-  const pulse = beatPulse(frame, 0.3) * kick;
-  const scale = pose.scale * (1 + pulse * 0.025);
+  const scale = pose.scale;
   const shadowX = -pose.rotateY * 1.2;
   return (
     <div style={{ perspective: 2200, perspectiveOrigin: "50% 45%", width: w, height: h, transform: `translate(${pose.x}px, ${pose.y}px)` }}>

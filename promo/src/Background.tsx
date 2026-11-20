@@ -1,15 +1,14 @@
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
-import { beatPulse, DURATION_FRAMES } from "./beats";
+import { DURATION_FRAMES } from "./beats";
 
 /*
  * The brand gradient with three soft blobs drifting behind the phone. The
- * blobs breathe on the beat, gently, so the whole frame feels in time.
+ * blobs drift slowly; nothing pulses.
  */
 export const Background: React.FC = () => {
   const frame = useCurrentFrame();
   const t = frame / DURATION_FRAMES;
-  const pulse = beatPulse(frame, 0.5);
   const blob = (color: string, x: number, y: number, size: number, phase: number) => {
     const dx = Math.sin(t * Math.PI * 2 * 1.5 + phase) * 6;
     const dy = Math.cos(t * Math.PI * 2 * 1.1 + phase) * 5;
@@ -28,7 +27,6 @@ export const Background: React.FC = () => {
           background: color,
           filter: "blur(90px)",
           opacity: 0.55,
-          transform: `scale(${1 + pulse * 0.04})`,
         }}
       />
     );

@@ -38,7 +38,6 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   const pose = prev ? lerpPose(prev.pose, scene.pose, ease) : scene.pose;
   // A slow drift inside the scene so the phone is never frozen.
   const drift = { ...pose, rotateY: pose.rotateY + Math.sin(frame / 38) * 1.6, rotateX: pose.rotateX + Math.cos(frame / 47) * 0.8 };
-  const kick = scene.key === "end" ? 0 : 1;
 
   const vertical = layout === "vertical";
   const phoneWidth = vertical ? width * 0.62 : height * 0.42;
@@ -51,7 +50,7 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   const phoneLayer = (s: typeof scene, opacity: number) => (
     <Sequence key={`phone-${s.key}`} from={barStart(s.fromBar)} durationInFrames={s.bars * BAR_FRAMES + 12} layout="none">
       <div style={{ position: "absolute", inset: 0, opacity, display: "flex", alignItems: "center", justifyContent: vertical ? "center" : "flex-end", paddingRight: vertical ? 0 : width * 0.09, paddingTop: vertical ? height * 0.14 : 0 }}>
-        <Phone pose={drift} clip={s.clip} clipFrom={s.clipFrom} rate={s.rate} width={phoneWidth} kick={kick} />
+        <Phone pose={drift} clip={s.clip} clipFrom={s.clipFrom} rate={s.rate} width={phoneWidth} />
       </div>
     </Sequence>
   );
