@@ -28,7 +28,7 @@ export type Scene = {
 const ready = (clip: string, extra = 0) => ((offsets as Record<string, number>)[clip] ?? 1) + extra;
 
 export const SCENES: Scene[] = [
-  { key: "intro", fromBar: 0, bars: 2, clip: "home", clipFrom: ready("home", 0.5), headline: "Your UTI history,\nin your pocket.", subline: "The Utee UTI Passport", pose: { rotateY: -26, rotateX: 6, scale: 0.92, x: 0, y: 40 } },
+  { key: "intro", fromBar: 0, bars: 2, clip: "home", clipFrom: ready("home", 0.5), headline: "Your UTI history,\nin your pocket.", subline: "The Utee UTI Passport", pose: { rotateY: -26, rotateX: 6, scale: 0.92, x: 0, y: 0 } },
   { key: "signin", fromBar: 2, bars: 2, clip: "login", clipFrom: ready("login", 1.2), rate: 1.9, headline: "No passwords.", subline: "Sign in with a code from your email.", pose: { rotateY: 12, rotateX: 3, scale: 1, x: 0, y: 0 } },
   { key: "today", fromBar: 4, bars: 3, clip: "today", clipFrom: ready("today", 0.4), rate: 1.3, headline: "How are you today?", subline: "Log a UTI, keep a daily diary, build a streak.", pose: { rotateY: -10, rotateX: 2, scale: 1.02, x: 0, y: 0 } },
   { key: "una", fromBar: 7, bars: 4, clip: "una", clipFrom: ready("una", 2.6), rate: 1.8, headline: "Just tell Una.", subline: "Type it in your own words. Una fills in the record.", pose: { rotateY: 8, rotateX: 4, scale: 1.04, x: 0, y: -10 } },

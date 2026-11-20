@@ -40,7 +40,8 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   const drift = { ...pose, rotateY: pose.rotateY + Math.sin(frame / 38) * 1.6, rotateX: pose.rotateX + Math.cos(frame / 47) * 0.8 };
 
   const vertical = layout === "vertical";
-  const phoneWidth = vertical ? width * 0.62 : height * 0.42;
+  // Vertical: the top quarter belongs to the caption, the phone starts below it.
+  const phoneWidth = vertical ? width * 0.54 : height * 0.42;
   const captionSize = vertical ? width * 0.085 : height * 0.1;
   const swap = prev ? interpolate(into, [0, 8], [0, 1], { extrapolateRight: "clamp" }) : 1;
 
@@ -49,7 +50,7 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   // to cover the cross-fade into the next scene).
   const phoneLayer = (s: typeof scene, opacity: number) => (
     <Sequence key={`phone-${s.key}`} from={barStart(s.fromBar)} durationInFrames={s.bars * BAR_FRAMES + 12} layout="none">
-      <div style={{ position: "absolute", inset: 0, opacity, display: "flex", alignItems: "center", justifyContent: vertical ? "center" : "flex-end", paddingRight: vertical ? 0 : width * 0.09, paddingTop: vertical ? height * 0.14 : 0 }}>
+      <div style={{ position: "absolute", inset: 0, opacity, display: "flex", alignItems: vertical ? "flex-start" : "center", justifyContent: vertical ? "center" : "flex-end", paddingRight: vertical ? 0 : width * 0.09, paddingTop: vertical ? height * 0.27 : 0 }}>
         <Phone pose={drift} clip={s.clip} clipFrom={s.clipFrom} rate={s.rate} width={phoneWidth} />
       </div>
     </Sequence>
