@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { rel } from "@/lib/supabase/rel";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole, type SessionUser } from "@/lib/auth";
@@ -192,7 +193,7 @@ export async function ownKits(supabase: SupabaseClient) {
     code: k.code as string,
     status: k.status as string,
     created_at: k.created_at as string,
-    reportReady: ((k.clinic_reports as unknown as { status: string }[] | null) ?? []).some((r) => r.status === "complete"),
-    reportAt: ((k.clinic_reports as unknown as { status: string; completed_at: string | null }[] | null) ?? []).find((r) => r.status === "complete")?.completed_at ?? null,
+    reportReady: rel<{ status: string }>(k.clinic_reports).some((r) => r.status === "complete"),
+    reportAt: rel<{ status: string; completed_at: string | null }>(k.clinic_reports).find((r) => r.status === "complete")?.completed_at ?? null,
   }));
 }

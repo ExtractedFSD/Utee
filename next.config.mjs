@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const PDF_FILES = ["./design-system/fonts/**", "./public/logo-*.png", "./node_modules/pdfkit/js/standard-fonts/**", "./node_modules/pdfkit/js/data/**"];
+
 const nextConfig = {
   // The portal moved to portal.myutee.co.uk. Kits already printed carry QR
   // codes for the .com address, and old emails link to it, so the old host
@@ -20,11 +22,18 @@ const nextConfig = {
   // The patient report PDF is rendered on the server with the brand fonts
   // and logo read from disk. Vercel only ships files it can trace through
   // imports, so name them for the routes that render the report.
+  // pdfkit loads its built-in fonts (Helvetica and friends) lazily from
+  // files the tracer cannot see either, and the passport PDF and postage
+  // label fall back to them, so those ship with every PDF route too.
   outputFileTracingIncludes: {
-    "/clinic/case/[kitId]/report": ["./design-system/fonts/**", "./public/logo-*.png"],
-    "/clinic/case/[kitId]/report/preview": ["./design-system/fonts/**", "./public/logo-*.png"],
-    "/clinic/case/[kitId]": ["./design-system/fonts/**", "./public/logo-*.png"],
-    "/portal/passport/passport": ["./design-system/fonts/**", "./public/logo-*.png"],
+    "/clinic/case/[kitId]/report": PDF_FILES,
+    "/clinic/case/[kitId]/report/preview": PDF_FILES,
+    "/clinic/case/[kitId]": PDF_FILES,
+    "/portal/passport/passport": PDF_FILES,
+    "/passport/[code]/pdf": PDF_FILES,
+    "/portal/tests/[kitId]/postage/label": PDF_FILES,
+    "/admin/postage": PDF_FILES,
+    "/admin/kits/[id]": PDF_FILES,
   },
 };
 
