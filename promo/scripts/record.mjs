@@ -20,7 +20,8 @@ const RAW = path.resolve("promo/.auth/raw");
 // sharp clip the page is zoomed: a 639 px viewport (still under Tailwind's
 // sm breakpoint, so the phone layout holds) with CSS zoom so it lays out as
 // 390 px wide, recorded 1:1.
-const PHONE = { width: 390, height: 844 };
+// Standalone web-app viewport on an iPhone: 390 x 764 points (852 less the status bar and home indicator).
+const PHONE = { width: 390, height: 764 };
 const ZOOM = 639 / PHONE.width;
 const VIEWPORT = { width: 639, height: Math.round(PHONE.height * ZOOM) };
 const OFFSETS_FILE = path.resolve("promo/src/offsets.json");
@@ -118,15 +119,33 @@ const scenes = {
     await scrollTo(page, 99999, 900);
     await wait(3500);
   },
+  // Record tab: supplements and habits, cultures with sensitivities, scans and
+  // bloods. One tap per tab, a short look at each.
+  async record(page) {
+    await page.goto(`${BASE}/portal/passport/record?tab=taking`, { waitUntil: "load" });
+    await wait(2200);
+    await scrollTo(page, 0.35, 1200);
+    await wait(1400);
+    await scrollTo(page, 0, 700);
+    await tap(page, "a[role=tab]:has-text('Results')");
+    await page.waitForURL(/tab=results/);
+    await wait(2400);
+    await scrollTo(page, 0.4, 1200);
+    await wait(1400);
+    await scrollTo(page, 0, 700);
+    await tap(page, "a[role=tab]:has-text('Investigations')");
+    await page.waitForURL(/tab=investigations/);
+    await wait(2400);
+    await scrollTo(page, 0.4, 1200);
+    await wait(1800);
+  },
   async history(page) {
     await page.goto(`${BASE}/portal/passport/history`, { waitUntil: "load" });
     await wait(1800);
     await scrollTo(page, 0.3, 1500);
     await wait(1500);
-    await scrollTo(page, 0.6, 1500);
-    await wait(1500);
     await page.goto(`${BASE}/portal/passport/history?view=days`, { waitUntil: "load" });
-    await wait(2200);
+    await wait(2400);
   },
   async share(page) {
     await page.goto(`${BASE}/portal/passport/share`, { waitUntil: "load" });
@@ -150,7 +169,7 @@ const scenes = {
   },
 };
 
-const wanted = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(scenes);
+const wanted = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(scenes).filter((k) => k !== "login");
 const browser = await chromium.launch({ executablePath: process.env.PROMO_CHROME ?? "/opt/pw-browsers/chromium" });
 for (const name of wanted) {
   const run = scenes[name];

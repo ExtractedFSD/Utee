@@ -8,8 +8,13 @@ import type { Pose } from "./scenes";
  * recording mapped inside with a soft reflection, and a shadow that moves
  * with the tilt. Screen aspect matches the recordings (390 x 844 CSS px).
  */
+// The recordings are the standalone web-app viewport (390 x 764 points); the
+// screen adds the 54 pt status bar above and the 34 pt home indicator area
+// below, which is the iPhone's 852 pt height.
 export const SCREEN_W = 390;
-export const SCREEN_H = 844;
+export const SCREEN_H = 764;
+const STATUS_PT = 54;
+const HOME_PT = 34;
 
 export const Phone: React.FC<{
   pose: Pose;
@@ -20,10 +25,12 @@ export const Phone: React.FC<{
 }> = ({ pose, clip, clipFrom = 0, rate = 1, width }) => {
   const bezel = width * 0.035;
   const w = width;
-  const h = (SCREEN_H / SCREEN_W) * (width - bezel * 2) + (width - bezel * 2) * (54 / 390) + bezel * 2;
+  const inner = width - bezel * 2;
+  const h = (inner * (SCREEN_H + STATUS_PT + HOME_PT)) / SCREEN_W + bezel * 2;
   const radius = width * 0.16;
   // iOS status bar height, 54 of 390 points, added above the web viewport.
-  const statusH = (width - bezel * 2) * (54 / 390);
+  const statusH = inner * (STATUS_PT / SCREEN_W);
+  const homeH = inner * (HOME_PT / SCREEN_W);
   const scale = pose.scale;
   const shadowX = -pose.rotateY * 1.2;
   return (
@@ -93,8 +100,19 @@ export const Phone: React.FC<{
                 startFrom={Math.round(clipFrom * FPS)}
                 playbackRate={rate}
                 muted
-                style={{ position: "absolute", left: 0, top: statusH, width: "100%", height: `calc(100% - ${statusH}px)`, objectFit: "cover", display: "block" }}
+                style={{ position: "absolute", left: 0, top: statusH, width: "100%", height: `calc(100% - ${statusH + homeH}px)`, objectFit: "cover", display: "block" }}
               />
+              {/* home indicator area, backed by the recording's own bottom edge */}
+              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: homeH, overflow: "hidden" }}>
+                <OffthreadVideo
+                  src={staticFile(`recordings/${clip}.mp4`)}
+                  startFrom={Math.round(clipFrom * FPS)}
+                  playbackRate={rate}
+                  muted
+                  style={{ position: "absolute", left: 0, bottom: 0, width: "100%", height: homeH * 300, objectFit: "cover", display: "block" }}
+                />
+              </div>
+              <div style={{ position: "absolute", left: "50%", bottom: inner * (8 / SCREEN_W), width: inner * (139 / SCREEN_W), height: inner * (5 / SCREEN_W), marginLeft: -inner * (69.5 / SCREEN_W), borderRadius: 999, background: "#1d003a", opacity: 0.85 }} />
             </>
           ) : (
             <img src={staticFile("logo-midnight.png")} alt="" style={{ position: "absolute", left: "25%", top: "40%", width: "50%" }} />
