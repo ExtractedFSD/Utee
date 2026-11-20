@@ -9,6 +9,9 @@ import { SCENES, type Pose } from "./scenes";
 
 export type Layout = "vertical" | "landscape";
 
+/** Share of the 9:16 frame, from the top, that holds the caption. */
+const CAPTION_BAND = 0.24;
+
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const lerpPose = (a: Pose, b: Pose, t: number): Pose => ({
   rotateY: lerp(a.rotateY, b.rotateY, t),
@@ -40,7 +43,8 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   const drift = { ...pose, rotateY: pose.rotateY + Math.sin(frame / 38) * 1.6, rotateX: pose.rotateX + Math.cos(frame / 47) * 0.8 };
 
   const vertical = layout === "vertical";
-  // Vertical: the top quarter belongs to the caption, the phone starts below it.
+  // Vertical: the caption's last line sits on the bottom of the top band, and
+  // the phone is centred in the space between that line and the bottom edge.
   const phoneWidth = vertical ? width * 0.54 : height * 0.42;
   const captionSize = vertical ? width * 0.085 : height * 0.1;
   const swap = prev ? interpolate(into, [0, 8], [0, 1], { extrapolateRight: "clamp" }) : 1;
@@ -50,7 +54,7 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   // to cover the cross-fade into the next scene).
   const phoneLayer = (s: typeof scene, opacity: number) => (
     <Sequence key={`phone-${s.key}`} from={barStart(s.fromBar)} durationInFrames={s.bars * BAR_FRAMES + 12} layout="none">
-      <div style={{ position: "absolute", inset: 0, opacity, display: "flex", alignItems: vertical ? "flex-start" : "center", justifyContent: vertical ? "center" : "flex-end", paddingRight: vertical ? 0 : width * 0.09, paddingTop: vertical ? height * 0.27 : 0 }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: vertical ? height * CAPTION_BAND : 0, bottom: 0, opacity, display: "flex", alignItems: "center", justifyContent: vertical ? "center" : "flex-end", paddingRight: vertical ? 0 : width * 0.09 }}>
         <Phone pose={drift} clip={s.clip} clipFrom={s.clipFrom} rate={s.rate} width={phoneWidth} />
       </div>
     </Sequence>
@@ -69,12 +73,15 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
           <div
             style={{
               position: "absolute",
-              inset: 0,
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: vertical ? height * (1 - CAPTION_BAND) : 0,
               display: "flex",
               flexDirection: "column",
-              justifyContent: vertical ? "flex-start" : "center",
+              justifyContent: vertical ? "flex-end" : "center",
               alignItems: vertical ? "center" : "flex-start",
-              padding: vertical ? `${height * 0.09}px ${width * 0.08}px 0` : `0 0 0 ${width * 0.08}`,
+              padding: vertical ? `0 ${width * 0.08}px 0` : `0 0 0 ${width * 0.08}`,
               pointerEvents: "none",
             }}
           >
