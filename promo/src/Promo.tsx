@@ -45,10 +45,15 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   const captionSize = vertical ? width * 0.085 : height * 0.1;
   const swap = prev ? interpolate(into, [0, 8], [0, 1], { extrapolateRight: "clamp" }) : 1;
 
+  // Each recording sits in its own Sequence so the clip starts from its own
+  // first frame when the scene begins (the sequence runs a few frames long
+  // to cover the cross-fade into the next scene).
   const phoneLayer = (s: typeof scene, opacity: number) => (
-    <div style={{ position: "absolute", inset: 0, opacity, display: "flex", alignItems: "center", justifyContent: vertical ? "center" : "flex-end", paddingRight: vertical ? 0 : width * 0.09, paddingTop: vertical ? height * 0.14 : 0 }}>
-      <Phone pose={drift} clip={s.clip} clipFrom={s.clipFrom} rate={s.rate} width={phoneWidth} kick={kick} />
-    </div>
+    <Sequence key={`phone-${s.key}`} from={barStart(s.fromBar)} durationInFrames={s.bars * BAR_FRAMES + 12} layout="none">
+      <div style={{ position: "absolute", inset: 0, opacity, display: "flex", alignItems: "center", justifyContent: vertical ? "center" : "flex-end", paddingRight: vertical ? 0 : width * 0.09, paddingTop: vertical ? height * 0.14 : 0 }}>
+        <Phone pose={drift} clip={s.clip} clipFrom={s.clipFrom} rate={s.rate} width={phoneWidth} kick={kick} />
+      </div>
+    </Sequence>
   );
 
   const isEnd = scene.key === "end";
