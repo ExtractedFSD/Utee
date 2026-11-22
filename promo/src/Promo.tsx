@@ -3,7 +3,7 @@ import { AbsoluteFill, Img, interpolate, Sequence, spring, staticFile, useCurren
 import { Background } from "./Background";
 import { Caption } from "./Caption";
 import { Phone } from "./Phone";
-import { BAR_FRAMES, barStart, beatInBar } from "./beats";
+import { BAR_FRAMES, barStart } from "./beats";
 import { BODY, DISPLAY, loadBrandFonts } from "./fonts";
 import { SCENES, type Pose } from "./scenes";
 
@@ -95,29 +95,13 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
             {s.key === "end" ? (
               <EndCard vertical={vertical} />
             ) : (
-              <Caption headline={s.headline} subline={s.subline} chips={s.chips} align="center" size={captionSize} sceneFrames={s.bars * BAR_FRAMES} />
+              <Caption headline={s.headline} logo={s.key === "intro"} align="center" size={captionSize} sceneFrames={s.bars * BAR_FRAMES} />
             )}
           </div>
         </Sequence>
       ))}
 
-      {!isEnd && <BeatDots />}
     </AbsoluteFill>
-  );
-};
-
-/** Four small dots that count the bar in the corner: a quiet metronome for the eye. */
-const BeatDots: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { width, height } = useVideoConfig();
-  const on = beatInBar(frame);
-  const size = Math.min(width, height) * 0.012;
-  return (
-    <div style={{ position: "absolute", right: size * 3, bottom: size * 3, display: "flex", gap: size }}>
-      {[0, 1, 2, 3].map((i) => (
-        <div key={i} style={{ width: size, height: size, borderRadius: size, background: "#fff", opacity: i === on ? 0.9 : 0.3, transform: `scale(${i === on ? 1.25 : 1})` }} />
-      ))}
-    </div>
   );
 };
 
