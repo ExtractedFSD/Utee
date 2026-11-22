@@ -15,6 +15,8 @@ export const SCREEN_W = 390;
 export const SCREEN_H = 764;
 const STATUS_PT = 54;
 const HOME_PT = 34;
+/** The portal header's gradient along its top edge. */
+const HEADER_TOP = "linear-gradient(90deg, #f28fbf 0%, #d9789f 55%, #c65f88 100%)";
 
 export const Phone: React.FC<{
   pose: Pose;
@@ -22,7 +24,10 @@ export const Phone: React.FC<{
   clipFrom?: number;
   rate?: number;
   width: number;
-}> = ({ pose, clip, clipFrom = 0, rate = 1, width }) => {
+  /** Colours behind the status bar and the home indicator for this clip. */
+  chrome?: { top?: string; bottom?: string };
+}> = ({ pose, clip, clipFrom = 0, rate = 1, width, chrome: chromeIn }) => {
+  const chrome = { top: chromeIn?.top ?? HEADER_TOP, bottom: chromeIn?.bottom ?? "#ffffff" };
   const bezel = width * 0.035;
   const w = width;
   const inner = width - bezel * 2;
@@ -86,15 +91,8 @@ export const Phone: React.FC<{
         >
           {clip ? (
             <>
-              <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: statusH, overflow: "hidden" }}>
-                <OffthreadVideo
-                  src={staticFile(`recordings/${clip}.mp4`)}
-                  startFrom={Math.round(clipFrom * FPS)}
-                  playbackRate={rate}
-                  muted
-                  style={{ width: "100%", height: statusH * 300, objectFit: "cover", display: "block", transformOrigin: "top", transform: "translateY(0)" }}
-                />
-              </div>
+              {/* status bar ground: the site header's colour, fixed, so nothing flickers as the page scrolls under it */}
+              <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: statusH + 2, background: chrome.top }} />
               <OffthreadVideo
                 src={staticFile(`recordings/${clip}.mp4`)}
                 startFrom={Math.round(clipFrom * FPS)}
@@ -102,16 +100,8 @@ export const Phone: React.FC<{
                 muted
                 style={{ position: "absolute", left: 0, top: statusH, width: "100%", height: `calc(100% - ${statusH + homeH}px)`, objectFit: "cover", display: "block" }}
               />
-              {/* home indicator area, backed by the recording's own bottom edge */}
-              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: homeH, overflow: "hidden" }}>
-                <OffthreadVideo
-                  src={staticFile(`recordings/${clip}.mp4`)}
-                  startFrom={Math.round(clipFrom * FPS)}
-                  playbackRate={rate}
-                  muted
-                  style={{ position: "absolute", left: 0, bottom: 0, width: "100%", height: homeH * 300, objectFit: "cover", display: "block" }}
-                />
-              </div>
+              {/* home indicator ground: the colour of the page's bottom edge, fixed */}
+              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: homeH + 2, background: chrome.bottom }} />
               <div style={{ position: "absolute", left: "50%", bottom: inner * (8 / SCREEN_W), width: inner * (139 / SCREEN_W), height: inner * (5 / SCREEN_W), marginLeft: -inner * (69.5 / SCREEN_W), borderRadius: 999, background: "#1d003a", opacity: 0.85 }} />
             </>
           ) : (

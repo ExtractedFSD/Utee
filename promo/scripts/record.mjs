@@ -147,6 +147,8 @@ const scenes = {
     await page.goto(`${BASE}/portal/passport/history?view=days`, { waitUntil: "load" });
     await wait(2400);
   },
+  // Each take creates a share code; clear the demo account's tracker_shares
+  // before re-recording or old QR codes show behind the sheet.
   async share(page) {
     await page.goto(`${BASE}/portal/passport/share`, { waitUntil: "load" });
     await wait(1600);

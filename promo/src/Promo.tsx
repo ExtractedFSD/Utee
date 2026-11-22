@@ -57,7 +57,7 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   const phoneLayer = (s: typeof scene, opacity: number) => (
     <Sequence key={`phone-${s.key}`} from={barStart(s.fromBar)} durationInFrames={s.bars * BAR_FRAMES + 12} layout="none">
       <div style={{ position: "absolute", left: 0, right: 0, top: vertical ? height * PHONE_BAND_TOP : 0, bottom: 0, opacity, display: "flex", alignItems: "center", justifyContent: vertical ? "center" : "flex-end", paddingRight: vertical ? 0 : width * 0.09 }}>
-        <Phone pose={drift} clip={s.clip} clipFrom={s.clipFrom} rate={s.rate} width={phoneWidth} />
+        <Phone pose={drift} clip={s.clip} clipFrom={s.clipFrom} rate={s.rate} width={phoneWidth} chrome={{ bottom: s.bottom }} />
       </div>
     </Sequence>
   );
