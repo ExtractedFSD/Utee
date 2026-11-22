@@ -122,9 +122,10 @@ const BeatDots: React.FC = () => {
 const EndCard: React.FC<{ vertical: boolean }> = ({ vertical }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
-  const a = spring({ frame, fps, config: { damping: 16, stiffness: 140 } });
-  const b = spring({ frame: frame - 12, fps, config: { damping: 16, stiffness: 140 } });
-  const c = spring({ frame: frame - 24, fps, config: { damping: 14, stiffness: 160 } });
+  // Starts once the last phone has faded (20 frames), then logo, line, address on successive beats.
+  const a = spring({ frame: frame - 20, fps, config: { damping: 16, stiffness: 140 } });
+  const b = spring({ frame: frame - 32, fps, config: { damping: 16, stiffness: 140 } });
+  const c = spring({ frame: frame - 44, fps, config: { damping: 14, stiffness: 160 } });
   const base = vertical ? width : height;
   return (
     <div style={{ textAlign: "center", color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", marginTop: -base * 0.04 }}>
