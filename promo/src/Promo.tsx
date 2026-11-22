@@ -49,6 +49,7 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   // centred in the band above it, so both stay put from scene to scene.
   const phoneWidth = vertical ? width * 0.54 : height * 0.42;
   const captionSize = vertical ? width * 0.105 : height * 0.13;
+  const phoneLeft = width - width * 0.09 - phoneWidth;
   const swap = prev ? interpolate(into, [0, 8], [0, 1], { extrapolateRight: "clamp" }) : 1;
 
   // Each recording sits in its own Sequence so the clip starts from its own
@@ -78,22 +79,23 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
             style={{
               position: "absolute",
               left: 0,
-              right: 0,
+              // Landscape: the caption is centred in the space left of the phone.
+              right: vertical || s.key === "end" ? 0 : width - phoneLeft,
               top: 0,
               // The end card takes the whole frame, centred; captions take the band above the phone.
               bottom: vertical && s.key !== "end" ? height * (1 - CAPTION_BAND) : 0,
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
-              alignItems: vertical || s.key === "end" ? "center" : "flex-start",
-              padding: vertical || s.key === "end" ? `0 ${width * 0.08}px 0` : `0 0 0 ${width * 0.08}`,
+              alignItems: "center",
+              padding: `0 ${width * 0.04}px`,
               pointerEvents: "none",
             }}
           >
             {s.key === "end" ? (
               <EndCard vertical={vertical} />
             ) : (
-              <Caption headline={s.headline} subline={s.subline} chips={s.chips} align={vertical ? "center" : "left"} size={captionSize} sceneFrames={s.bars * BAR_FRAMES} />
+              <Caption headline={s.headline} subline={s.subline} chips={s.chips} align="center" size={captionSize} sceneFrames={s.bars * BAR_FRAMES} />
             )}
           </div>
         </Sequence>
