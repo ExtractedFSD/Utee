@@ -157,7 +157,15 @@ const scenes = {
     await tap(page, "input[type=checkbox]");
     await wait(900);
     await tap(page, "button:has-text('Create a share code')");
-    await wait(5000);
+    // The new card scrolls itself into view; stay at the top so the header,
+    // not a white card, sits under the status bar.
+    await wait(400);
+    await scrollTo(page, 0, 300);
+    await wait(1200);
+    await scrollTo(page, 0, 300);
+    await wait(1000);
+    await scrollTo(page, 0.35, 1200);
+    await wait(2800);
   },
   async kit(page) {
     await page.goto(`${BASE}/portal/tests/${KIT_ID}`, { waitUntil: "load" });

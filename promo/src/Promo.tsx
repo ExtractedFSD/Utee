@@ -93,7 +93,7 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
             {s.key === "end" ? (
               <EndCard vertical={vertical} />
             ) : (
-              <Caption headline={s.headline} subline={s.subline} align={vertical ? "center" : "left"} size={captionSize} sceneFrames={s.bars * BAR_FRAMES} />
+              <Caption headline={s.headline} subline={s.subline} chips={s.chips} align={vertical ? "center" : "left"} size={captionSize} sceneFrames={s.bars * BAR_FRAMES} />
             )}
           </div>
         </Sequence>
