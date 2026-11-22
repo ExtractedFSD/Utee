@@ -63,12 +63,14 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   );
 
   const isEnd = scene.key === "end";
+  // Into the end card the last phone fades away over a bar beat rather than cutting.
+  const fadeOut = prev && isEnd ? interpolate(into, [0, 20], [1, 0], { extrapolateRight: "clamp" }) : 1 - swap;
 
   return (
     <AbsoluteFill style={{ background: "#1d003a" }}>
       <Background />
-      {prev && swap < 1 && phoneLayer(prev, 1 - swap)}
-      {phoneLayer(scene, swap)}
+      {prev && fadeOut > 0 && phoneLayer(prev, fadeOut)}
+      {!isEnd && phoneLayer(scene, swap)}
 
       {SCENES.map((s) => (
         <Sequence key={s.key} from={barStart(s.fromBar)} durationInFrames={s.bars * BAR_FRAMES} layout="none">
@@ -78,12 +80,13 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
               left: 0,
               right: 0,
               top: 0,
-              bottom: vertical ? height * (1 - CAPTION_BAND) : 0,
+              // The end card takes the whole frame, centred; captions take the band above the phone.
+              bottom: vertical && s.key !== "end" ? height * (1 - CAPTION_BAND) : 0,
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
-              alignItems: vertical ? "center" : "flex-start",
-              padding: vertical ? `0 ${width * 0.08}px 0` : `0 0 0 ${width * 0.08}`,
+              alignItems: vertical || s.key === "end" ? "center" : "flex-start",
+              padding: vertical || s.key === "end" ? `0 ${width * 0.08}px 0` : `0 0 0 ${width * 0.08}`,
               pointerEvents: "none",
             }}
           >
@@ -122,20 +125,16 @@ const EndCard: React.FC<{ vertical: boolean }> = ({ vertical }) => {
   const a = spring({ frame, fps, config: { damping: 16, stiffness: 140 } });
   const b = spring({ frame: frame - 12, fps, config: { damping: 16, stiffness: 140 } });
   const c = spring({ frame: frame - 24, fps, config: { damping: 14, stiffness: 160 } });
-  // Sized to fit the caption band in 9:16; roomier in 16:9.
-  const base = vertical ? width * 0.78 : height;
+  const base = vertical ? width : height;
   return (
-    <div style={{ textAlign: vertical ? "center" : "left", color: "#fff", display: "flex", flexDirection: "column", alignItems: vertical ? "center" : "flex-start" }}>
-      <Img src={staticFile("logo-white.png")} style={{ width: base * 0.26, opacity: a, transform: `translateY(${(1 - a) * 24}px)` }} />
-      <div style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: base * 0.066, lineHeight: 1.08, marginTop: base * 0.035, opacity: b, transform: `translateY(${(1 - b) * 24}px)` }}>
+    <div style={{ textAlign: "center", color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", marginTop: -base * 0.04 }}>
+      <Img src={staticFile("logo-white.png")} style={{ width: base * 0.4, opacity: a, transform: `translateY(${(1 - a) * 24}px)` }} />
+      <div style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: base * 0.082, lineHeight: 1.08, marginTop: base * 0.05, opacity: b, transform: `translateY(${(1 - b) * 24}px)` }}>
         Your UTI history,
         <br />
         in your pocket.
       </div>
-      <div style={{ fontFamily: BODY, fontWeight: 600, fontSize: base * 0.03, letterSpacing: "0.12em", textTransform: "uppercase", marginTop: base * 0.045, display: "inline-block", background: "#fff", color: "#91193b", padding: `${base * 0.018}px ${base * 0.04}px`, borderRadius: 999, opacity: c, transform: `scale(${0.9 + c * 0.1})` }}>
-        Order a Utee test
-      </div>
-      <div style={{ fontFamily: BODY, fontSize: base * 0.027, marginTop: base * 0.028, opacity: c * 0.9 }}>portal.myutee.co.uk</div>
+      <div style={{ fontFamily: BODY, fontWeight: 600, fontSize: base * 0.032, letterSpacing: "0.04em", marginTop: base * 0.06, opacity: c * 0.95, transform: `translateY(${(1 - c) * 16}px)` }}>portal.myutee.co.uk</div>
     </div>
   );
 };
