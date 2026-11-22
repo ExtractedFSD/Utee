@@ -48,7 +48,7 @@ export const Promo: React.FC<{ layout: Layout }> = ({ layout }) => {
   // Vertical: the phone is fixed in the lower band and the caption is
   // centred in the band above it, so both stay put from scene to scene.
   const phoneWidth = vertical ? width * 0.54 : height * 0.42;
-  const captionSize = vertical ? width * 0.08 : height * 0.1;
+  const captionSize = vertical ? width * 0.105 : height * 0.13;
   const swap = prev ? interpolate(into, [0, 8], [0, 1], { extrapolateRight: "clamp" }) : 1;
 
   // Each recording sits in its own Sequence so the clip starts from its own
