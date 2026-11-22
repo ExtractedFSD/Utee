@@ -37,7 +37,7 @@ export const Caption: React.FC<{
 
   return (
     <div style={{ textAlign: align, color, opacity: out, transform: `translateY(-${lift}px)`, maxWidth: size * 14, display: "flex", flexDirection: "column", alignItems: align === "center" ? "center" : "flex-start" }}>
-      {logo && <Img src={staticFile("logo-white.png")} style={{ width: size * 2.6, marginBottom: size * 0.45, opacity: logoIn, transform: `translateY(${(1 - logoIn) * size * 0.3}px)` }} />}
+      {logo && <Img src={staticFile("logo-white.png")} style={{ width: size * 1.9, marginBottom: size * 0.3, opacity: logoIn, transform: `translateY(${(1 - logoIn) * size * 0.3}px)` }} />}
       <div style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: size, lineHeight: 1.05, letterSpacing: -size * 0.01, textShadow: "0 2px 24px rgba(29,0,58,0.25)" }}>
         {lines.map((l, li) => (
           <div key={li} style={{ marginRight: -size * 0.22 }}>
