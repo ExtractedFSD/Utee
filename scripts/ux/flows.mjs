@@ -142,14 +142,17 @@ const flows = {
     await page.goto(`${BASE}/portal/passport`, { waitUntil: "load" });
     await wait(900);
     await shot("today");
-    const faces = page.locator('[data-testid="diary-half"] [role="radio"], [data-testid="open-hero"] [role="radio"], [data-testid="feeling-strip"] button');
-    if (await faces.count()) { await faces.nth(2).click(); await wait(1200); }
+    const faces = page.locator('[data-testid="feeling-faces"] [role="radio"]');
+    if (await faces.count()) { await faces.nth(2).click(); await wait(600); }
     await shot("face-tapped");
-    await clickAny(page, [{ role: "button", name: /add a note/i }, { role: "link", name: /add a note/i }]).catch(() => undefined);
+    await clickAny(page, ['[data-testid="feeling-prompt"] button:has-text("Save")']).catch(() => undefined);
+    await wait(1200);
+    await shot("face-saved");
+    await clickAny(page, [{ role: "button", name: /add a note|edit note/i }]).catch(() => undefined);
     await wait(700);
     await shot("note-sheet");
     const ta = page.locator("textarea").first();
-    if (await ta.count()) { await ta.fill(LONG); await wait(300); await shot("note-long"); await clickAny(page, [{ role: "button", name: /^save note/i }, { role: "button", name: /^save/i }]).catch(() => undefined); await wait(1500); }
+    if (await ta.count()) { await ta.fill(LONG); await wait(300); await shot("note-long"); await clickAny(page, ['[data-testid="today-note"] button:has-text("Save")']).catch(() => undefined); await wait(1500); }
     await shot("note-saved");
     await clickAny(page, [{ role: "link", name: /see my diary/i }]).catch(() => undefined);
     await wait(1000);

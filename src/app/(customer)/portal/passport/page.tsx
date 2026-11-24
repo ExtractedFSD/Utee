@@ -11,6 +11,7 @@ import { MonthStrip } from "./components/MonthStrip";
 import { PassportCard } from "./components/PassportCard";
 import { PatternsCard } from "./components/PatternsCard";
 import { PreventionPills } from "./components/PreventionPills";
+import { FeelingCard } from "./components/FeelingCard";
 import { TodayHero, type HeroState } from "./components/TodayHero";
 import { checkinStreak } from "@/lib/tracker/diary";
 
@@ -49,14 +50,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         symptomOrder: orderByUsage(SYMPTOMS.map((x) => x.key), data.symptoms.map((x) => ({ key: x.symptom }))),
         unrated: data.treatments.filter((t) => t.episode_id === open.id && !t.worked).map((t) => ({ id: t.id, name: antibioticName(t.antibiotic_id, t.other_name) })),
       },
-      streak,
     };
   } else {
     // A Utee result published in the last week is worth a line on the hero.
     const recent = kits.find((k) => k.reportReady && k.reportAt && daysBetween(k.reportAt.slice(0, 10), today) <= 7);
-    const checkin = data.checkins.find((c) => c.on_date === today);
-    state = { kind: "between", daysSince: s.daysSinceLast ?? 0, result: recent ? { kitId: recent.id, code: recent.code } : null, feelingToday: checkin?.feeling ?? null, noteToday: checkin?.note ?? null, streak };
+    state = { kind: "between", daysSince: s.daysSinceLast ?? 0, result: recent ? { kitId: recent.id, code: recent.code } : null };
   }
+  const checkinToday = data.checkins.find((c) => c.on_date === today);
 
   const taking = data.preventions.filter((x) => !x.stopped_on);
   const glance = passportGlance({ utis6m: s.episodes6m, utis12m: s.episodes12m }, profile, data.preventions, data.investigations, data.cultures);
@@ -74,6 +74,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       {reopened && <div role="status"><Notice tone="mint">{copy.consent.reopened}</Notice></div>}
 
       <TodayHero state={state} pregnantOrTrying={profile.pregnant_or_trying} />
+
+      {!brandNew && <FeelingCard today={today} feelingToday={checkinToday?.feeling ?? null} noteToday={checkinToday?.note ?? null} streak={streak} />}
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <div className="contents lg:block lg:space-y-6">
