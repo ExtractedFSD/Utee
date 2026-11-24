@@ -108,7 +108,7 @@ export function EpisodeEditor({
           {copy.episode.back}
         </Link>
         <p className="text-eyebrow uppercase text-maroon mt-1">
-          {open ? copy.episode.eyebrowOpen(day, formatDay(episode.started_on)) : copy.episode.eyebrowEnded(formatDayShort(episode.ended_on), day)}
+          {open ? copy.episode.eyebrowOpen(day, formatDay(episode.started_on)) : copy.episode.eyebrowEnded(formatDay(episode.ended_on), day)}
         </p>
         <div className="flex items-start justify-between gap-3 mt-1">
           <h1 className="font-display text-[30px] font-light leading-tight text-midnight">{title}</h1>

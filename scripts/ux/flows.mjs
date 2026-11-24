@@ -50,6 +50,7 @@ async function openFirstEpisode(page) {
   const link = card.locator("a").first();
   if (await link.count()) await link.click(); else await card.click();
   await page.waitForURL(/episodes\//, { timeout: 15_000 });
+  await page.getByRole("button", { name: /more actions/i }).first().waitFor({ timeout: 20_000 }).catch(() => undefined);
   await wait(800);
 }
 
@@ -92,6 +93,10 @@ const flows = {
     await page.waitForURL(/\/portal\/passport(\?logged=1)?$/, { timeout: 15_000 }).catch(() => undefined);
     await wait(1000);
     await shot("after-save-today");
+    // With the new UTI open, Log a UTI must warn before starting another
+    await page.goto(`${BASE}/portal/passport/log`, { waitUntil: "load" });
+    await wait(800);
+    await shot("log-again-guard");
     await page.goto(`${BASE}/portal/passport/history`, { waitUntil: "load" });
     await wait(800);
     await shot("history-with-new");
@@ -163,7 +168,7 @@ const flows = {
     await sheet.getByRole("button", { name: /^save$/i }).click();
     await wait(500);
     await shot("save-empty-error");
-    await sheet.getByText(/i don't know the date/i).click();
+    await sheet.getByRole("checkbox", { name: /i don't know the date/i }).check();
     await sheet.getByRole("button", { name: /^save$/i }).click();
     await wait(500);
     await shot("save-no-outcome-error");
@@ -174,7 +179,7 @@ const flows = {
     await wait(1500);
     await shot("added");
     // Open the new card (it says Edit), then remove it with the confirmation
-    const card = page.locator('[data-testid="cultures-list"] button[aria-label^="Edit"]').first();
+    const card = page.locator('[data-testid="cultures-list"] button[aria-label^="Edit: Date unknown"]').last();
     if (await card.count()) {
       await card.click();
       await wait(600);
@@ -208,7 +213,7 @@ const flows = {
     await sheet.getByRole("button", { name: /^save$/i }).click();
     await wait(1500);
     await shot("added");
-    const card = page.locator('[data-testid="investigations-list"] button[aria-label^="Edit"]').first();
+    const card = page.locator('[data-testid="investigations-list"] button[aria-label^="Edit: Date unknown"]').last();
     if (await card.count()) {
       await card.click();
       await wait(600);
