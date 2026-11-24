@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card, CardTitle, LinkButton, PageHeader } from "@/components/ui";
+import { Card, CardTitle, LinkButton, Notice, PageHeader } from "@/components/ui";
 import { requireTracker, ownKits } from "@/lib/tracker/data";
 import { loadAllWithUtee } from "@/lib/tracker/load";
 import { copy } from "@/lib/tracker/copy";
@@ -20,7 +20,8 @@ import { checkinStreak } from "@/lib/tracker/diary";
  * the order is hero, At a glance, What I'm taking, Last 12 months, My
  * patterns; on wide screens the cards sit in two columns.
  */
-export default async function TodayPage() {
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ logged?: string }> }) {
+  const { logged } = await searchParams;
   const { supabase, user, profile } = await requireTracker();
   const [data, kits] = await Promise.all([loadAllWithUtee(supabase, user.id), ownKits(supabase)]);
   const today = isoToday();
@@ -68,6 +69,8 @@ export default async function TodayPage() {
       <PageHeader eyebrow="UTI Passport" title={copy.dashboard.welcomeTitle} action={
         <Link href="/portal/passport/settings" className="text-sm font-semibold text-maroon">Settings</Link>
       } />
+
+      {logged && <div role="status" data-testid="logged-notice"><Notice tone="mint">{copy.log.logged}</Notice></div>}
 
       <TodayHero state={state} pregnantOrTrying={profile.pregnant_or_trying} />
 

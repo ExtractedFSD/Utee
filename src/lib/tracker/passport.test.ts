@@ -70,8 +70,8 @@ describe("antibiotic history", () => {
 describe("prophylaxis lines and glance", () => {
   const p = { option_key: "vaginal_oestrogen", other_name: null, antibiotic_id: null, started_on: "2026-02-03", stopped_on: null, helping: null, product: "vagifem", dose: "10 micrograms", frequency: "twice_weekly" };
   it("writes the active regimen the way the summary wants it", () => {
-    expect(prophylaxisLine(p)).toBe("Vaginal oestrogen Vagifem (pessary) 10 micrograms twice a week, since 3 Feb 2026");
-    expect(prophylaxisLine({ option_key: "uromune", other_name: null, antibiotic_id: null, started_on: "2026-01-10", stopped_on: "2026-04-10", helping: null, course_weeks: 12, completed: true })).toContain("12-week course, completed, 10 Jan 2026 to 10 Apr 2026");
+    expect(prophylaxisLine(p)).toBe("Vaginal oestrogen Vagifem (pessary) 10 micrograms twice a week, since 3 February 2026");
+    expect(prophylaxisLine({ option_key: "uromune", other_name: null, antibiotic_id: null, started_on: "2026-01-10", stopped_on: "2026-04-10", helping: null, course_weeks: 12, completed: true })).toContain("12-week course, completed, 10 January 2026 to 10 April 2026");
   });
   it("summarises at a glance", () => {
     const g = passportGlance({ utis6m: 2, utis12m: 4 }, { lifetime_utis: 20, medical_history: ["diabetes", "other"], medical_history_other: "Asthma", allergies: [{ antibiotic_id: "trimethoprim", other_name: null, reaction: "rash" }] }, [p], [inv({ values: { pvr_ml: 30 } })]);

@@ -452,7 +452,7 @@ export async function deleteEpisode(episodeId: string) {
   await supabase.from("tracker_episodes").delete().eq("id", episodeId).eq("user_id", user.id);
   await audit(supabase, user.id, "episode_deleted", { episodeId });
   revalidate();
-  redirect("/portal/passport/history");
+  redirect("/portal/passport/history?deleted=1");
 }
 
 // ---------------------------------------------------- symptoms and triggers

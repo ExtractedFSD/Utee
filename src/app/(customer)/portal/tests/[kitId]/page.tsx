@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatKitCode } from "@/lib/kit-code";
-import { Card, CardTitle, PageHeader, StatusBadge, LinkButton, Callout, Notice } from "@/components/ui";
+import { Breadcrumb, Card, CardTitle, PageHeader, StatusBadge, LinkButton, Callout, Notice } from "@/components/ui";
 import { Timeline, type TimelineEvent } from "@/components/Timeline";
 import { royalMailTrackingUrl } from "@/lib/tracking";
 import { formatDateTime, type KitStatus } from "@/lib/status";
@@ -66,6 +66,7 @@ export default async function TestDetailPage({
       <PageHeader
         title={`Test kit ${formatKitCode(kit.code)}`}
         action={<StatusBadge status={status} />}
+        breadcrumb={<Breadcrumb href="/portal/tests" label="Your test kits" />}
       />
 
       {needsTriage && !inHand && <KitArrived kitId={kit.id} />}
@@ -94,7 +95,7 @@ export default async function TestDetailPage({
               <p className="font-display text-2xl font-light text-midnight">Your report is ready</p>
               <p className="text-sm text-slate-700 mt-1">
                 Reviewed by our clinical team {formatDateTime(report.completed_at)}. Download
-                it to share with your GP or doctor.
+                it to share with your GP.
               </p>
             </div>
             <LinkButton href={`/portal/tests/${kit.id}/report`}>Download report (PDF)</LinkButton>

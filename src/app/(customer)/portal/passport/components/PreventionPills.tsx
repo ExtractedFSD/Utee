@@ -22,7 +22,7 @@ export function PreventionPills({ rows }: { rows: PreventionRow[] }) {
       {rows.map((r) => {
         const group = preventionGroup(r.option_key)?.key ?? "other";
         return (
-          <span key={r.id} className={`inline-flex max-w-full items-center rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[.08em] ${TONE[group] ?? TONE.other}`}>
+          <span key={r.id} className={`inline-flex max-w-full items-center rounded-full px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[.08em] ${TONE[group] ?? TONE.other}`}>
             {preventionShortName(r)}
             {r.helping === "yes" ? ` ✓ ${copy.dashboard.preventionHelps}` : ""}
           </span>

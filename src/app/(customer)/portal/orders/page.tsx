@@ -29,7 +29,7 @@ export default async function OrdersPage() {
                   <div className="flex items-center gap-3">
                     {order.contains_test_kit && <Pill tone="brand">Test kit</Pill>}
                     <Pill tone={order.fulfillment_status === "fulfilled" ? "green" : "amber"}>
-                      {order.fulfillment_status ?? "processing"}
+                      {order.fulfillment_status === "fulfilled" ? "Sent" : order.fulfillment_status === "partial" ? "Partly sent" : "Being prepared"}
                     </Pill>
                     <span className="text-sm text-slate-600">
                       {formatMoney(order.total_price, order.currency)}

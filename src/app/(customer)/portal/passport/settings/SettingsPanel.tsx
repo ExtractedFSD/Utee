@@ -50,7 +50,7 @@ export function SettingsPanel({ consents, reminderDaily, reminderMonthly, unaAi 
 
       <Card>
         <p className={eyebrow}>{copy.settings.consents}</p>
-        <Toggle label={copy.settings.consentTracker} checked={consents.tracker} disabled={pending} onChange={(v) => (v ? run(() => setConsent("tracker", true)) : setConsentOff("tracker"))} />
+        <Toggle label={copy.settings.consentTracker} description={copy.settings.consentTrackerNote} checked={consents.tracker} disabled={pending} onChange={(v) => (v ? run(() => setConsent("tracker", true)) : setConsentOff("tracker"))} />
         <Toggle label={copy.settings.consentResearch} checked={consents.research} disabled={pending} onChange={(v) => (v ? run(() => setConsent("research", true)) : setConsentOff("research"))} />
       </Card>
 
@@ -60,7 +60,7 @@ export function SettingsPanel({ consents, reminderDaily, reminderMonthly, unaAi 
             <span className="block text-base font-semibold text-midnight">{copy.settings.delete}</span>
             <span className="block text-[13px] text-[#5a4a6e]">{copy.settings.deleteRowBody}</span>
           </span>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={`shrink-0 text-[#8a7a9c] transition-transform ${deleteOpen ? "rotate-90" : ""}`}><path d="m9 6 6 6-6 6" /></svg>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={`shrink-0 text-[#6b5b80] transition-transform ${deleteOpen ? "rotate-90" : ""}`}><path d="m9 6 6 6-6 6" /></svg>
         </button>
         {deleteOpen && (
           <div className="border-t border-[rgba(29,0,58,.08)] p-6 pt-5">

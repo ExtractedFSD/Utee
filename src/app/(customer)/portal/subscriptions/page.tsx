@@ -29,7 +29,7 @@ export default async function SubscriptionsPage() {
         <Card>
           <EmptyState
             title="No subscriptions yet"
-            body="Subscribe to our supplements for ongoing preventative urinary tract care."
+            body="If you take Utee supplements regularly, a subscription delivers them on a schedule you choose and can be paused at any time."
           />
           <div className="text-center pb-4">
             <LinkButton href={storeUrl} external>

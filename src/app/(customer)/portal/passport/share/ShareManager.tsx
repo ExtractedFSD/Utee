@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button, Card, inputClass } from "@/components/ui";
+import { Button, Card, Notice, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { SHARE_DURATIONS, expiresIn, type ShareRow, type ShareState } from "@/lib/tracker/share";
 import { Chip } from "../components/Chips";
@@ -28,6 +28,7 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
   const [menuId, setMenuId] = useState<string | null>(null);
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
   const [fullScreen, setFullScreen] = useState<ShareItem | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const active = shares.filter((s) => s.state === "active");
   const past = shares.filter((s) => s.state !== "active");
@@ -45,6 +46,7 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
   };
   const create = () => {
     setError(null);
+    setNotice(null);
     if (!consent) { setError(copy.share.consentRequired); return; }
     startTransition(async () => {
       const r = await createShare({ label, days, consent });
@@ -57,6 +59,7 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
     startTransition(async () => {
       const r = await revokeShare(id);
       if (r.error) setError(r.error);
+      else setNotice(copy.share.removedNotice);
       setConfirmRevoke(null);
       setMenuId(null);
       if (shownId === id) setShownId(null);
@@ -68,15 +71,17 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
     <div className="space-y-5" data-testid="share-list">
       <div className="flex flex-wrap gap-2">
         <a href="/portal/passport/passport" className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-maroon px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] text-white shadow-card hover:bg-brand-700">{copy.share.downloadPdf}</a>
-        <Button variant="secondary" onClick={() => { setCreating(true); setError(null); }}>{copy.share.newCode}</Button>
+        <Button variant="secondary" onClick={() => { setCreating(true); setError(null); setNotice(null); }}>{copy.share.newCode}</Button>
       </div>
+      <p className="text-sm text-[#5a4a6e]">{copy.share.whatTheySeeBody}</p>
+      {notice && <div role="status" data-testid="share-notice"><Notice tone="mint">{notice}</Notice></div>}
 
       {shown ? (
         <Card data-testid="share-created">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-base font-semibold text-midnight">{shown.label || "Share code"}</p>
-              <p className="text-[13px] text-[#5a4a6e]">{status(shown)}</p>
+              <p className="text-sm text-[#5a4a6e]">{status(shown)}</p>
             </div>
             <div className="relative shrink-0">
               <button type="button" aria-label={copy.share.menu} aria-haspopup="menu" aria-expanded={menuId === shown.id} onClick={() => setMenuId(menuId === shown.id ? null : shown.id)} className="flex h-10 w-10 items-center justify-center rounded-full border border-midnight/15 bg-white text-midnight hover:bg-pink-25">
@@ -102,6 +107,7 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
           <div className="mt-4 flex flex-col items-center gap-4">
             {shown.qrSvg && <div className="w-[180px] rounded-2xl border border-[rgba(29,0,58,.08)] bg-white p-2" aria-label="QR code for the link" dangerouslySetInnerHTML={{ __html: shown.qrSvg }} />}
             <p className="font-mono text-2xl font-semibold tracking-[.14em] text-midnight whitespace-nowrap" data-testid="share-code">{shown.display}</p>
+            <p className="-mt-2 text-sm text-[#5a4a6e] text-center">{copy.share.typeAt}</p>
             <div className="flex flex-wrap justify-center gap-2">
               <Button variant="secondary" onClick={() => copyLink(shown)}>{copiedId === shown.id ? copy.share.copied : copy.share.copyLink}</Button>
               <Button variant="secondary" onClick={() => setFullScreen(shown)}>{copy.share.showFullScreen}</Button>
@@ -119,7 +125,7 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
               <li key={s.id} className="flex items-center justify-between gap-3 py-3">
                 <button type="button" onClick={() => setShownId(s.id)} className="min-w-0 flex-1 text-left">
                   <span className="block text-sm font-semibold text-midnight">{s.label || "Share code"}</span>
-                  <span className="block text-[13px] text-[#5a4a6e]">{status(s)}</span>
+                  <span className="block text-sm text-[#5a4a6e]">{status(s)}</span>
                 </button>
                 <button type="button" onClick={() => setShownId(s.id)} className="min-h-[44px] px-2 text-sm font-semibold text-maroon">{copy.share.show}</button>
               </li>
@@ -134,24 +140,24 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
           <ul className="divide-y divide-[rgba(29,0,58,.08)]">
             {past.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <p className="text-sm text-[#5a4a6e]">{s.label || "Share code"} <span className="font-mono text-[#8a7a9c]">{s.display}</span> · {s.view_count ? copy.share.openedTimes(s.view_count) : copy.share.notOpened}</p>
-                <span className="text-[11px] font-semibold uppercase tracking-[.08em] text-[#8a7a9c]">{s.state === "revoked" ? copy.share.revoked : copy.share.expired}</span>
+                <p className="text-sm text-[#5a4a6e]">{s.label || "Share code"} <span className="font-mono text-[#6b5b80]">{s.display}</span> · {s.view_count ? copy.share.openedTimes(s.view_count) : copy.share.notOpened}</p>
+                <span className="text-[12px] font-semibold uppercase tracking-[.08em] text-[#6b5b80]">{s.state === "revoked" ? copy.share.revoked : copy.share.expired}</span>
               </li>
             ))}
           </ul>
         </details>
       )}
 
-      {error && !creating && <p className="text-sm text-rose-600">{error}</p>}
-      <p className="text-center text-[13px] text-[#5a4a6e]">{copy.share.whatTheySeeBody}</p>
+      {error && !creating && <p className="text-sm text-rose-600" role="alert">{error}</p>}
 
       <Sheet open={creating} title={copy.share.newCode} onClose={() => setCreating(false)} doneLabel={copy.episode.cancel} modal testId="sheet-share">
         <div className="space-y-5">
           <div>
-            <label htmlFor="share-label" className="block text-sm font-semibold text-midnight mb-2">{copy.share.whoFor}</label>
-            <div className="flex flex-wrap gap-2 mb-2">
+            <p className="block text-sm font-semibold text-midnight mb-2">{copy.share.whoFor}</p>
+            <div className="flex flex-wrap gap-2 mb-3">
               {copy.share.suggestions.map((s) => <Chip key={s} selected={label === s} onClick={() => setLabel(label === s ? "" : s)}>{s}</Chip>)}
             </div>
+            <label htmlFor="share-label" className="block text-sm text-[#5a4a6e] mb-1.5">{copy.share.labelOther}</label>
             <input id="share-label" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={80} className={inputClass} placeholder={copy.share.labelPlaceholder} />
           </div>
           <div>
@@ -161,13 +167,12 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
             </div>
           </div>
           <label className="flex items-start gap-3 rounded-2xl bg-pink-25 p-4">
-            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-5 w-5 rounded" />
-            <span className="text-sm text-midnight">{copy.share.consentLabel}</span>
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-6 w-6 shrink-0 rounded accent-maroon" aria-describedby="share-consent-text" />
+            <span id="share-consent-text" className="text-sm text-midnight">{copy.share.consentLabel}</span>
           </label>
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {error && <p className="text-sm text-rose-600" role="alert">{error}</p>}
           <div className="flex flex-wrap items-center gap-3">
             <Button disabled={pending} onClick={create}>{copy.share.create}</Button>
-            <button type="button" className="min-h-[44px] px-2 text-sm font-semibold text-maroon" onClick={() => setCreating(false)}>{copy.episode.cancel}</button>
           </div>
         </div>
       </Sheet>
@@ -176,7 +181,8 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
         <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-white p-6" role="dialog" aria-modal="true" aria-label={copy.share.showFullScreen} data-testid="share-fullscreen">
           {fullScreen.qrSvg && <div className="w-[min(70vw,320px)] [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: fullScreen.qrSvg }} />}
           <p className="font-mono text-3xl font-semibold tracking-[.14em] text-midnight whitespace-nowrap">{fullScreen.display}</p>
-          <p className="text-[13px] text-[#5a4a6e]">{copy.share.fullScreenHint}</p>
+          <p className="text-base text-midnight text-center">{copy.share.typeAt}</p>
+          <p className="text-sm text-[#5a4a6e]">{copy.share.fullScreenHint}</p>
           <Button variant="secondary" onClick={() => setFullScreen(null)}>{copy.share.close}</Button>
         </div>
       )}

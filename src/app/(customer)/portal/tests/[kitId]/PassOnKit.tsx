@@ -62,7 +62,7 @@ export function PassOnKit({ kitId, kitCode, asks = [], standalone = false }: { k
           <div>
             <label htmlFor="pass-on-email" className="block text-sm font-semibold text-midnight mb-1">Their email (optional)</label>
             <input id="pass-on-email" type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className={inputClass} />
-            <p className="mt-1.5 text-xs text-[#8a7a9c]">We&apos;ll email them the kit code and how to register it. Leave blank to tell them yourself.</p>
+            <p className="mt-1.5 text-xs text-[#6b5b80]">We&apos;ll email them the kit code and how to register it. Leave blank to tell them yourself.</p>
           </div>
           <label className="flex items-start gap-3 rounded-2xl bg-pink-25 p-4">
             <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} className="mt-1 h-5 w-5 rounded" />

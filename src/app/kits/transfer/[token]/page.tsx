@@ -39,7 +39,7 @@ export default async function TransferDecisionPage({ params, searchParams }: { p
             </>
           ) : (
             <>
-              <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-maroon">Kit {formatKitCode(found.kit.code)}</p>
+              <p className="text-[12px] font-semibold uppercase tracking-[.16em] text-maroon">Kit {formatKitCode(found.kit.code)}</p>
               <h1 className="font-display text-2xl font-light text-midnight">Pass this kit on to {name}?</h1>
               <p className="text-sm text-[#5a4a6e] leading-relaxed">
                 <strong className="text-midnight">{name}</strong>{found.requester?.email ? ` (${found.requester.email})` : ""} scanned this kit and asked to use it. If you bought it for them, pass it on: it moves to their account, and their symptom form and result will be theirs. You won&apos;t see it on your account afterwards.

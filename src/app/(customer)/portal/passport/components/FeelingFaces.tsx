@@ -47,7 +47,7 @@ export function FeelingFaces({
                 <path d={MOUTHS[f.key]} />
               </svg>
             </span>
-            <span className={`text-[10px] sm:text-[11px] ${on ? "font-semibold text-maroon" : "text-slate-600"}`} aria-hidden>{f.label}</span>
+            <span className={`text-[12px] ${on ? "font-semibold text-maroon" : "text-slate-600"}`} aria-hidden>{f.label}</span>
           </button>
         );
       })}

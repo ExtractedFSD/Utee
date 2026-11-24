@@ -35,7 +35,7 @@ export function ReturnPostage({ kitId, kitCode, postage, canRequest }: { kitId: 
       <div className="rounded-card bg-white p-6 shadow-card" data-testid="return-postage">
         <h2 className="font-display text-2xl font-light text-midnight">Your return postage</h2>
         <p className="mt-1 text-sm text-[#5a4a6e]">Royal Mail Tracked Returns · {postage.trackingNumber}</p>
-        {postage.stub && <p className="mt-2 inline-flex rounded-full bg-sun px-3 py-1 text-[11px] font-semibold uppercase tracking-[.1em] text-amber-900">Test label, not valid postage</p>}
+        {postage.stub && <p className="mt-2 inline-flex rounded-full bg-sun px-3 py-1 text-[12px] font-semibold uppercase tracking-[.1em] text-amber-900">Test label, not valid postage</p>}
         <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl bg-pink-25 p-4 sm:flex-row sm:items-start">
           {postage.hasQr && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -48,7 +48,7 @@ export function ReturnPostage({ kitId, kitCode, postage, canRequest }: { kitId: 
             <p className="mt-2"><a href="https://www.postoffice.co.uk/branch-finder" target="_blank" rel="noopener" className="font-semibold text-maroon">Find your nearest Post Office</a></p>
           </div>
         </div>
-        <p className="mt-3 text-xs text-[#8a7a9c]">Post the sample the same day you take it if you can. Lost the label? Contact us and we will issue a new one.</p>
+        <p className="mt-3 text-xs text-[#6b5b80]">Post the sample the same day you take it if you can. Lost the label? Contact us and we will issue a new one.</p>
       </div>
     );
   }
@@ -57,7 +57,7 @@ export function ReturnPostage({ kitId, kitCode, postage, canRequest }: { kitId: 
 
   return (
     <div className="rounded-card bg-gradient-brand p-6 text-white shadow-card" data-testid="return-postage">
-      <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-white/85">Kit {kitCode}</p>
+      <p className="text-[12px] font-semibold uppercase tracking-[.16em] text-white/85">Kit {kitCode}</p>
       <h2 className="mt-1 font-display text-2xl font-light">Ready to post your sample?</h2>
       <p className="mt-2 text-sm text-white/90 leading-relaxed">Get your Royal Mail postage here. You will get a QR code to show at a Post Office counter, where they print the label, or a label to print at home. Nothing to pay.</p>
       {address ? (

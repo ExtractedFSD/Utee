@@ -19,6 +19,26 @@ async function signOut() {
  */
 export type NavItem = { href: string; label: string } | { label: string; items: { href: string; label: string }[] };
 
+/**
+ * The way to help, your data and the legal pages from every portal page.
+ * The contact address comes from NEXT_PUBLIC_SUPPORT_EMAIL; without it the
+ * footer still shows the data and privacy links.
+ */
+function PortalFooter() {
+  const support = process.env.NEXT_PUBLIC_SUPPORT_EMAIL;
+  const link = "min-h-[44px] inline-flex items-center text-sm font-semibold text-maroon";
+  return (
+    <footer className="no-print border-t border-midnight/10 mt-6" aria-label="Help and your data">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-slate-600">
+        <span>Utee patient portal</span>
+        <Link href="/portal/passport/settings" className={link}>Your data and privacy</Link>
+        {support && <a href={`mailto:${support}`} className={link}>Contact Utee</a>}
+        <a href="/portal/tests" className={link}>Your test kits</a>
+      </div>
+    </footer>
+  );
+}
+
 export function Shell({
   nav,
   areaLabel,
@@ -35,7 +55,7 @@ export function Shell({
   const header = tone === "brand" ? "bg-gradient-brand" : "bg-midnight";
   const ground = tone === "brand" ? "bg-pink-25" : "bg-slate-50";
   const navLink =
-    "whitespace-nowrap rounded-full px-3.5 py-1.5 text-eyebrow uppercase text-white/80 hover:bg-white/15 hover:text-white transition-colors";
+    "whitespace-nowrap rounded-full px-3.5 py-1.5 text-eyebrow uppercase text-white/90 hover:bg-white/15 hover:text-white transition-colors";
 
   // A group renders as a dropdown on wide screens and as its flat links on narrow ones.
   const desktopItem = (item: NavItem) =>
@@ -75,9 +95,9 @@ export function Shell({
             </div>
             <nav className="hidden md:flex items-center gap-1">{nav.map(desktopItem)}</nav>
             <div className="flex items-center gap-4 shrink-0">
-              <span className="hidden sm:block text-xs text-white/70 max-w-[220px] truncate" title={userEmail}>{userEmail}</span>
+              <span className="hidden sm:block text-sm text-white/90 max-w-[220px] truncate" title={userEmail}>{userEmail}</span>
               <form action={signOut}>
-                <button className="text-eyebrow uppercase whitespace-nowrap text-white/80 hover:text-white">Sign out</button>
+                <button className="text-eyebrow uppercase whitespace-nowrap text-white/90 hover:text-white">Sign out</button>
               </form>
             </div>
           </div>
@@ -85,6 +105,7 @@ export function Shell({
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-10">{children}</main>
+      {tone === "brand" && <PortalFooter />}
     </div>
   );
 }

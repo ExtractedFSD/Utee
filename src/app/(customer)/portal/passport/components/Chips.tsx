@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { inputClass } from "@/components/ui";
 import { isoDaysAgo, isoToday } from "@/lib/tracker/stats";
 
@@ -94,13 +94,16 @@ export function ChipGroup({
   onToggle,
   otherText,
   onOtherText,
+  otherLabel = "Describe it",
 }: {
   options: { key: string; label: string }[];
   selected: Set<string>;
   onToggle: (key: string, on: boolean) => void;
   otherText?: string;
   onOtherText?: (text: string) => void;
+  otherLabel?: string;
 }) {
+  const otherId = useId();
   return (
     <div>
       <div className="flex flex-wrap gap-2">
@@ -111,13 +114,10 @@ export function ChipGroup({
         ))}
       </div>
       {selected.has("other") && onOtherText && (
-        <input
-          value={otherText ?? ""}
-          onChange={(e) => onOtherText(e.target.value)}
-          placeholder="Describe it"
-          className={`${inputClass} mt-3 max-w-md`}
-          aria-label="Other, describe it"
-        />
+        <div className="mt-3 max-w-md">
+          <label htmlFor={otherId} className="block text-sm font-semibold text-slate-700 mb-1.5">{otherLabel}</label>
+          <input id={otherId} value={otherText ?? ""} onChange={(e) => onOtherText(e.target.value)} maxLength={120} className={inputClass} />
+        </div>
       )}
     </div>
   );

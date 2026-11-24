@@ -243,7 +243,7 @@ export function AboutMeForm({ profile, active, step, base, backHref, done }: {
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-1 text-sm text-[#8a7a9c]">{copy.record.steps.none}</p>
+                  <p className="mt-1 text-sm text-[#6b5b80]">{copy.record.steps.none}</p>
                 )}
               </div>
               {!addingAllergy && <button type="button" className="shrink-0 min-h-[44px] text-sm font-semibold text-maroon" onClick={() => setAddingAllergy(true)}>+ Add</button>}
@@ -256,7 +256,7 @@ export function AboutMeForm({ profile, active, step, base, backHref, done }: {
                     <input value={allergyReaction} onChange={(e) => setAllergyReaction(e.target.value)} placeholder={copy.aboutMe.allergyReaction} aria-label={copy.aboutMe.allergyReaction} className={`${inputClass} max-w-md`} maxLength={300} />
                     <div className="flex flex-wrap items-center gap-3">
                       <Button type="button" variant="secondary" onClick={addAllergy}>Add</Button>
-                      <button type="button" className="text-sm font-semibold text-[#8a7a9c]" onClick={() => setAddingAllergy(false)}>Cancel</button>
+                      <button type="button" className="text-sm font-semibold text-[#6b5b80]" onClick={() => setAddingAllergy(false)}>Cancel</button>
                     </div>
                   </>
                 )}

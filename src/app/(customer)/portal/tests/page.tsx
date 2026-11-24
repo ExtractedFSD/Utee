@@ -54,9 +54,9 @@ function KitList({ kits }: { kits: { id: string; code: string; status: string; c
             <Link href={`/portal/tests/${kit.id}`} className="block py-3 -mx-2 px-2 rounded-xl hover:bg-pink-25">
               <div className="flex items-baseline justify-between gap-3">
                 <p className="font-semibold text-midnight whitespace-nowrap">Kit {formatKitCode(kit.code)}</p>
-                <p className="text-xs text-[#8a7a9c] whitespace-nowrap">{kit.report_ready_at ? `Result ${formatDate(kit.report_ready_at)}` : `Started ${formatDate(kit.created_at)}`}</p>
+                <p className="text-xs text-[#6b5b80] whitespace-nowrap">{kit.report_ready_at ? `Result ${formatDate(kit.report_ready_at)}` : `Started ${formatDate(kit.created_at)}`}</p>
               </div>
-              <span className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[.1em] ${stage.tone}`}>{stage.label}</span>
+              <span className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-[12px] font-semibold uppercase tracking-[.1em] ${stage.tone}`}>{stage.label}</span>
             </Link>
           </li>
         );

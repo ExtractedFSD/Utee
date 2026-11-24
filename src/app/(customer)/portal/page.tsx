@@ -94,9 +94,9 @@ export default async function PortalHome({
                   <Link href={`/portal/tests/${kit.id}`} className="block py-3 -mx-2 px-2 rounded-xl hover:bg-pink-25">
                     <div className="flex items-baseline justify-between gap-3">
                       <p className="font-semibold text-midnight whitespace-nowrap">Kit {formatKitCode(kit.code)}</p>
-                      <p className="text-xs text-[#8a7a9c] whitespace-nowrap">Started {formatDate(kit.created_at)}</p>
+                      <p className="text-xs text-[#6b5b80] whitespace-nowrap">Started {formatDate(kit.created_at)}</p>
                     </div>
-                    <span className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[.1em] ${stage.tone}`}>{stage.label}</span>
+                    <span className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-[12px] font-semibold uppercase tracking-[.1em] ${stage.tone}`}>{stage.label}</span>
                   </Link>
                 </li>
               );
@@ -114,7 +114,7 @@ export default async function PortalHome({
         <Card>
           <div className="flex items-baseline justify-between gap-4 mb-3">
             <h2 className="font-display text-2xl font-light text-midnight">Recent orders</h2>
-            <Link href="/portal/orders" className="shrink-0 text-sm font-semibold text-maroon">View all</Link>
+            <Link href="/portal/orders" className="shrink-0 text-sm font-semibold text-maroon">All orders</Link>
           </div>
           {orders?.length ? (
             <ul className="divide-y divide-[rgba(29,0,58,.08)]">
@@ -135,14 +135,14 @@ export default async function PortalHome({
         <Card>
           <div className="flex items-baseline justify-between gap-4 mb-3">
             <h2 className="font-display text-2xl font-light text-midnight">Subscriptions</h2>
-            <Link href="/portal/subscriptions" className="shrink-0 text-sm font-semibold text-maroon">{subscriptions?.length ? "Manage" : "Browse"}</Link>
+            <Link href="/portal/subscriptions" className="shrink-0 text-sm font-semibold text-maroon">{subscriptions?.length ? "Manage" : "See plans"}</Link>
           </div>
           {subscriptions?.length ? (
             <ul className="divide-y divide-[rgba(29,0,58,.08)]">
               {subscriptions.map((sub) => (
                 <li key={sub.id} className="py-3">
                   <p className="font-semibold text-midnight">{sub.product_title}</p>
-                  <p className="text-xs text-[#8a7a9c]">Next delivery {formatDate(sub.next_charge_scheduled_at)}</p>
+                  <p className="text-xs text-[#6b5b80]">Next delivery {formatDate(sub.next_charge_scheduled_at)}</p>
                 </li>
               ))}
             </ul>
@@ -153,7 +153,7 @@ export default async function PortalHome({
       </div>
 
       <section aria-labelledby="from-utee">
-        <p id="from-utee" className="text-[11px] font-semibold uppercase tracking-[.16em] text-maroon mb-3">From Utee</p>
+        <p id="from-utee" className="text-[12px] font-semibold uppercase tracking-[.16em] text-maroon mb-3">From Utee</p>
         <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 md:grid md:grid-cols-3 md:overflow-visible">
           <Promo testId="urologist" badge={hasTest ? "Coming soon" : null}>
             <div className="flex items-start gap-3">
@@ -212,7 +212,7 @@ function PassportHero({ state }: { state: PassportState }) {
   const action = state.kind === "open" ? copy.dashboard.logToday : state.kind === "between" ? copy.dashboard.logNew : "Open my passport";
   return (
     <div className="rounded-card bg-gradient-brand p-5 text-white" style={{ boxShadow: "0 10px 30px rgba(145,25,59,.25)" }} data-testid="home-passport">
-      <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-white/85">UTI Passport</p>
+      <p className="text-[12px] font-semibold uppercase tracking-[.16em] text-white/85">UTI Passport</p>
       <p className="mt-1 font-display text-3xl font-light leading-tight">{title}</p>
       {state.kind === "new" && <p className="mt-2 text-sm text-white/85 leading-relaxed max-w-xl">Keep a private record of your UTIs to show a GP or clinic, and spot your own patterns over time.</p>}
       <div className="mt-4"><LinkButton href={href} variant="white">{action}</LinkButton></div>
@@ -223,7 +223,7 @@ function PassportHero({ state }: { state: PassportState }) {
 function Promo({ children, badge, testId }: { children: React.ReactNode; badge: string | null; testId?: string }) {
   return (
     <div data-testid={testId} className="w-[82%] shrink-0 snap-start rounded-card bg-gradient-brand p-5 text-white shadow-card md:w-auto">
-      {badge && <span className="mb-3 inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[.12em] text-white">{badge}</span>}
+      {badge && <span className="mb-3 inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-[12px] font-semibold uppercase tracking-[.12em] text-white">{badge}</span>}
       {children}
     </div>
   );

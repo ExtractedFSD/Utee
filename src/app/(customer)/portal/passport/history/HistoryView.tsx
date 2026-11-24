@@ -107,7 +107,7 @@ export function HistoryView({ initialView, today, utis, events, calendar, entrie
                   {m.items.map((e, i) => {
                     const inner = (
                       <>
-                        <span className="w-20 shrink-0 text-xs text-[#8a7a9c] pt-1">{formatDay(e.on).replace(/ \d{4}$/, "")}</span>
+                        <span className="w-20 shrink-0 text-xs text-[#6b5b80] pt-1">{formatDay(e.on).replace(/ \d{4}$/, "")}</span>
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-2">
                             <Pill tone={TONE[e.kind] ?? "slate"}>{copy.timeline.kinds[e.kind] ?? e.kind}</Pill>
@@ -150,10 +150,10 @@ export function HistoryView({ initialView, today, utis, events, calendar, entrie
                       <button type="button" onClick={() => { setAdding(false); setEditing(e.on); }} className="flex w-full gap-3 py-3 text-left -mx-2 px-2 rounded-xl hover:bg-pink-25" aria-label={`${formatDayShort(e.on)}, ${copy.diary.editDay}`}>
                         <span className="w-16 shrink-0">
                           <span className="block text-sm font-semibold text-midnight">{formatDayShort(e.on).split(",")[0]}</span>
-                          <span className="block text-xs text-[#8a7a9c]">{formatDay(e.on).replace(/ \d{4}$/, "")}</span>
+                          <span className="block text-xs text-[#6b5b80]">{formatDay(e.on).replace(/ \d{4}$/, "")}</span>
                         </span>
                         <span className="min-w-0 flex-1 space-y-1">
-                          {e.utiDay && <span className="inline-flex items-center rounded-full bg-peach-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[.08em] text-maroon">{copy.diary.utiDay(e.utiDay)}</span>}
+                          {e.utiDay && <span className="inline-flex items-center rounded-full bg-peach-50 px-2.5 py-0.5 text-[12px] font-semibold uppercase tracking-[.08em] text-maroon">{copy.diary.utiDay(e.utiDay)}</span>}
                           {(e.feeling || e.symptoms.length > 0 || e.started.length > 0) && (
                             <span className="block text-sm text-midnight">
                               {[e.feeling && copy.history.feeling(feelingLabel(e.feeling)), e.symptoms.map((s) => `${s.label}${s.severity ? ` ${s.severity}` : ""}`).join(", "), e.started.length && copy.diary.started(e.started.join(", ")).toLowerCase(), e.tests.join(", ")].filter(Boolean).join(" · ")}
@@ -203,7 +203,7 @@ function UtiCardView({ u }: { u: UtiCard }) {
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <p className="font-display text-[22px] font-light text-midnight">{formatDay(u.startedOn)}</p>
           {open ? (
-            <span className="inline-flex items-center rounded-full bg-maroon px-3 py-1 text-[11px] font-semibold uppercase tracking-[.08em] text-white">{copy.history.openDay(u.days)}</span>
+            <span className="inline-flex items-center rounded-full bg-maroon px-3 py-1 text-[12px] font-semibold uppercase tracking-[.08em] text-white">{copy.history.openDay(u.days)}</span>
           ) : (
             <span className="text-sm text-[#5a4a6e]">{copy.history.days(u.days)}</span>
           )}
@@ -233,7 +233,7 @@ function UtiCardView({ u }: { u: UtiCard }) {
 function Calendar({ cal, onPick }: { cal: { lead: number; cells: CalendarCell[] }; onPick: (on: string) => void }) {
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1.5 mb-1 text-center text-[11px] text-[#8a7a9c]">
+      <div className="grid grid-cols-7 gap-1.5 mb-1 text-center text-xs text-[#6b5b80]">
         {copy.history.weekdays.map((d, i) => <span key={i}>{d}</span>)}
       </div>
       <div className="grid grid-cols-7 gap-1.5">
@@ -255,6 +255,13 @@ function Calendar({ cal, onPick }: { cal: { lead: number; cells: CalendarCell[] 
           );
         })}
       </div>
+      <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#6b5b80]" aria-hidden>
+        {[1, 2, 3, 4, 5].map((f) => (
+          <span key={f} className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px]" style={{ background: FEELING_SHADE[f] }} />{feelingLabel(f)}</span>
+        ))}
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] bg-pink-25" />UTI day, no entry</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px] border border-dashed border-pink-50 bg-white" />No entry</span>
+      </p>
     </div>
   );
 }
