@@ -368,6 +368,8 @@ export const copy = {
     feelBetter: "I feel better",
     diaryTitle: "How are you feeling today?",
     feelingPrompt: "Save how you feel today?",
+    recoveryTitle: "How are you feeling since it cleared?",
+    quietPrompt: "Not feeling right today? Note it",
     feelingSave: "Save",
     addNoteFirst: "Add a note first",
     skipNote: "Skip the note",

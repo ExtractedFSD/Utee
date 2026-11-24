@@ -13,7 +13,13 @@ import type { Streak } from "./TodayHero";
  * only outlines it: a pink band then asks "Save how you feel today?" with
  * Save and Add a note first, so nothing is written until the person says
  * so. The streak pill becomes "Not saved yet" while a tap is pending.
+ *
+ * Three modes decide how loud it is: "uti" while a UTI is open, "recovery"
+ * for the fortnight after one ends, and "quiet" the rest of the time, when
+ * it folds down to one line ("Not feeling right today? Note it") unless
+ * there is already an entry for today.
  */
+export type FeelingMode = "uti" | "recovery" | "quiet";
 
 /* The five mouths, worst to best: an open "oh", a frown, a flat line, a smile, an open grin. */
 const FACES: Record<string, { d: string; filled?: boolean }> = {
@@ -37,7 +43,8 @@ function Face({ feeling }: { feeling: string }) {
   );
 }
 
-export function FeelingCard({ today, feelingToday, noteToday, streak }: { today: string; feelingToday: number | null; noteToday: string | null; streak: Streak }) {
+export function FeelingCard({ today, feelingToday, noteToday, streak, mode = "uti" }: { today: string; feelingToday: number | null; noteToday: string | null; streak: Streak; mode?: FeelingMode }) {
+  const [expanded, setExpanded] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   // What is on the server for today, kept here so the card updates the moment a save lands.
@@ -75,17 +82,28 @@ export function FeelingCard({ today, feelingToday, noteToday, streak }: { today:
     });
   };
 
+  if (mode === "quiet" && !expanded && saved.feeling === null && !saved.note.trim()) {
+    return (
+      <div className="flex justify-center" data-testid="feeling-quiet">
+        <button type="button" onClick={() => setExpanded(true)} className="inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-maroon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="9" /><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none" /><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none" /><path d="M9 15.5h6" /></svg>
+          {copy.dashboard.quietPrompt}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <Card data-testid="feeling-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h2 className="font-display text-2xl font-light text-midnight">{copy.dashboard.diaryTitle}</h2>
+        <h2 className="font-display text-2xl font-light text-midnight">{mode === "recovery" ? copy.dashboard.recoveryTitle : copy.dashboard.diaryTitle}</h2>
         <span className="flex items-center gap-2">
           <span aria-live="polite" className="text-sm font-semibold text-midnight">{flash ? `${copy.episode.saved} ✓` : ""}</span>
           {unsaved ? (
             <span className="inline-flex items-center rounded-full bg-sun px-3 py-1 text-[12px] font-semibold uppercase tracking-[.08em] text-amber-900" data-testid="feeling-unsaved">{copy.dashboard.notSavedYet}</span>
-          ) : (
+          ) : mode !== "quiet" ? (
             <span className="inline-flex items-center rounded-full bg-pink-25 px-3 py-1 text-[12px] font-semibold uppercase tracking-[.08em] text-maroon" data-testid="streak">{streakNow > 0 ? copy.dashboard.streakPill(streakNow) : copy.dashboard.streakStart}</span>
-          )}
+          ) : null}
         </span>
       </div>
 

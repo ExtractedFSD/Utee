@@ -11,7 +11,7 @@ import { MonthStrip } from "./components/MonthStrip";
 import { PassportCard } from "./components/PassportCard";
 import { PatternsCard } from "./components/PatternsCard";
 import { PreventionPills } from "./components/PreventionPills";
-import { FeelingCard } from "./components/FeelingCard";
+import { FeelingCard, type FeelingMode } from "./components/FeelingCard";
 import { TodayHero, type HeroState } from "./components/TodayHero";
 import { checkinStreak } from "@/lib/tracker/diary";
 
@@ -57,6 +57,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     state = { kind: "between", daysSince: s.daysSinceLast ?? 0, result: recent ? { kitId: recent.id, code: recent.code } : null };
   }
   const checkinToday = data.checkins.find((c) => c.on_date === today);
+  // How loud the check-in is: full during a UTI and for a fortnight after one, one quiet line otherwise.
+  const feelingMode: FeelingMode = open ? "uti" : s.daysSinceLast !== null && s.daysSinceLast <= 14 ? "recovery" : "quiet";
+  const feelingLoud = feelingMode !== "quiet" || !!checkinToday;
 
   const taking = data.preventions.filter((x) => !x.stopped_on);
   const glance = passportGlance({ utis6m: s.episodes6m, utis12m: s.episodes12m }, profile, data.preventions, data.investigations, data.cultures);
@@ -74,9 +77,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       {reopened && <div role="status"><Notice tone="mint">{copy.consent.reopened}</Notice></div>}
 
       {/* On wide screens the hero and today's feeling sit side by side, the faces on the right. */}
-      <div className={brandNew ? "" : "grid gap-6 lg:grid-cols-2 lg:items-stretch"}>
+      <div className={brandNew || !feelingLoud ? "space-y-4" : "grid gap-6 lg:grid-cols-2 lg:items-stretch"}>
         <TodayHero state={state} pregnantOrTrying={profile.pregnant_or_trying} />
-        {!brandNew && <FeelingCard today={today} feelingToday={checkinToday?.feeling ?? null} noteToday={checkinToday?.note ?? null} streak={streak} />}
+        {!brandNew && <FeelingCard today={today} feelingToday={checkinToday?.feeling ?? null} noteToday={checkinToday?.note ?? null} streak={streak} mode={feelingMode} />}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
