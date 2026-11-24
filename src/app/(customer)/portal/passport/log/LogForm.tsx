@@ -1,24 +1,28 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, LinkButton, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
-import { SEVERITY_POINTS } from "@/lib/tracker/diary";
 import { SYMPTOMS } from "@/lib/tracker/options";
 import { redFlagFor } from "@/lib/tracker/redflags";
-import { isoToday } from "@/lib/tracker/stats";
+import { formatDay, isoToday } from "@/lib/tracker/stats";
 import { Chip, DateChips } from "../components/Chips";
 import { RedFlagBanner } from "../components/RedFlagBanner";
+import { SeverityScale } from "../components/SeverityScale";
 import { createEpisode } from "../actions";
 
 /*
  * First screen: when it started, what is noticed (with a 1 to 10 row for
  * each ticked symptom), then one sticky Save that lands on Today. The
- * safety banner appears the moment a red-flag symptom is ticked.
+ * safety banner appears the moment a red-flag symptom is ticked. When a UTI
+ * is already open the page says so first, so a second one is never started
+ * by accident; saving with nothing ticked asks once.
  */
-export function LogForm({ symptomOrder, lastSymptoms, pregnantOrTrying }: { symptomOrder: string[]; lastSymptoms: string[]; pregnantOrTrying: string }) {
+export function LogForm({ symptomOrder, lastSymptoms, pregnantOrTrying, openUti }: { symptomOrder: string[]; lastSymptoms: string[]; pregnantOrTrying: string; openUti: { id: string; startedOn: string } | null }) {
   const router = useRouter();
+  const [startNew, setStartNew] = useState(!openUti);
   const [startedOn, setStartedOn] = useState(isoToday());
   // A UTI that started before today may already be over. Then it is logged as
   // one summary (start, end, what was noticed) rather than a daily check-in.
@@ -29,11 +33,36 @@ export function LogForm({ symptomOrder, lastSymptoms, pregnantOrTrying }: { symp
   const [selected, setSelected] = useState<string[]>([]);
   const [severity, setSeverity] = useState<Record<string, number | null>>({});
   const [otherText, setOtherText] = useState("");
+  const [confirmEmpty, setConfirmEmpty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const options = symptomOrder.map((k) => SYMPTOMS.find((s) => s.key === k)!).filter(Boolean);
   const flag = redFlagFor(selected, pregnantOrTrying);
   const toggle = (key: string) => setSelected((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  const nothingChosen = selected.length === 0 && !otherText.trim();
+
+  const save = () => {
+    setError(null);
+    setConfirmEmpty(false);
+    startTransition(async () => {
+      const r = await createEpisode({ startedOn, endedOn: isPast ? endedOn : null, symptoms: selected, otherText, severity });
+      if (r.error) setError(r.error);
+      else router.push("/portal/passport?logged=1");
+    });
+  };
+
+  if (openUti && !startNew) {
+    return (
+      <Card data-testid="open-uti-guard">
+        <p className="font-display text-2xl font-light text-midnight">{copy.log.openTitle(formatDay(openUti.startedOn))}</p>
+        <p className="mt-2 text-sm text-slate-700">{copy.log.openBody}</p>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <LinkButton href={`/portal/passport/episodes/${openUti.id}`}>{copy.log.openGo}</LinkButton>
+          <Button variant="secondary" onClick={() => setStartNew(true)}>{copy.log.openNew}</Button>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-5 pb-28">
@@ -58,65 +87,60 @@ export function LogForm({ symptomOrder, lastSymptoms, pregnantOrTrying }: { symp
       </Card>
 
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <p className="text-base font-semibold text-midnight">{isPast ? copy.log.symptomsPast : copy.log.symptoms}</p>
-          {lastSymptoms.length > 0 && (
-            <button type="button" onClick={() => setSelected(lastSymptoms)} className="text-sm font-semibold text-maroon">{copy.log.sameAsLast}</button>
-          )}
-        </div>
+        <p className="text-base font-semibold text-midnight">{isPast ? copy.log.symptomsPast : copy.log.symptoms}</p>
+        <p className="text-sm text-slate-600 mt-0.5 mb-4">{copy.log.chooseAll}</p>
         <div className="flex flex-wrap gap-2">
+          {lastSymptoms.length > 0 && (
+            <Chip selected={lastSymptoms.length > 0 && lastSymptoms.every((k) => selected.includes(k)) && selected.length === lastSymptoms.length} onClick={() => setSelected(lastSymptoms)}>{copy.log.sameAsLast}</Chip>
+          )}
           {options.map((o) => (
             <Chip key={o.key} selected={selected.includes(o.key)} onClick={() => toggle(o.key)}>{o.short ?? o.label}</Chip>
           ))}
         </div>
         {selected.includes("other") && (
-          <input value={otherText} onChange={(e) => setOtherText(e.target.value)} placeholder="Describe it" className="mt-3 w-full max-w-md rounded-full border border-slate-200 px-4 py-2.5 text-sm" aria-label="Other, describe it" />
+          <div className="mt-4 max-w-md">
+            <label htmlFor="log-other" className="block text-sm font-semibold text-slate-700 mb-1.5">{copy.log.otherLabel}</label>
+            <input id="log-other" value={otherText} onChange={(e) => setOtherText(e.target.value)} maxLength={120} className={inputClass} />
+          </div>
         )}
         {selected.length > 0 && (
-          <ul className="mt-5 divide-y divide-slate-100 border-t border-slate-100" data-testid="log-ratings">
-            {options.filter((o) => selected.includes(o.key)).map((o) => {
-              const v = severity[o.key] ?? null;
-              return (
-                <li key={o.key} className="py-3">
-                  <div className="flex items-baseline justify-between gap-3 mb-2">
-                    <p className="text-sm text-midnight">{o.key === "other" ? otherText || o.short : o.short ?? o.label}</p>
-                    <p className={`text-sm ${v ? "font-semibold text-midnight" : "text-[#8a7a9c]"}`}>{v ?? copy.log.tapToRate}</p>
-                  </div>
-                  <div className="grid grid-cols-10 gap-1" role="radiogroup" aria-label={`${o.label}, how bad`}>
-                    {SEVERITY_POINTS.map((n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        role="radio"
-                        aria-checked={v === n}
-                        aria-label={String(n)}
-                        onClick={() => setSeverity((s) => ({ ...s, [o.key]: v === n ? null : n }))}
-                        className={`h-7 rounded-md border transition-colors ${v !== null && n <= v ? (n === v ? "border-maroon bg-maroon" : "border-pink-50 bg-pink-50") : "border-slate-200 bg-white"}`}
-                      />
-                    ))}
-                  </div>
-                </li>
-              );
-            })}
+          <ul className="mt-5 space-y-4 border-t border-slate-100 pt-4" data-testid="log-ratings">
+            {options.filter((o) => selected.includes(o.key)).map((o) => (
+              <li key={o.key}>
+                <SeverityScale
+                  label={o.key === "other" ? otherText.trim() || o.short || o.label : o.short ?? o.label}
+                  value={severity[o.key] ?? null}
+                  onChange={(v) => setSeverity((s) => ({ ...s, [o.key]: v }))}
+                />
+              </li>
+            ))}
           </ul>
         )}
       </Card>
 
       <RedFlagBanner flag={flag} />
-      {error && <p className="text-sm text-rose-600">{error}</p>}
+      {error && <p className="text-sm text-rose-600" role="alert">{error}</p>}
+
+      {confirmEmpty && (
+        <Card className="border border-maroon/30" data-testid="confirm-empty" role="alertdialog" aria-labelledby="confirm-empty-title">
+          <p id="confirm-empty-title" className="font-display text-2xl font-light text-midnight">{copy.log.emptyTitle}</p>
+          <p className="text-sm text-slate-700 mt-1 mb-4">{copy.log.emptyBody}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={pending} onClick={save}>{copy.log.emptyYes}</Button>
+            <Button variant="secondary" onClick={() => setConfirmEmpty(false)}>{copy.log.emptyNo}</Button>
+          </div>
+        </Card>
+      )}
 
       <div className="fixed inset-x-0 bottom-0 z-30 bg-white/95 px-4 py-3 backdrop-blur" style={{ borderTop: "1px solid rgba(29,0,58,.08)", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))" }}>
-        <div className="mx-auto max-w-2xl">
+        <div className="mx-auto flex max-w-2xl items-center gap-3">
+          {openUti && <Link href={`/portal/passport/episodes/${openUti.id}`} className="shrink-0 text-sm font-semibold text-maroon">{copy.log.openGo}</Link>}
           <Button
             className="w-full"
             disabled={pending}
             onClick={() => {
-              setError(null);
-              startTransition(async () => {
-                const r = await createEpisode({ startedOn, endedOn: isPast ? endedOn : null, symptoms: selected, otherText, severity });
-                if (r.error) setError(r.error);
-                else router.push("/portal/passport");
-              });
+              if (nothingChosen) { setConfirmEmpty(true); return; }
+              save();
             }}
           >
             {pending ? "Saving..." : copy.log.saveAndGo}

@@ -38,9 +38,9 @@ const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
  */
 export function EpisodeEditor({
   episode, today, pregnantOrTrying, todaySymptoms, allSymptoms, triggers, treatments, tests,
-  symptomOrder, triggerOrder, previousAntibiotics, lastSource, kits, scores = [],
+  symptomOrder, triggerOrder, previousAntibiotics, lastSource, kits, scores = [], otherSymptomText = null,
 }: {
-  episode: EpisodeRow; today: string; pregnantOrTrying: string; todaySymptoms: Item[]; allSymptoms: string[];
+  episode: EpisodeRow; today: string; pregnantOrTrying: string; todaySymptoms: Item[]; allSymptoms: string[]; otherSymptomText?: string | null;
   triggers: Item[]; treatments: Treatment[]; tests: TestItem[];
   symptomOrder: string[]; triggerOrder: string[]; previousAntibiotics: string[]; lastSource: string | null; kits: Kit[];
   scores?: ScorePoint[];
@@ -55,7 +55,7 @@ export function EpisodeEditor({
   const [dateSheet, setDateSheet] = useState(false);
   const [closing, setClosing] = useState(false);
   const [endedOn, setEndedOn] = useState(isoToday());
-  const [symptomOther, setSymptomOther] = useState(todaySymptoms.find((s) => s.key === "other")?.other ?? "");
+  const [symptomOther, setSymptomOther] = useState(todaySymptoms.find((s) => s.key === "other")?.other ?? otherSymptomText ?? "");
   const [triggerOther, setTriggerOther] = useState(triggers.find((t) => t.key === "other")?.other ?? "");
 
   // Optimistic copies of the things people tap many times a day. They update on
@@ -108,7 +108,7 @@ export function EpisodeEditor({
           {copy.episode.back}
         </Link>
         <p className="text-eyebrow uppercase text-maroon mt-1">
-          {open ? copy.episode.eyebrowOpen(day, formatDayShort(episode.started_on)) : copy.episode.eyebrowEnded(formatDayShort(episode.ended_on), day)}
+          {open ? copy.episode.eyebrowOpen(day, formatDay(episode.started_on)) : copy.episode.eyebrowEnded(formatDayShort(episode.ended_on), day)}
         </p>
         <div className="flex items-start justify-between gap-3 mt-1">
           <h1 className="font-display text-[30px] font-light leading-tight text-midnight">{title}</h1>
@@ -181,7 +181,7 @@ export function EpisodeEditor({
               </div>
             ))}
           </div>
-          <div className="mt-1 flex gap-1.5 text-[11px] text-[#8a7a9c]">
+          <div className="mt-1 flex gap-1.5 text-[12px] text-[#6b5b80]">
             {means.map((m) => <span key={m.on} className="min-w-0 flex-1 truncate text-center">{means.length <= 8 ? formatDayShort(m.on).split(",")[0] : `D${m.day}`}</span>)}
           </div>
           {meanSummary(scores) && <p className="mt-3 text-sm text-[#5a4a6e]">{meanSummary(scores)}</p>}
@@ -289,11 +289,11 @@ function SummaryRow({ label, lines, emptyLabel, isOpen, onOpen }: { label: strin
         <span className="min-w-0">
           <span className="block text-xs text-[#5a4a6e]">{label}</span>
           {isOpen ? (
-            <span className="block text-sm text-[#8a7a9c]">{copy.episode.editing}</span>
+            <span className="block text-sm text-[#6b5b80]">{copy.episode.editing}</span>
           ) : has ? (
             lines.map((l, i) => <span key={i} className="block text-sm font-semibold text-midnight">{l}</span>)
           ) : (
-            <span className="block text-sm text-[#8a7a9c]">{emptyLabel ?? copy.episode.noneRecorded}</span>
+            <span className="block text-sm text-[#6b5b80]">{emptyLabel ?? copy.episode.noneRecorded}</span>
           )}
         </span>
         <span className="shrink-0 text-sm font-semibold text-maroon">{isOpen ? "" : has ? copy.episode.edit : copy.episode.add}</span>

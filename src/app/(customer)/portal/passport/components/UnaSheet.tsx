@@ -55,7 +55,7 @@ export function UnaSheet({ open, onClose, aiAvailable, pregnantOrTrying, activeP
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-maroon font-display text-xl leading-none text-white" aria-hidden>U</span>
             <div className="flex min-w-0 items-center gap-2">
               <p className="text-sm font-semibold text-midnight">{name}</p>
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${aiAvailable ? "bg-sky-50 text-sky-900" : "bg-slate-100 text-slate-600"}`}>{aiAvailable ? copy.guided.aiOn : copy.guided.aiOff}</span>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-semibold whitespace-nowrap ${aiAvailable ? "bg-sky-50 text-sky-900" : "bg-slate-100 text-slate-600"}`}>{aiAvailable ? copy.guided.aiOn : copy.guided.aiOff}</span>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">

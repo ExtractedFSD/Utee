@@ -89,7 +89,7 @@ export function PageHeader({
 
 /** Small ALL-CAPS pill, the design system's RangeTag, used for statuses. */
 const tagClass =
-  "inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[.12em] whitespace-nowrap";
+  "inline-flex items-center rounded-full px-3 py-1 text-[12px] font-semibold uppercase tracking-[.12em] whitespace-nowrap";
 
 export function StatusBadge({ status }: { status: KitStatus; admin?: boolean }) {
   return <span className={`${tagClass} ${KIT_STATUS_COLORS[status]}`}>{KIT_STATUS_LABELS[status]}</span>;
@@ -114,13 +114,13 @@ export function Pill({ children, tone = "slate" }: { children: React.ReactNode; 
  * source, flagged there as an assumption.
  */
 export const buttonBase =
-  "inline-flex min-h-[44px] items-center justify-center whitespace-nowrap rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[.14em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+  "inline-flex min-h-[44px] items-center justify-center whitespace-nowrap rounded-full px-5 py-2.5 text-[13px] font-semibold uppercase tracking-[.14em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
 export const buttonVariants = {
   primary: "bg-maroon text-white hover:bg-brand-700 shadow-card",
   secondary: "bg-white text-midnight border border-midnight/15 hover:bg-pink-25",
   white: "bg-white text-midnight hover:bg-pink-25 shadow-card",
-  danger: "bg-white text-maroon border border-maroon/30 hover:bg-rose-50",
+  danger: "bg-maroon text-white hover:bg-brand-700 shadow-card",
 };
 
 export type ButtonVariant = keyof typeof buttonVariants;
@@ -172,7 +172,7 @@ export function Field({
     <label className="block">
       <span className="block text-sm font-semibold text-slate-700 mb-1.5">{label}</span>
       {children}
-      {hint && <span className="block text-xs text-slate-500 mt-1.5">{hint}</span>}
+      {hint && <span className="block text-sm text-slate-500 mt-1.5">{hint}</span>}
     </label>
   );
 }
@@ -186,7 +186,7 @@ export function Toggle({ checked, onChange, label, description, disabled }: { ch
     <label className="flex items-start justify-between gap-4 py-3">
       <span className="min-w-0">
         <span className="block text-sm text-midnight">{label}</span>
-        {description && <span className="block text-[13px] text-[#5a4a6e] mt-0.5">{description}</span>}
+        {description && <span className="block text-sm text-[#5a4a6e] mt-0.5">{description}</span>}
       </span>
       <span className="relative shrink-0 pt-0.5">
         <input type="checkbox" role="switch" aria-checked={checked} checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />

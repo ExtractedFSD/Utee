@@ -1,7 +1,7 @@
 "use client";
 
 import { useOptimistic, useState, useTransition } from "react";
-import { Button, Card, inputClass } from "@/components/ui";
+import { Button, Card, Notice, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import type { PreventionRow } from "@/lib/tracker/data";
 import { HELPING, preventionGroup, preventionName } from "@/lib/tracker/prevention";
@@ -32,6 +32,9 @@ export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intr
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [helpingNow, setHelpingNow] = useOptimistic(
     Object.fromEntries(rows.map((r) => [r.id, r.helping])) as Record<string, string | null>,
     (state, next: { id: string; helping: string }) => ({ ...state, [next.id]: next.helping })
@@ -44,9 +47,10 @@ export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intr
       const r = await fn();
       const err = (r as { error?: string } | null | undefined)?.error;
       if (err) setError(err);
-      else after?.();
+      else { setSaved(true); after?.(); }
     });
   };
+  const openRow = (id: string) => { setSaved(false); setConfirmRemove(false); setNotice(null); setOpenId(id); };
 
   const current = rows.filter((r) => !r.stopped_on);
   const past = rows.filter((r) => r.stopped_on).sort((a, b) => (a.stopped_on! < b.stopped_on! ? 1 : -1));
@@ -58,9 +62,10 @@ export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intr
         <p className="text-sm text-[#5a4a6e]">{intro ?? copy.record.takingIntro}</p>
         <Button onClick={() => setAdding(true)} className="shrink-0">{copy.prevention.add}</Button>
       </div>
+      {notice && <div role="status" data-testid="prevention-notice"><Notice tone="mint">{notice}</Notice></div>}
       <Card data-testid="prevention-current">
         {current.length === 0 ? (
-          <p className="text-center text-[13px] text-[#5a4a6e]">{copy.prevention.nothingYet}</p>
+          <p className="text-center text-sm text-[#5a4a6e]">{copy.prevention.nothingYet}</p>
         ) : (
           <ul className="divide-y divide-[rgba(29,0,58,.08)]">
             {current.map((r) => {
@@ -68,18 +73,18 @@ export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intr
               const helping = helpingNow[r.id];
               return (
                 <li key={r.id} className="flex items-center justify-between gap-3 py-3">
-                  <button type="button" onClick={() => setOpenId(r.id)} aria-expanded={openId === r.id} className="min-w-0 flex-1 text-left">
+                  <button type="button" onClick={() => openRow(r.id)} aria-expanded={openId === r.id} className="min-w-0 flex-1 text-left">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-semibold text-midnight">{preventionName(r)}</span>
-                      {g && <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[.08em] ${TONE[g.key] ?? TONE.other}`}>{g.label}</span>}
+                      {g && <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[12px] font-semibold uppercase tracking-[.08em] ${TONE[g.key] ?? TONE.other}`}>{g.label}</span>}
                     </span>
-                    <span className="mt-0.5 block text-[13px] text-[#5a4a6e]">
+                    <span className="mt-0.5 block text-sm text-[#5a4a6e]">
                       {[r.started_on && copy.prevention.sinceShort(formatDay(r.started_on).replace(/ \d{4}$/, "")), helping === "yes" ? copy.prevention.helpsTick : helping ? `${copy.prevention.helping} ${HELPING.find((h) => h.key === helping)?.label.toLowerCase()}` : null].filter(Boolean).join(" · ")}
                       {!helping && (r.started_on ? " · " : "")}
                       {!helping && <span className="font-semibold text-maroon">{copy.prevention.notRated}</span>}
                     </span>
                   </button>
-                  <button type="button" className={linkBtn} onClick={() => setOpenId(r.id)}>{copy.prevention.edit}</button>
+                  <button type="button" className={linkBtn} onClick={() => openRow(r.id)}>{copy.prevention.edit}</button>
                 </li>
               );
             })}
@@ -93,7 +98,7 @@ export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intr
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold text-midnight">{preventionName(r)}</span>
-                    <span className="block text-[13px] text-[#5a4a6e]">
+                    <span className="block text-sm text-[#5a4a6e]">
                       {copy.prevention.between(r.started_on && formatDay(r.started_on), formatDay(r.stopped_on!))}
                       {r.helping ? ` · ${copy.prevention.helping} ${HELPING.find((h) => h.key === r.helping)?.label.toLowerCase()}` : ""}
                     </span>
@@ -110,6 +115,10 @@ export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intr
       <Sheet open={!!open} title={open ? preventionName(open) : ""} onClose={() => setOpenId(null)} testId="sheet-prevention" modal>
         {open && (
           <div className="space-y-5">
+            <p className="-mt-2 flex items-center justify-between gap-3 text-sm text-[#5a4a6e]">
+              {copy.prevention.autosave}
+              <span aria-live="polite" className="font-semibold text-midnight">{saved ? `${copy.episode.saved} ✓` : ""}</span>
+            </p>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2" htmlFor="prevention-start">{copy.prevention.startDate}</label>
               <input
@@ -189,8 +198,17 @@ export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intr
             </div>
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <Button variant="secondary" disabled={pending} onClick={() => run(() => updatePrevention(open.id, { stoppedOn: isoToday() }), undefined, () => setOpenId(null))}>{copy.prevention.stop}</Button>
-              <button type="button" className={`${linkBtn} ml-auto`} disabled={pending} onClick={() => run(() => deletePrevention(open.id), undefined, () => setOpenId(null))}>{copy.prevention.remove}</button>
+              {!confirmRemove && <button type="button" className={`${linkBtn} ml-auto`} disabled={pending} onClick={() => setConfirmRemove(true)}>{copy.prevention.remove}</button>}
             </div>
+            {confirmRemove && (
+              <div className="rounded-2xl bg-pink-25 p-4" role="alertdialog" aria-label={copy.prevention.removeConfirm(preventionName(open))} data-testid="confirm-remove">
+                <p className="text-sm text-midnight mb-3">{copy.prevention.removeConfirm(preventionName(open))}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="danger" disabled={pending} onClick={() => run(() => deletePrevention(open.id), undefined, () => { setOpenId(null); setNotice(copy.prevention.removed); })}>{copy.prevention.remove}</Button>
+                  <Button variant="secondary" onClick={() => setConfirmRemove(false)}>{copy.episode.cancel}</Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Sheet>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Button, Card, CardTitle, Pill, inputClass } from "@/components/ui";
+import { Button, Card, CardTitle, Notice, Pill, inputClass } from "@/components/ui";
 import { verificationFor, verifiedLine, type VerificationRow } from "@/lib/tracker/verify";
 import Link from "next/link";
 import { SourcePill } from "../components/SourcePill";
@@ -45,7 +45,7 @@ const emptyDraft = (): Draft => ({
   sample_on: "",
   method: "standard_culture",
   method_other: "",
-  outcome: "unknown",
+  outcome: "",
   organisms: [],
   sensitivities: {},
   antibiotics: [...GRID_ANTIBIOTICS],
@@ -135,6 +135,9 @@ export function CulturesManager({ rows, utee, unaAi, verifications = [], intro, 
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<"add" | string | null>(null);
+  const [dateUnknown, setDateUnknown] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [describe, setDescribe] = useState("");
   const [readFrom, setReadFrom] = useState<"photo" | "text" | null>(null);
@@ -153,9 +156,9 @@ export function CulturesManager({ rows, utee, unaAi, verifications = [], intro, 
     });
   };
 
-  const close = () => { setOpen(null); setDraft(emptyDraft()); setDescribe(""); setReadFrom(null); setError(null); setSearchingOrganism(false); setOrganismQuery(""); setAddingAntibiotic(false); };
-  const startAdd = () => { setDraft(emptyDraft()); setDescribe(""); setReadFrom(null); setOpen("add"); };
-  const startEdit = (row: CultureRow) => { setDraft(draftFrom(row)); setDescribe(""); setReadFrom(null); setOpen(row.id); };
+  const close = () => { setDateUnknown(false); setConfirmRemove(false); setOpen(null); setDraft(emptyDraft()); setDescribe(""); setReadFrom(null); setError(null); setSearchingOrganism(false); setOrganismQuery(""); setAddingAntibiotic(false); };
+  const startAdd = () => { setNotice(null); setDraft(emptyDraft()); setDescribe(""); setReadFrom(null); setOpen("add"); };
+  const startEdit = (row: CultureRow) => { setDateUnknown(!row.sample_on); setNotice(null); setDraft(draftFrom(row)); setDescribe(""); setReadFrom(null); setOpen(row.id); };
 
   const applyExtract = (x: CultureExtract, from: "photo" | "text") => { setDraft((d) => draftFromExtract(x, d)); setReadFrom(from); };
 
@@ -182,7 +185,7 @@ export function CulturesManager({ rows, utee, unaAi, verifications = [], intro, 
     setDraft((d) => {
       const has = d.organisms.some((o) => o.key === key);
       const organisms = has ? d.organisms.filter((o) => o.key !== key) : [...d.organisms, { key, name: "", count: "" }];
-      return { ...d, organisms, outcome: organisms.length ? "pathogens" : d.outcome === "pathogens" ? "unknown" : d.outcome };
+      return { ...d, organisms, outcome: organisms.length ? "pathogens" : d.outcome === "pathogens" ? "" : d.outcome };
     });
 
   const setSir = (organism: string, antibiotic: string, value: Sir | null) =>
@@ -206,9 +209,10 @@ export function CulturesManager({ rows, utee, unaAi, verifications = [], intro, 
         <p className="text-sm text-[#5a4a6e]">{intro ?? copy.record.resultsIntro}</p>
         <Button onClick={startAdd} className="shrink-0">{copy.cultures.add}</Button>
       </div>
+      {notice && <div role="status" data-testid="cultures-notice"><Notice tone="mint">{notice}</Notice></div>}
       <div className="space-y-3" data-testid="cultures-list">
         {all.length === 0 && simpleTests.length === 0 && (
-          <Card><p className="text-center text-[13px] text-[#5a4a6e]">{copy.cultures.empty}</p></Card>
+          <Card><p className="text-center text-sm text-[#5a4a6e]">{copy.cultures.empty}</p></Card>
         )}
         {[...all.map((r) => ({ kind: "culture" as const, on: r.sample_on, row: r })), ...simpleTests.map((t) => ({ kind: "simple" as const, on: t.on, row: t }))]
           .sort((a, b) => ((a.on ?? "") < (b.on ?? "") ? 1 : -1))
@@ -245,14 +249,14 @@ export function CulturesManager({ rows, utee, unaAi, verifications = [], intro, 
                 {chips.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {chips.map((c) => (
-                      <span key={c.key} className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${c.sir === "S" ? "bg-mint-50 text-emerald-900" : c.sir === "I" ? "bg-sun-50 text-amber-900" : "bg-peach-50 text-maroon"}`}>
+                      <span key={c.key} className={`inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-semibold ${c.sir === "S" ? "bg-mint-50 text-emerald-900" : c.sir === "I" ? "bg-sun-50 text-amber-900" : "bg-peach-50 text-maroon"}`}>
                         {c.sir} · {c.name}{c.organism ? ` (${c.organism})` : ""}
                       </span>
                     ))}
                   </div>
                 )}
                 {(r.microscopy.white_cells ?? null) !== null || (r.microscopy.red_cells ?? null) !== null || r.notes ? (
-                  <p className="mt-2 text-[13px] text-[#5a4a6e]">
+                  <p className="mt-2 text-sm text-[#5a4a6e]">
                     {[(r.microscopy.white_cells ?? null) !== null && `white cells ${r.microscopy.white_cells}`, (r.microscopy.red_cells ?? null) !== null && `red cells ${r.microscopy.red_cells}`, r.notes].filter(Boolean).join(" · ")}
                   </p>
                 ) : null}
@@ -262,12 +266,15 @@ export function CulturesManager({ rows, utee, unaAi, verifications = [], intro, 
             return fromUtee ? (
               <Card key={r.id} className="!p-5">{inner}</Card>
             ) : (
-              <button key={r.id} type="button" onClick={() => startEdit(r)} className="block w-full text-left">
-                <Card className="!p-5 hover:shadow-lg transition-shadow">{inner}</Card>
+              <button key={r.id} type="button" onClick={() => startEdit(r)} className="block w-full text-left" aria-label={`${copy.cultures.edit}: ${r.sample_on ? formatDay(r.sample_on) : "Date unknown"}, ${line.title}`}>
+                <Card className="!p-5 hover:shadow-lg transition-shadow">
+                  {inner}
+                  <p className="mt-3 text-sm font-semibold text-maroon">{copy.cultures.edit}</p>
+                </Card>
               </button>
             );
           })}
-        {utee.length === 0 && <p className="text-center text-[12px] text-[#8a7a9c]">{copy.cultures.uteeHint}</p>}
+        {utee.length === 0 && <p className="text-center text-sm text-[#6b5b80]">{copy.cultures.uteeHint}</p>}
         {error && !open && <p className="text-sm text-rose-600">{error}</p>}
       </div>
 
@@ -299,7 +306,11 @@ export function CulturesManager({ rows, utee, unaAi, verifications = [], intro, 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="culture-date" className="block text-sm font-semibold text-slate-700 mb-2">{copy.cultures.date}</label>
-              <input id="culture-date" type="date" value={draft.sample_on} max={isoToday()} onChange={(e) => setDraft((d) => ({ ...d, sample_on: e.target.value }))} className={`${inputClass} max-w-xs`} />
+              <input id="culture-date" type="date" value={draft.sample_on} max={isoToday()} disabled={dateUnknown} onChange={(e) => setDraft((d) => ({ ...d, sample_on: e.target.value }))} className={`${inputClass} max-w-xs`} />
+              <label className="mt-2 flex items-center gap-2 text-sm text-midnight">
+                <input type="checkbox" checked={dateUnknown} onChange={(e) => { setDateUnknown(e.target.checked); if (e.target.checked) setDraft((d) => ({ ...d, sample_on: "" })); }} className="h-6 w-6 rounded accent-maroon" />
+                {copy.cultures.dateUnknown}
+              </label>
             </div>
           </div>
 
@@ -357,7 +368,7 @@ export function CulturesManager({ rows, utee, unaAi, verifications = [], intro, 
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-[11px] uppercase tracking-[.1em] text-slate-500">
+                    <tr className="text-left text-[12px] uppercase tracking-[.1em] text-slate-500">
                       <th className="py-1 pr-2 font-semibold">Antibiotic</th>
                       {draft.organisms.map((o) => <th key={o.key} className="py-1 px-1 font-semibold">{organismShort(o)}</th>)}
                     </tr>
@@ -430,14 +441,27 @@ export function CulturesManager({ rows, utee, unaAi, verifications = [], intro, 
 
           {error && <p className="text-sm text-rose-600">{error}</p>}
           <div className="flex flex-wrap items-center gap-3 pt-1">
-            <Button disabled={pending} onClick={() => run(() => (open === "add" ? addCulture(toInput(draft)) : updateCulture(open!, toInput(draft))), close)}>
+            <Button disabled={pending} onClick={() => {
+              if (!draft.sample_on && !dateUnknown) { setError(copy.cultures.needDate); return; }
+              if (!draft.outcome) { setError(copy.cultures.needOutcome); return; }
+              run(() => (open === "add" ? addCulture(toInput(draft)) : updateCulture(open!, toInput(draft))), close);
+            }}>
               {copy.cultures.addButton}
             </Button>
             <button type="button" className={linkBtn} onClick={close}>{copy.episode.cancel}</button>
-            {open && open !== "add" && (
-              <button type="button" className={`${linkBtn} ml-auto`} disabled={pending} onClick={() => run(() => deleteCulture(open), close)}>{copy.cultures.remove}</button>
+            {open && open !== "add" && !confirmRemove && (
+              <button type="button" className={`${linkBtn} ml-auto`} disabled={pending} onClick={() => setConfirmRemove(true)}>{copy.cultures.remove}</button>
             )}
           </div>
+          {open && open !== "add" && confirmRemove && (
+            <div className="rounded-2xl bg-pink-25 p-4" role="alertdialog" aria-label={copy.cultures.removeConfirm} data-testid="confirm-remove">
+              <p className="text-sm text-midnight mb-3">{copy.cultures.removeConfirm}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="danger" disabled={pending} onClick={() => run(() => deleteCulture(open), () => { close(); setNotice(copy.cultures.removed); })}>{copy.cultures.remove}</Button>
+                <Button variant="secondary" onClick={() => setConfirmRemove(false)}>{copy.episode.cancel}</Button>
+              </div>
+            </div>
+          )}
         </div>
       </Sheet>
     </div>

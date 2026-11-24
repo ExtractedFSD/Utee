@@ -11,10 +11,12 @@ export default async function LogPage() {
   const order = orderByUsage(SYMPTOMS.map((s) => s.key), data.symptoms.map((s) => ({ key: s.symptom })));
   const last = data.episodes[0];
   const lastSymptoms = last ? [...new Set(data.symptoms.filter((s) => s.episode_id === last.id).map((s) => s.symptom))] : [];
+  const openRow = data.episodes.find((e) => !e.ended_on) ?? null;
+  const openUti = openRow ? { id: openRow.id, startedOn: openRow.started_on } : null;
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <PageHeader eyebrow="UTI Passport" title={copy.log.title} breadcrumb={<Breadcrumb href="/portal/passport" label={copy.nav.today} />} />
-      <LogForm symptomOrder={order} lastSymptoms={lastSymptoms} pregnantOrTrying={profile.pregnant_or_trying} />
+      <LogForm symptomOrder={order} lastSymptoms={lastSymptoms} pregnantOrTrying={profile.pregnant_or_trying} openUti={openUti} />
     </div>
   );
 }

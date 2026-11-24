@@ -6,7 +6,7 @@ import { Button, LinkButton, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { FEELINGS, SYMPTOMS, WORKED, labelFor } from "@/lib/tracker/options";
 import { redFlagFor } from "@/lib/tracker/redflags";
-import { formatDayShort, isoToday } from "@/lib/tracker/stats";
+import { formatDay, isoToday } from "@/lib/tracker/stats";
 import { Chip, DateChips } from "./Chips";
 import { RedFlagBanner } from "./RedFlagBanner";
 import { SeverityScale } from "./SeverityScale";
@@ -99,6 +99,7 @@ function OpenHero({ uti, streak, pregnantOrTrying }: { uti: OpenUti; streak: Str
   const [showAll, setShowAll] = useState(false);
   const [noteOpen, setNoteOpen] = useState(!!uti.noteToday);
   const [note, setNote] = useState(uti.noteToday ?? "");
+  const [savedNote, setSavedNote] = useState<string | null>(uti.noteToday);
   const [closing, setClosing] = useState(false);
   const [endedOn, setEndedOn] = useState(isoToday());
   const today = isoToday();
@@ -138,7 +139,7 @@ function OpenHero({ uti, streak, pregnantOrTrying }: { uti: OpenUti; streak: Str
           <p className="font-display text-[26px] font-light leading-tight">{copy.dashboard.openEpisodeDay(uti.day)}</p>
           <Link href={`/portal/passport/episodes/${uti.id}`} className="shrink-0 text-sm font-semibold underline underline-offset-4">{copy.dashboard.details}</Link>
         </div>
-        <p className="mt-1 text-sm text-white/85">{copy.dashboard.startedAnd(formatDayShort(uti.startedOn))}</p>
+        <p className="mt-1 text-sm text-white/85">{copy.dashboard.startedAnd(formatDay(uti.startedOn).replace(/ \d{4}$/, ""))}</p>
 
         <div className="mt-4">
           <Faces value={feeling} pending={pending} onPick={(n) => run(() => setFeeling(uti.id, n), () => setFeelingNow(n))} />
@@ -190,7 +191,7 @@ function OpenHero({ uti, streak, pregnantOrTrying }: { uti: OpenUti; streak: Str
                   onChange={(v) => run(() => setSymptomSeverity(uti.id, ratingOption.key, today, v), () => setSeverityNow({ key: ratingOption.key, value: v }))}
                 />
                 <div className="mt-2 flex justify-between">
-                  <p className="text-xs text-[#8a7a9c]">{copy.episode.severityHint}</p>
+                  <p className="text-sm text-[#6b5b80]">{copy.episode.severityHint}</p>
                   <button type="button" disabled={pending} onClick={() => { setRating(null); run(() => toggleSymptom(uti.id, ratingOption.key, false, "", today, "day"), () => toggleNow({ key: ratingOption.key, on: false })); }} className="text-xs font-semibold text-maroon">{copy.dashboard.untick}</button>
                 </div>
               </div>
@@ -199,17 +200,7 @@ function OpenHero({ uti, streak, pregnantOrTrying }: { uti: OpenUti; streak: Str
         )}
 
         {noteOpen && (
-          <textarea
-            value={note}
-            autoFocus={!uti.noteToday}
-            onChange={(e) => setNote(e.target.value)}
-            onBlur={() => { if (note.trim() !== (uti.noteToday ?? "").trim()) run(() => saveDiaryEntry({ onDate: today, note })); }}
-            rows={2}
-            maxLength={1000}
-            className={`${inputClass} mt-4 text-midnight`}
-            aria-label={copy.episode.noteToday}
-            placeholder={copy.episode.noteTodayPlaceholder}
-          />
+          <NoteField id="today-note" note={note} saved={savedNote} pending={pending} autoFocus={!uti.noteToday} initial={uti.noteToday} onChange={setNote} onSave={() => run(async () => { const r = await saveDiaryEntry({ onDate: today, note }); if (!(r as { error?: string } | null)?.error) setSavedNote(note); return r; })} className="mt-4" />
         )}
         {error && <p className="mt-3 text-sm text-white">{error}</p>}
 
@@ -240,6 +231,37 @@ function OpenHero({ uti, streak, pregnantOrTrying }: { uti: OpenUti; streak: Str
   );
 }
 
+/**
+ * Today's note: a labelled box with its own Save button. It also saves when
+ * the box loses focus, and says "Saved" once the text on the server matches.
+ */
+function NoteField({ id, note, saved, initial, pending, autoFocus, onChange, onSave, className = "" }: { id: string; note: string; saved: string | null; initial: string | null; pending: boolean; autoFocus: boolean; onChange: (v: string) => void; onSave: () => void; className?: string }) {
+  const dirty = note.trim() !== (saved ?? "").trim();
+  const everSaved = saved !== null && saved.trim() !== "";
+  return (
+    <div className={className} data-testid="today-note">
+      <div className="flex items-baseline justify-between gap-3 mb-1.5">
+        <label htmlFor={id} className="text-sm font-semibold text-white">{copy.episode.noteToday}</label>
+        <span aria-live="polite" className="text-sm text-white/90">{!dirty && everSaved ? `${copy.episode.saved} ✓` : ""}</span>
+      </div>
+      <textarea
+        id={id}
+        value={note}
+        autoFocus={autoFocus && !initial}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={() => { if (dirty) onSave(); }}
+        rows={2}
+        maxLength={1000}
+        className={`${inputClass} text-midnight`}
+        placeholder={copy.episode.noteTodayPlaceholder}
+      />
+      <div className="mt-2">
+        <Button variant="white" disabled={pending || !dirty} onClick={onSave} className="!min-h-[40px] !py-1.5">{copy.episode.saveNote}</Button>
+      </div>
+    </div>
+  );
+}
+
 /** The five faces, worst to best, each named underneath; selected is white with maroon strokes. Shared by both heroes. */
 function Faces({ value, pending, onPick }: { value: number | null; pending: boolean; onPick: (n: number) => void }) {
   return (
@@ -261,7 +283,7 @@ function Faces({ value, pending, onPick }: { value: number | null; pending: bool
             <span className={`flex h-[52px] w-[52px] items-center justify-center rounded-full border transition-colors ${on ? "border-white bg-white text-maroon shadow-card" : "border-white/60 text-white"}`}>
               <Face feeling={f.key} />
             </span>
-            <span className={`text-[11px] font-semibold leading-none ${on ? "text-white" : "text-white/80"}`}>{f.label}</span>
+            <span className={`text-[12px] font-semibold leading-none ${on ? "text-white" : "text-white/90"}`}>{f.label}</span>
           </button>
         );
       })}
@@ -294,6 +316,7 @@ function BetweenHero({ state }: { state: Extract<HeroState, { kind: "between" }>
   const [feeling, setFeelingNow] = useOptimistic(state.feelingToday, (_: number | null, next: number) => next);
   const [noteOpen, setNoteOpen] = useState(!!state.noteToday);
   const [note, setNote] = useState(state.noteToday ?? "");
+  const [savedNote, setSavedNote] = useState<string | null>(state.noteToday);
   const today = isoToday();
 
   const run: Run = (fn, optimistic) => {
@@ -315,7 +338,7 @@ function BetweenHero({ state }: { state: Extract<HeroState, { kind: "between" }>
   return (
     <div className={`${hero} grid gap-5 p-0 sm:grid-cols-2 sm:gap-0`} style={shadow} data-testid="between-hero">
       <div className="p-5 sm:border-r sm:border-white/20">
-        <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-white/85">{copy.nav.today}</p>
+        <p className="text-[12px] font-semibold uppercase tracking-[.16em] text-white/90">{copy.nav.today}</p>
         <p className="mt-1 font-display text-3xl font-light leading-tight">{copy.dashboard.sinceLast(state.daysSince)}</p>
         {state.result && (
           <p className="mt-2 text-sm text-white/85">
@@ -336,17 +359,7 @@ function BetweenHero({ state }: { state: Extract<HeroState, { kind: "between" }>
         </div>
         <StreakLine streak={state.streak} done={feeling !== null} className="mt-3" />
         {noteOpen && (
-          <textarea
-            value={note}
-            autoFocus={!state.noteToday}
-            onChange={(e) => setNote(e.target.value)}
-            onBlur={() => { if (note.trim() !== (state.noteToday ?? "").trim()) run(() => saveDiaryEntry({ onDate: today, note })); }}
-            rows={2}
-            maxLength={1000}
-            className={`${inputClass} mt-3 text-midnight`}
-            aria-label={copy.episode.noteToday}
-            placeholder={copy.episode.noteTodayPlaceholder}
-          />
+          <NoteField id="between-note" note={note} saved={savedNote} pending={pending} autoFocus={!state.noteToday} initial={state.noteToday} onChange={setNote} onSave={() => run(async () => { const r = await saveDiaryEntry({ onDate: today, note }); if (!(r as { error?: string } | null)?.error) setSavedNote(note); return r; })} className="mt-3" />
         )}
         {error && <p className="mt-2 text-sm text-white">{error}</p>}
         <div className="mt-3 flex items-center justify-between gap-3 text-sm font-semibold">

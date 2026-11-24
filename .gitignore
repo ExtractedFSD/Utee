@@ -16,5 +16,5 @@ e2e/.registry.json
 
 # Promo video: saved sign-in and raw recordings
 promo/.auth/
-promo/recordings/
+promo/public/recordings/
 promo/out/

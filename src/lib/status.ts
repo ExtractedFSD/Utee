@@ -122,22 +122,27 @@ export function formatMoney(amount: number | string, currency = "GBP") {
   );
 }
 
+/** "24 November 2026": the one date form used across the app. */
 export function formatDate(value: string | Date | null | undefined) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
-    month: "short",
+    month: "long",
     year: "numeric",
   }).format(new Date(value));
 }
 
+/** "9:30am", lower case with no leading zero, the way people write a time. */
+export function formatTime(value: string | Date | null | undefined) {
+  if (!value) return "-";
+  const d = new Date(value);
+  const h = d.getHours();
+  const m = d.getMinutes().toString().padStart(2, "0");
+  return `${h % 12 === 0 ? 12 : h % 12}:${m}${h < 12 ? "am" : "pm"}`;
+}
+
+/** "24 November 2026, 9:30am". */
 export function formatDateTime(value: string | Date | null | undefined) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return `${formatDate(value)}, ${formatTime(value)}`;
 }

@@ -163,7 +163,7 @@ export function orderByUsage(keys: string[], rows: { key: string }[]): string[] 
 
 export function formatDay(iso: string | null | undefined): string {
   if (!iso) return "-";
-  return toDate(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  return toDate(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 }
 
 /** Age band used for aggregate reporting, derived from the account's date of birth. */

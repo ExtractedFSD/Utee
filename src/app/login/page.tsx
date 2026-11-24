@@ -87,6 +87,7 @@ function LoginForm() {
     linkFailed ? "That sign-in link has expired or was already used. Enter your email and we'll send a fresh code." : null
   );
   const [notice, setNotice] = useState<string | null>(null);
+  const [emailBad, setEmailBad] = useState(false);
   const [busy, setBusy] = useState(false);
   const codeInput = useRef<HTMLInputElement | null>(null);
   const checking = useRef(false);
@@ -153,19 +154,23 @@ function LoginForm() {
   }
 
   const messages: Record<string, string> = {
-    "invalid-email": "Please enter a valid email address.",
+    "invalid-email": "Enter an email address in the right format, like name@example.com.",
     "name-required": "Please tell us your name.",
     "dob-required": "Please enter your date of birth.",
     exists: "There's already an account for that email, so we've sent a code to it.",
     "no-account": "We couldn't find an account for that email.",
   };
 
+  const emailLooksRight = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
+
   async function continueWithEmail(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setError(null);
     setNotice(null);
     const normalized = email.trim().toLowerCase();
+    if (!emailLooksRight(normalized)) { setEmailBad(true); setError(messages["invalid-email"]); return; }
+    setEmailBad(false);
+    setBusy(true);
     const prepared = await prepareSignIn(normalized, "signin");
     if (!prepared.ok) {
       setBusy(false);
@@ -196,10 +201,14 @@ function LoginForm() {
 
   async function createAccount(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setError(null);
     setNotice(null);
     const normalized = email.trim().toLowerCase();
+    if (!emailLooksRight(normalized)) { setEmailBad(true); setError(messages["invalid-email"]); return; }
+    if (!fullName.trim()) { setError(messages["name-required"]); return; }
+    if (!dateOfBirth) { setError(messages["dob-required"]); return; }
+    setEmailBad(false);
+    setBusy(true);
     const prepared = await prepareSignIn(normalized, "signup", fullName, dateOfBirth);
     if (!prepared.ok && prepared.reason !== "exists") {
       setBusy(false);
@@ -292,10 +301,10 @@ function LoginForm() {
       </div>
       <div className="bg-white rounded-card shadow-card p-6">
         {step === "email" && (
-          <form onSubmit={continueWithEmail} className="space-y-4">
+          <form onSubmit={continueWithEmail} className="space-y-4" noValidate>
             {fromKit && kit && kit !== "unknown" && (
               <div data-testid="kit-hint">
-                <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-maroon">Your Utee kit</p>
+                <p className="text-[12px] font-semibold uppercase tracking-[.16em] text-maroon">Your Utee kit</p>
                 <p className="text-sm text-[#5a4a6e] mt-1 leading-relaxed">
                   {kit === "online"
                     ? "This kit was ordered online, so you already have an account. Sign in with the email on that order and we'll take you to the questionnaire."
@@ -312,9 +321,11 @@ function LoginForm() {
                 autoFocus
                 autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); if (emailBad) { setEmailBad(false); setError(null); } }}
                 placeholder="you@example.com"
-                className={field}
+                aria-invalid={emailBad || undefined}
+                aria-describedby={emailBad ? "login-error" : undefined}
+                className={`${field} ${emailBad ? "!border-rose-600 ring-2 ring-rose-100" : ""}`}
               />
               <p className="text-sm text-[#5a4a6e] mt-2.5 leading-relaxed">
                 {fromKit && kit !== "retail"
@@ -329,7 +340,7 @@ function LoginForm() {
                 <button type="button" onClick={() => setStep("details")} className="mt-2 min-h-[44px] text-sm font-semibold text-maroon">Create a new account with this email anyway</button>
               </div>
             )}
-            {error && <p className="text-sm text-rose-600">{error}</p>}
+            {error && <p id="login-error" role="alert" className="text-sm text-rose-600">{error}</p>}
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "One moment…" : "Continue with email"}
             </Button>
@@ -337,9 +348,9 @@ function LoginForm() {
         )}
 
         {step === "details" && (
-          <form onSubmit={createAccount} className="space-y-4" data-testid="details-step">
+          <form onSubmit={createAccount} className="space-y-4" data-testid="details-step" noValidate>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-maroon">New to Utee</p>
+              <p className="text-[12px] font-semibold uppercase tracking-[.16em] text-maroon">New to Utee</p>
               <p className="text-sm text-[#5a4a6e] mt-1 leading-relaxed">
                 {fromKit
                   ? "No account for that email yet. Tell us your name and date of birth and we'll link your kit to a new account."
@@ -348,7 +359,7 @@ function LoginForm() {
             </div>
             <div>
               <label htmlFor="login-email-2" className={label}>Email address</label>
-              <input id="login-email-2" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={field} />
+              <input id="login-email-2" type="email" required autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); if (emailBad) { setEmailBad(false); setError(null); } }} aria-invalid={emailBad || undefined} aria-describedby={emailBad ? "login-error" : undefined} className={`${field} ${emailBad ? "!border-rose-600 ring-2 ring-rose-100" : ""}`} />
             </div>
             <div>
               <label htmlFor="login-name" className={label}>Your name</label>
@@ -358,7 +369,7 @@ function LoginForm() {
               <label htmlFor="login-dob" className={label}>Date of birth</label>
               <input id="login-dob" type="date" required autoComplete="bday" max={new Date().toISOString().slice(0, 10)} value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={field} />
             </div>
-            {error && <p className="text-sm text-rose-600">{error}</p>}
+            {error && <p id="login-error" role="alert" className="text-sm text-rose-600">{error}</p>}
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "One moment…" : "Create account"}
             </Button>
@@ -404,18 +415,18 @@ function LoginForm() {
                   type="button"
                   onClick={resendCode}
                   disabled={busy || cooldownLeft > 0}
-                  className="font-semibold text-maroon disabled:cursor-default disabled:text-[#8a7a9c]"
+                  className="font-semibold text-maroon disabled:cursor-default disabled:text-[#6b5b80]"
                 >
                   {cooldownLeft > 0 ? `Resend in ${cooldownLeft}s` : "Resend"}
                 </button>
               </p>
             </div>
             {notice && <p className="text-sm text-emerald-700">{notice}</p>}
-            {error && <p className="text-sm text-rose-600">{error}</p>}
+            {error && <p id="login-error" role="alert" className="text-sm text-rose-600">{error}</p>}
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "Checking…" : "Sign in"}
             </Button>
-            <p className="text-xs text-[#8a7a9c] leading-relaxed">Check your spam folder if it hasn&apos;t arrived. Only the newest code works.</p>
+            <p className="text-sm text-[#6b5b80] leading-relaxed">Check your spam folder if it hasn&apos;t arrived. Only the newest code works.</p>
             <button type="button" onClick={changeEmail} className="block w-full min-h-[44px] text-sm font-semibold text-maroon">Use a different email</button>
           </form>
         )}

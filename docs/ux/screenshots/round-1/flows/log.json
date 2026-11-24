@@ -1,0 +1,156 @@
+[
+  {
+    "width": "phone",
+    "flow": "log",
+    "ok": true,
+    "seconds": 17.187,
+    "errors": []
+  },
+  {
+    "width": "phone",
+    "flow": "logEmpty",
+    "ok": true,
+    "seconds": 9.882,
+    "errors": []
+  },
+  {
+    "width": "phone",
+    "flow": "today",
+    "ok": true,
+    "seconds": 5.894,
+    "errors": []
+  },
+  {
+    "width": "phone",
+    "flow": "result",
+    "ok": true,
+    "seconds": 10.459,
+    "errors": []
+  },
+  {
+    "width": "phone",
+    "flow": "investigation",
+    "ok": true,
+    "seconds": 10.046,
+    "errors": []
+  },
+  {
+    "width": "phone",
+    "flow": "taking",
+    "ok": true,
+    "seconds": 14.103,
+    "errors": []
+  },
+  {
+    "width": "phone",
+    "flow": "share",
+    "ok": true,
+    "seconds": 15.149,
+    "errors": []
+  },
+  {
+    "width": "phone",
+    "flow": "una",
+    "ok": true,
+    "seconds": 18.414,
+    "errors": []
+  },
+  {
+    "width": "phone",
+    "flow": "settings",
+    "ok": true,
+    "seconds": 38.399,
+    "errors": []
+  },
+  {
+    "width": "phone",
+    "flow": "slow",
+    "ok": true,
+    "seconds": 7.167,
+    "errors": []
+  },
+  {
+    "width": "phone",
+    "flow": "signin",
+    "ok": true,
+    "seconds": 2.03,
+    "errors": []
+  },
+  {
+    "width": "desktop",
+    "flow": "log",
+    "ok": true,
+    "seconds": 15.905,
+    "errors": []
+  },
+  {
+    "width": "desktop",
+    "flow": "logEmpty",
+    "ok": true,
+    "seconds": 9.218,
+    "errors": []
+  },
+  {
+    "width": "desktop",
+    "flow": "today",
+    "ok": true,
+    "seconds": 5.937,
+    "errors": []
+  },
+  {
+    "width": "desktop",
+    "flow": "result",
+    "ok": true,
+    "seconds": 10.775,
+    "errors": []
+  },
+  {
+    "width": "desktop",
+    "flow": "investigation",
+    "ok": true,
+    "seconds": 10.12,
+    "errors": []
+  },
+  {
+    "width": "desktop",
+    "flow": "taking",
+    "ok": true,
+    "seconds": 10.056,
+    "errors": []
+  },
+  {
+    "width": "desktop",
+    "flow": "share",
+    "ok": true,
+    "seconds": 14.86,
+    "errors": []
+  },
+  {
+    "width": "desktop",
+    "flow": "una",
+    "ok": true,
+    "seconds": 18.601,
+    "errors": []
+  },
+  {
+    "width": "desktop",
+    "flow": "settings",
+    "ok": true,
+    "seconds": 38.346,
+    "errors": []
+  },
+  {
+    "width": "desktop",
+    "flow": "slow",
+    "ok": true,
+    "seconds": 7.225,
+    "errors": []
+  },
+  {
+    "width": "desktop",
+    "flow": "signin",
+    "ok": true,
+    "seconds": 1.866,
+    "errors": []
+  }
+]

@@ -1,4 +1,4 @@
-import { PageHeader } from "@/components/ui";
+import { PageHeader, Notice } from "@/components/ui";
 import { requireTracker } from "@/lib/tracker/data";
 import { loadAllWithUtee } from "@/lib/tracker/load";
 import { copy } from "@/lib/tracker/copy";
@@ -12,8 +12,8 @@ import type { TimelineEvent } from "@/lib/tracker/passport";
 
 export const dynamic = "force-dynamic";
 
-export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const { view } = await searchParams;
+export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ view?: string; deleted?: string }> }) {
+  const { view, deleted } = await searchParams;
   const { supabase, user } = await requireTracker();
   const data = await loadAllWithUtee(supabase, user.id);
   const today = isoToday();
@@ -71,6 +71,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <PageHeader eyebrow="UTI Passport" title={copy.history.title} />
+      {deleted && <div role="status" data-testid="deleted-notice"><Notice tone="mint">{copy.episode.deleted}</Notice></div>}
       <HistoryView
         initialView={initialView}
         today={today}

@@ -132,6 +132,13 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
     ] });
   };
   const answerAbout = (patch: Partial<About>) => { const a = { ...about, ...patch }; setAbout(a); askAbout(a); };
+  /** Leaves the unanswered about-you questions as "prefer not to say"; they can be filled in later from Record. */
+  const skipAbout = () => {
+    say(copy.guided.ask.skipAbout, "user");
+    const a: About = { menopause_stage: about.menopause_stage ?? "prefer_not", contraception: about.contraception ?? "prefer_not", pregnant_or_trying: about.pregnant_or_trying ?? "prefer_not" };
+    setAbout(a);
+    askAbout(a);
+  };
   const saveAbout = () => run(() => saveAboutMeValues({ menopause_stage: about.menopause_stage!, contraception: about.contraception!, pregnant_or_trying: about.pregnant_or_trying! }), () => {
     setPregnant(about.pregnant_or_trying!);
     say(copy.guided.savedAbout);
@@ -640,6 +647,22 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
   const chips = (): React.ReactNode => {
     const c = copy.guided.chips;
     switch (q) {
+      case "menopause": return <>
+        {MENOPAUSE_STAGES.map((o) => <Chip key={o.key} onClick={() => { say(o.label, "user"); answerAbout({ menopause_stage: o.key }); }}>{o.label}</Chip>)}
+        <Chip onClick={skipAbout}>{copy.guided.ask.skipAbout}</Chip>
+      </>;
+      case "contraception": return <>
+        {CONTRACEPTION.map((o) => <Chip key={o.key} onClick={() => { say(o.label, "user"); answerAbout({ contraception: o.key }); }}>{o.label}</Chip>)}
+        <Chip onClick={skipAbout}>{copy.guided.ask.skipAbout}</Chip>
+      </>;
+      case "coilType": return <>
+        {CONTRACEPTION.filter((o) => o.key.startsWith("coil_")).map((o) => <Chip key={o.key} onClick={() => { say(o.label, "user"); answerAbout({ contraception: o.key }); }}>{o.label}</Chip>)}
+        <Chip onClick={() => { say(c.dontKnow, "user"); answerAbout({ contraception: "other" }); }}>{c.dontKnow}</Chip>
+      </>;
+      case "pregnant": return <>
+        {PREGNANT.map((o) => <Chip key={o.key} onClick={() => { say(o.label, "user"); answerAbout({ pregnant_or_trying: o.key }); }}>{o.label}</Chip>)}
+        <Chip onClick={skipAbout}>{copy.guided.ask.skipAbout}</Chip>
+      </>;
       case "aboutOverview": return <>
         <Chip onClick={saveAbout} disabled={busy}>{c.save}</Chip>
         <Chip onClick={() => { setAbout({ menopause_stage: null, contraception: null, pregnant_or_trying: null }); askAbout({ menopause_stage: null, contraception: null, pregnant_or_trying: null }); }}>{c.change}</Chip>
@@ -717,7 +740,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
             <textarea id="guided-input" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder={copy.guided.placeholder} rows={2} className={`${inputClass} flex-1 resize-none`} disabled={busy} />
             <Button onClick={send} disabled={busy || !text.trim()}>{copy.guided.send}</Button>
           </div>
-          <p className="mt-2 text-[11px] text-slate-400">
+          <p className="mt-2 text-sm text-slate-600">
             {aiAvailable && !aiDown ? copy.guided.aiCaveat : aiDown ? copy.guided.aiCaveatDown : copy.guided.aiCaveatOff} <Link href="/portal/passport/settings" className="font-semibold text-maroon">{copy.guided.aiSettings}</Link>
           </p>
         </Card>

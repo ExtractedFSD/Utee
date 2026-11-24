@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button, Card, CardTitle, Pill, inputClass } from "@/components/ui";
+import { Button, Card, CardTitle, Notice, Pill, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { INVESTIGATION_KINDS, investigationKind, investigationLine, type InvestigationRow } from "@/lib/tracker/passport";
 import type { InvestigationExtract } from "@/lib/tracker/guided/investigation";
@@ -89,11 +89,12 @@ export function InvestigationsManager({ rows, unaAi, verifications = [], intro }
     });
   };
 
-  const close = () => { setOpen(null); setDraft(emptyDraft()); setDescribe(""); setReadBy(null); setError(null); };
-  const startAdd = () => { setDraft(emptyDraft()); setDescribe(""); setReadBy(null); setOpen("add"); };
-  const startEdit = (row: InvestigationRow) => { setDraft(draftFrom(row)); setDescribe(""); setReadBy(null); setOpen(row.id); };
+  const close = () => { setConfirmRemove(false); setOpen(null); setDraft(emptyDraft()); setDescribe(""); setReadBy(null); setError(null); };
+  const startAdd = () => { setNotice(null); setDraft(emptyDraft()); setDescribe(""); setReadBy(null); setOpen("add"); };
+  const startEdit = (row: InvestigationRow) => { setNotice(null); setDraft(draftFrom(row)); setDescribe(""); setReadBy(null); setOpen(row.id); };
   const def = draft.kind ? investigationKind(draft.kind) : null;
-  const canSave = !!draft.kind;
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   return (
     <div className="space-y-6">
@@ -101,20 +102,22 @@ export function InvestigationsManager({ rows, unaAi, verifications = [], intro }
         <p className="text-sm text-[#5a4a6e]">{intro ?? copy.record.investigationsIntro}</p>
         <Button onClick={startAdd} className="shrink-0">{copy.investigations.add}</Button>
       </div>
+      {notice && <div role="status" data-testid="investigations-notice"><Notice tone="mint">{notice}</Notice></div>}
       <div className="space-y-3" data-testid="investigations-list">
-        {rows.length === 0 && <Card><p className="text-center text-[13px] text-[#5a4a6e]">{copy.investigations.empty}</p></Card>}
+        {rows.length === 0 && <Card><p className="text-center text-sm text-[#5a4a6e]">{copy.investigations.empty}</p></Card>}
         {rows.map((r) => {
           const line = investigationLine(r);
           const verified = verificationFor(verifications, "investigation", r.id);
           return (
-            <button key={r.id} type="button" onClick={() => startEdit(r)} className="block w-full text-left">
+            <button key={r.id} type="button" onClick={() => startEdit(r)} className="block w-full text-left" aria-label={`${copy.investigations.edit}: ${r.performed_on ? formatDay(r.performed_on) : "Date unknown"}, ${line.title}`}>
               <Card className="!p-5 hover:shadow-lg transition-shadow">
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-base font-semibold text-midnight">{r.performed_on ? formatDay(r.performed_on) : "Date unknown"} · {line.title}</p>
                   <SourcePill source={verified ? "verified" : "patient"} />
                 </div>
                 <p className="mt-1 text-sm text-midnight">{line.detail || copy.investigations.noDetail}</p>
-                {verified && <p className="mt-2 text-[12px] text-[#5a4a6e]" title={copy.share.verifiedHint}>{verifiedLine(verified)}</p>}
+                {verified && <p className="mt-2 text-sm text-[#5a4a6e]" title={copy.share.verifiedHint}>{verifiedLine(verified)}</p>}
+                <p className="mt-3 text-sm font-semibold text-maroon">{copy.investigations.edit}</p>
               </Card>
             </button>
           );
@@ -218,16 +221,28 @@ export function InvestigationsManager({ rows, unaAi, verifications = [], intro }
           {error && <p className="text-sm text-rose-600">{error}</p>}
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <Button
-              disabled={pending || !canSave}
-              onClick={() => run(() => (open === "add" ? addInvestigation(toInput(draft)) : updateInvestigation(open!, toInput(draft))), close)}
+              disabled={pending}
+              onClick={() => {
+                if (!draft.kind) { setError(copy.investigations.needKind); return; }
+                run(() => (open === "add" ? addInvestigation(toInput(draft)) : updateInvestigation(open!, toInput(draft))), close);
+              }}
             >
               {copy.investigations.addButton}
             </Button>
             <button type="button" className={linkBtn} onClick={close}>{copy.episode.cancel}</button>
-            {open && open !== "add" && (
-              <button type="button" className={`${linkBtn} ml-auto`} disabled={pending} onClick={() => run(() => deleteInvestigation(open), close)}>{copy.investigations.remove}</button>
+            {open && open !== "add" && !confirmRemove && (
+              <button type="button" className={`${linkBtn} ml-auto`} disabled={pending} onClick={() => setConfirmRemove(true)}>{copy.investigations.remove}</button>
             )}
           </div>
+          {open && open !== "add" && confirmRemove && (
+            <div className="rounded-2xl bg-pink-25 p-4" role="alertdialog" aria-label={copy.investigations.removeConfirm} data-testid="confirm-remove">
+              <p className="text-sm text-midnight mb-3">{copy.investigations.removeConfirm}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="danger" disabled={pending} onClick={() => run(() => deleteInvestigation(open), () => { close(); setNotice(copy.investigations.removed); })}>{copy.investigations.remove}</Button>
+                <Button variant="secondary" onClick={() => setConfirmRemove(false)}>{copy.episode.cancel}</Button>
+              </div>
+            </div>
+          )}
         </div>
       </Sheet>
     </div>

@@ -1,14 +1,15 @@
 {
-  "name": "promo",
+  "name": "utee-promo",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Utee UTI Passport promo film, rendered with Remotion from recordings of the live portal.",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "login": "node scripts/login.mjs",
+    "record": "node scripts/record.mjs",
+    "studio": "remotion studio src/index.ts",
+    "render:vertical": "remotion render src/index.ts PassportVertical out/utee-passport-9x16.mp4",
+    "render:landscape": "remotion render src/index.ts PassportLandscape out/utee-passport-16x9.mp4",
+    "still": "remotion still src/index.ts PassportVertical out/frame.png --frame=200"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.6",
@@ -19,5 +20,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "remotion": "4.0.545"
-  }
+  },
+  "private": true,
+  "type": "module"
 }

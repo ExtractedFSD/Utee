@@ -89,7 +89,7 @@ const config: Config = {
         display: ["var(--font-cooper)", "Georgia", "serif"],
       },
       fontSize: {
-        eyebrow: ["13px", { lineHeight: "1", letterSpacing: ".14em", fontWeight: "600" }],
+        eyebrow: ["14px", { lineHeight: "1", letterSpacing: ".14em", fontWeight: "600" }],
       },
       borderRadius: {
         card: "24px",

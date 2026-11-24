@@ -83,7 +83,7 @@ export function PassportNav({ variant, unaEnabled, unaOpen, onUna, hydrated }: {
             key={t.key}
             href={t.href}
             aria-current={active === t.key ? "page" : undefined}
-            className={`inline-flex min-h-[44px] items-center gap-2 rounded-full px-5 text-[12px] font-semibold uppercase tracking-[.12em] transition-colors ${
+            className={`inline-flex min-h-[44px] items-center gap-2 rounded-full px-5 text-[13px] font-semibold uppercase tracking-[.12em] transition-colors ${
               active === t.key ? "bg-maroon text-white shadow-card" : "bg-white text-midnight border border-midnight/15 hover:bg-pink-25"
             }`}
           >
@@ -96,7 +96,7 @@ export function PassportNav({ variant, unaEnabled, unaOpen, onUna, hydrated }: {
             type="button"
             onClick={onUna}
             aria-pressed={unaOpen}
-            className="ml-auto inline-flex min-h-[44px] items-center gap-2 rounded-full bg-white px-4 text-[12px] font-semibold uppercase tracking-[.12em] text-midnight border border-midnight/15 hover:bg-pink-25"
+            className="ml-auto inline-flex min-h-[44px] items-center gap-2 rounded-full bg-white px-4 text-[13px] font-semibold uppercase tracking-[.12em] text-midnight border border-midnight/15 hover:bg-pink-25"
           >
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-maroon font-display text-base text-white" aria-hidden>U</span>
             {copy.nav.una}
@@ -120,7 +120,7 @@ export function PassportNav({ variant, unaEnabled, unaOpen, onUna, hydrated }: {
             key={t.key}
             href={t.href}
             aria-current={on ? "page" : undefined}
-            className={`flex min-h-[60px] flex-col items-center justify-center gap-0.5 text-[10px] font-semibold uppercase tracking-[.08em] ${on ? "text-maroon" : "text-[#8a7a9c]"}`}
+            className={`flex min-h-[60px] flex-col items-center justify-center gap-0.5 text-[12px] font-semibold uppercase tracking-[.06em] ${on ? "text-maroon" : "text-[#6b5b80]"}`}
           >
             <span className={`h-1.5 w-1.5 rounded-full ${on ? "bg-maroon" : "bg-transparent"}`} aria-hidden />
             <TabIcon section={t.key} size={22} />
@@ -136,7 +136,7 @@ export function PassportNav({ variant, unaEnabled, unaOpen, onUna, hydrated }: {
           aria-pressed={unaOpen}
           data-testid="chat-bubble"
           data-hydrated={hydrated ? "true" : "false"}
-          className="flex min-h-[60px] flex-col items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-[.08em] text-maroon"
+          className="flex min-h-[60px] flex-col items-center justify-center gap-1 text-[12px] font-semibold uppercase tracking-[.06em] text-maroon"
         >
           <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-maroon font-display text-lg leading-none text-white" aria-hidden>U</span>
           {copy.nav.una}
