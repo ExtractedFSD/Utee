@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button, Card, Notice, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
-import { SHARE_DURATIONS, expiresIn, type ShareRow, type ShareState } from "@/lib/tracker/share";
+import { SHARE_DURATIONS, expiresIn, formatUntil, type ShareRow, type ShareState } from "@/lib/tracker/share";
 import { Chip } from "../components/Chips";
 import { Sheet } from "../components/Sheet";
 import { createShare, revokeShare } from "./actions";
@@ -47,11 +47,11 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
   const create = () => {
     setError(null);
     setNotice(null);
-    if (!consent) { setError(copy.share.consentRequired); return; }
+    if (!consent) { setError(copy.share.consentRequired); document.getElementById("share-consent")?.focus(); return; }
     startTransition(async () => {
       const r = await createShare({ label, days, consent });
       if ("error" in r && r.error) { setError(r.error); return; }
-      if ("id" in r && r.id) { setShownId(r.id); setCreating(false); setLabel(""); setConsent(false); }
+      if ("id" in r && r.id) { setShownId(r.id); setCreating(false); setNotice(copy.share.createdNotice(label)); setLabel(""); setConsent(false); }
     });
   };
   const revoke = (id: string) => {
@@ -65,7 +65,7 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
       if (shownId === id) setShownId(null);
     });
   };
-  const status = (s: ShareItem) => `${expiresIn(s.expires_at) ?? copy.share.expired} · ${s.view_count ? copy.share.openedTimes(s.view_count) : copy.share.notOpened}`;
+  const status = (s: ShareItem) => `${copy.share.worksUntil(formatUntil(s.expires_at))} (${expiresIn(s.expires_at) ?? copy.share.expired}) · ${s.view_count ? copy.share.openedTimes(s.view_count) : copy.share.notOpened}`;
 
   return (
     <div className="space-y-5" data-testid="share-list">
@@ -112,10 +112,11 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
               <Button variant="secondary" onClick={() => copyLink(shown)}>{copiedId === shown.id ? copy.share.copied : copy.share.copyLink}</Button>
               <Button variant="secondary" onClick={() => setFullScreen(shown)}>{copy.share.showFullScreen}</Button>
             </div>
+            <button type="button" onClick={() => { setMenuId(null); setConfirmRevoke(shown.id); }} className="min-h-[44px] px-2 text-sm font-semibold text-maroon">{copy.share.removeVisible}</button>
           </div>
         </Card>
       ) : (
-        <Card><p className="text-center text-[13px] text-[#5a4a6e]">{copy.share.empty}</p></Card>
+        <Card><p className="text-center text-sm text-[#5a4a6e]">{copy.share.empty}</p></Card>
       )}
 
       {others.length > 0 && (
@@ -166,11 +167,13 @@ export function ShareManager({ shares }: { shares: ShareItem[] }) {
               {SHARE_DURATIONS.map((d) => <Chip key={d.days} selected={days === d.days} onClick={() => setDays(d.days)}>{d.label}</Chip>)}
             </div>
           </div>
-          <label className="flex items-start gap-3 rounded-2xl bg-pink-25 p-4">
-            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-6 w-6 shrink-0 rounded accent-maroon" aria-describedby="share-consent-text" />
-            <span id="share-consent-text" className="text-sm text-midnight">{copy.share.consentLabel}</span>
-          </label>
-          {error && <p className="text-sm text-rose-600" role="alert">{error}</p>}
+          <div className={`rounded-2xl bg-pink-25 p-4 ${error ? "border-l-4 border-rose-600" : ""}`}>
+            <label className="flex items-start gap-3">
+              <input id="share-consent" type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); if (e.target.checked) setError(null); }} aria-invalid={!!error || undefined} className="mt-0.5 h-6 w-6 shrink-0 rounded accent-maroon" aria-describedby="share-consent-text" />
+              <span id="share-consent-text" className="text-sm text-midnight">{copy.share.consentLabel}</span>
+            </label>
+            {error && <p className="mt-2 text-sm font-semibold text-rose-700" role="alert">{error}</p>}
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button disabled={pending} onClick={create}>{copy.share.create}</Button>
           </div>

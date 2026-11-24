@@ -11,6 +11,7 @@ import { MonthStrip } from "./components/MonthStrip";
 import { PassportCard } from "./components/PassportCard";
 import { PatternsCard } from "./components/PatternsCard";
 import { PreventionPills } from "./components/PreventionPills";
+import { FeelingCard } from "./components/FeelingCard";
 import { TodayHero, type HeroState } from "./components/TodayHero";
 import { checkinStreak } from "@/lib/tracker/diary";
 
@@ -20,8 +21,8 @@ import { checkinStreak } from "@/lib/tracker/diary";
  * the order is hero, At a glance, What I'm taking, Last 12 months, My
  * patterns; on wide screens the cards sit in two columns.
  */
-export default async function TodayPage({ searchParams }: { searchParams: Promise<{ logged?: string }> }) {
-  const { logged } = await searchParams;
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ logged?: string; reopened?: string }> }) {
+  const { logged, reopened } = await searchParams;
   const { supabase, user, profile } = await requireTracker();
   const [data, kits] = await Promise.all([loadAllWithUtee(supabase, user.id), ownKits(supabase)]);
   const today = isoToday();
@@ -49,14 +50,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         symptomOrder: orderByUsage(SYMPTOMS.map((x) => x.key), data.symptoms.map((x) => ({ key: x.symptom }))),
         unrated: data.treatments.filter((t) => t.episode_id === open.id && !t.worked).map((t) => ({ id: t.id, name: antibioticName(t.antibiotic_id, t.other_name) })),
       },
-      streak,
     };
   } else {
     // A Utee result published in the last week is worth a line on the hero.
     const recent = kits.find((k) => k.reportReady && k.reportAt && daysBetween(k.reportAt.slice(0, 10), today) <= 7);
-    const checkin = data.checkins.find((c) => c.on_date === today);
-    state = { kind: "between", daysSince: s.daysSinceLast ?? 0, result: recent ? { kitId: recent.id, code: recent.code } : null, feelingToday: checkin?.feeling ?? null, noteToday: checkin?.note ?? null, streak };
+    state = { kind: "between", daysSince: s.daysSinceLast ?? 0, result: recent ? { kitId: recent.id, code: recent.code } : null };
   }
+  const checkinToday = data.checkins.find((c) => c.on_date === today);
 
   const taking = data.preventions.filter((x) => !x.stopped_on);
   const glance = passportGlance({ utis6m: s.episodes6m, utis12m: s.episodes12m }, profile, data.preventions, data.investigations, data.cultures);
@@ -71,8 +71,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       } />
 
       {logged && <div role="status" data-testid="logged-notice"><Notice tone="mint">{copy.log.logged}</Notice></div>}
+      {reopened && <div role="status"><Notice tone="mint">{copy.consent.reopened}</Notice></div>}
 
       <TodayHero state={state} pregnantOrTrying={profile.pregnant_or_trying} />
+
+      {!brandNew && <FeelingCard today={today} feelingToday={checkinToday?.feeling ?? null} noteToday={checkinToday?.note ?? null} streak={streak} />}
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <div className="contents lg:block lg:space-y-6">
@@ -93,7 +96,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
               ) : (
                 <div className="text-center">
                   <CardTitle>{copy.dashboard.prevention}</CardTitle>
-                  <p className="mx-auto max-w-sm text-[13px] text-[#5a4a6e] -mt-2 mb-4">{copy.dashboard.takingEmpty}</p>
+                  <p className="mx-auto max-w-sm text-sm text-[#5a4a6e] -mt-2 mb-4">{copy.dashboard.takingEmpty}</p>
                   <LinkButton href="/portal/passport/record?tab=taking" variant="secondary">{copy.dashboard.addSomething}</LinkButton>
                 </div>
               )}
@@ -114,8 +117,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </div>
       </div>
 
-      {!gated && <p className="text-center text-[13px] text-[#5a4a6e]">{copy.dashboard.gatedNote}</p>}
-      <p className="text-center text-xs text-[#5a4a6e]">
+      {!gated && <p className="text-center text-sm text-[#5a4a6e]">{copy.dashboard.gatedNote}</p>}
+      <p className="text-center text-sm text-[#5a4a6e]">
         <a href={storeUrl} target="_blank" rel="noopener" className="font-semibold text-maroon">{copy.dashboard.orderTest}</a> · {copy.dashboard.orderTestLine}
         {communityUrl && <> · <a href={communityUrl} target="_blank" rel="noopener" className="font-semibold text-maroon">{copy.dashboard.community}</a></>}
       </p>

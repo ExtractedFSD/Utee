@@ -1,17 +1,18 @@
 import { redirect } from "next/navigation";
-import { Card, PageHeader } from "@/components/ui";
+import { Breadcrumb, Card, PageHeader } from "@/components/ui";
 import { trackerContext } from "@/lib/tracker/data";
 import { copy } from "@/lib/tracker/copy";
 import { ConsentForm } from "./ConsentForm";
 
-export default async function TrackerConsentPage() {
+export default async function TrackerConsentPage({ searchParams }: { searchParams: Promise<{ closed?: string }> }) {
+  const { closed } = await searchParams;
   const ctx = await trackerContext();
   if (ctx.consents.tracker) redirect(ctx.profile ? "/portal/passport" : "/portal/passport/about-me");
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <PageHeader eyebrow="UTI Passport" title={copy.consent.title} subtitle={copy.consent.intro} />
+    <div className="max-w-3xl mx-auto space-y-6">
+      <PageHeader eyebrow="UTI Passport" title={copy.consent.title} subtitle={copy.consent.intro} breadcrumb={<Breadcrumb href="/portal" label={copy.consent.back} />} />
       <Card>
-        <ConsentForm />
+        <ConsentForm closed={!!closed} />
       </Card>
     </div>
   );

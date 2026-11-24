@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Button, Card, LinkButton, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { SYMPTOMS } from "@/lib/tracker/options";
@@ -34,6 +34,8 @@ export function LogForm({ symptomOrder, lastSymptoms, pregnantOrTrying, openUti 
   const [severity, setSeverity] = useState<Record<string, number | null>>({});
   const [otherText, setOtherText] = useState("");
   const [confirmEmpty, setConfirmEmpty] = useState(false);
+  const confirmRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { if (confirmEmpty) { confirmRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); confirmRef.current?.focus(); } }, [confirmEmpty]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const options = symptomOrder.map((k) => SYMPTOMS.find((s) => s.key === k)!).filter(Boolean);
@@ -89,18 +91,21 @@ export function LogForm({ symptomOrder, lastSymptoms, pregnantOrTrying, openUti 
       <Card>
         <p className="text-base font-semibold text-midnight">{isPast ? copy.log.symptomsPast : copy.log.symptoms}</p>
         <p className="text-sm text-slate-600 mt-0.5 mb-4">{copy.log.chooseAll}</p>
+        {lastSymptoms.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <Chip selected={lastSymptoms.every((k) => selected.includes(k)) && selected.length === lastSymptoms.length} onClick={() => setSelected(lastSymptoms)}>{copy.log.sameAsLast}</Chip>
+            <span className="text-sm text-slate-600">{copy.log.sameAsLastHint}</span>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
-          {lastSymptoms.length > 0 && (
-            <Chip selected={lastSymptoms.length > 0 && lastSymptoms.every((k) => selected.includes(k)) && selected.length === lastSymptoms.length} onClick={() => setSelected(lastSymptoms)}>{copy.log.sameAsLast}</Chip>
-          )}
           {options.map((o) => (
             <Chip key={o.key} selected={selected.includes(o.key)} onClick={() => toggle(o.key)}>{o.short ?? o.label}</Chip>
           ))}
         </div>
         {selected.includes("other") && (
-          <div className="mt-4 max-w-md">
+          <div className="mt-4">
             <label htmlFor="log-other" className="block text-sm font-semibold text-slate-700 mb-1.5">{copy.log.otherLabel}</label>
-            <input id="log-other" value={otherText} onChange={(e) => setOtherText(e.target.value)} maxLength={120} className={inputClass} />
+            <textarea id="log-other" value={otherText} onChange={(e) => setOtherText(e.target.value)} maxLength={120} rows={2} className={inputClass} />
           </div>
         )}
         {selected.length > 0 && (
@@ -122,7 +127,7 @@ export function LogForm({ symptomOrder, lastSymptoms, pregnantOrTrying, openUti 
       {error && <p className="text-sm text-rose-600" role="alert">{error}</p>}
 
       {confirmEmpty && (
-        <Card className="border border-maroon/30" data-testid="confirm-empty" role="alertdialog" aria-labelledby="confirm-empty-title">
+        <Card className="border border-maroon/30 outline-none" data-testid="confirm-empty" role="alertdialog" aria-labelledby="confirm-empty-title" ref={confirmRef} tabIndex={-1}>
           <p id="confirm-empty-title" className="font-display text-2xl font-light text-midnight">{copy.log.emptyTitle}</p>
           <p className="text-sm text-slate-700 mt-1 mb-4">{copy.log.emptyBody}</p>
           <div className="flex flex-wrap gap-2">
@@ -134,7 +139,7 @@ export function LogForm({ symptomOrder, lastSymptoms, pregnantOrTrying, openUti 
 
       <div className="fixed inset-x-0 bottom-0 z-30 bg-white/95 px-4 py-3 backdrop-blur" style={{ borderTop: "1px solid rgba(29,0,58,.08)", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))" }}>
         <div className="mx-auto flex max-w-2xl items-center gap-3">
-          {openUti && <Link href={`/portal/passport/episodes/${openUti.id}`} className="shrink-0 text-sm font-semibold text-maroon">{copy.log.openGo}</Link>}
+          {openUti && <Link href={`/portal/passport/episodes/${openUti.id}`} className="shrink-0 text-sm font-semibold text-maroon">{copy.log.openInstead(formatDay(openUti.startedOn).replace(/ \d{4}$/, ""))}</Link>}
           <Button
             className="w-full"
             disabled={pending}

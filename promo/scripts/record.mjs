@@ -97,8 +97,8 @@ const scenes = {
     await page.goto(`${BASE}/portal/passport`, { waitUntil: "load" });
     await wait(1800);
     // Tap a diary face for today, then look at the streak.
-    const faces = page.locator('[data-testid="diary-half"] button');
-    if (await faces.count()) await tap(page, '[data-testid="diary-half"] button:nth-child(5)');
+    const faces = page.locator('[data-testid="feeling-faces"] button');
+    if (await faces.count()) await tap(page, '[data-testid="feeling-faces"] button:nth-child(5)');
     await wait(1600);
     await scrollTo(page, 0.35, 1400);
     await wait(1800);

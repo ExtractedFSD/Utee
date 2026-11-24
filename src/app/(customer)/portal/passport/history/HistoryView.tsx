@@ -6,7 +6,7 @@ import { Button, Card, EmptyState, LinkButton, Pill } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { FEELING_SHADE, episodeOn, feelingLabel, type CalendarCell, type DiaryEntry } from "@/lib/tracker/diary";
 import type { TimelineEvent } from "@/lib/tracker/passport";
-import { formatDay, formatDayShort } from "@/lib/tracker/stats";
+import { formatDay, formatDayShort, formatDayWeekday } from "@/lib/tracker/stats";
 import { DaySheet } from "../components/DaySheet";
 import { SourcePill } from "../components/SourcePill";
 
@@ -92,7 +92,6 @@ export function HistoryView({ initialView, today, utis, events, calendar, entrie
         utis.length === 0 ? <Card><EmptyState title={copy.history.empty} /></Card> : (
           <div className="space-y-4" data-testid="uti-cards">
             {utis.map((u) => <UtiCardView key={u.id} u={u} />)}
-            <p className="text-center text-[13px] text-[#5a4a6e]">{copy.history.cardHint}</p>
           </div>
         )
       )}
@@ -107,13 +106,13 @@ export function HistoryView({ initialView, today, utis, events, calendar, entrie
                   {m.items.map((e, i) => {
                     const inner = (
                       <>
-                        <span className="w-20 shrink-0 text-xs text-[#6b5b80] pt-1">{formatDay(e.on).replace(/ \d{4}$/, "")}</span>
+                        <span className="w-24 shrink-0 text-sm text-[#6b5b80] pt-1">{formatDay(e.on).replace(/ \d{4}$/, "")}</span>
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-2">
                             <Pill tone={TONE[e.kind] ?? "slate"}>{copy.timeline.kinds[e.kind] ?? e.kind}</Pill>
                             <span className="text-sm font-semibold text-midnight">{e.title}</span>
                           </span>
-                          {e.detail && <span className="block text-xs text-[#5a4a6e] mt-0.5">{e.detail}</span>}
+                          {e.detail && <span className="block text-sm text-[#5a4a6e] mt-0.5">{e.detail}</span>}
                         </span>
                       </>
                     );
@@ -138,7 +137,7 @@ export function HistoryView({ initialView, today, utis, events, calendar, entrie
               <p className="text-sm text-[#5a4a6e]">{copy.history.last30Hint}</p>
             </div>
             <Calendar cal={calendar} onPick={(on) => { setAdding(false); setEditing(on); }} />
-            <p className="mt-3 text-[13px] text-[#5a4a6e]">{copy.history.last30Caption}</p>
+            <p className="mt-3 text-sm text-[#5a4a6e]">{copy.history.last30Caption}</p>
           </Card>
           {entries.length === 0 ? <Card><EmptyState title={copy.history.noDiary} /></Card> : groupByMonth(entries, (e) => e.on).map((m) => (
             <section key={m.key} data-testid="diary-month">
@@ -148,9 +147,8 @@ export function HistoryView({ initialView, today, utis, events, calendar, entrie
                   {m.items.map((e) => (
                     <li key={e.on}>
                       <button type="button" onClick={() => { setAdding(false); setEditing(e.on); }} className="flex w-full gap-3 py-3 text-left -mx-2 px-2 rounded-xl hover:bg-pink-25" aria-label={`${formatDayShort(e.on)}, ${copy.diary.editDay}`}>
-                        <span className="w-16 shrink-0">
-                          <span className="block text-sm font-semibold text-midnight">{formatDayShort(e.on).split(",")[0]}</span>
-                          <span className="block text-xs text-[#6b5b80]">{formatDay(e.on).replace(/ \d{4}$/, "")}</span>
+                        <span className="w-24 shrink-0">
+                          <span className="block text-sm font-semibold text-midnight">{formatDayWeekday(e.on)}</span>
                         </span>
                         <span className="min-w-0 flex-1 space-y-1">
                           {e.utiDay && <span className="inline-flex items-center rounded-full bg-peach-50 px-2.5 py-0.5 text-[12px] font-semibold uppercase tracking-[.08em] text-maroon">{copy.diary.utiDay(e.utiDay)}</span>}
@@ -192,7 +190,7 @@ function UtiCardView({ u }: { u: UtiCard }) {
   const open = !u.endedOn;
   const symptoms = u.symptoms.slice(0, 2).join(", ") + (u.symptoms.length > 2 ? ` ${copy.history.more(u.symptoms.length - 2)}` : "");
   const Row = ({ k, children }: { k: string; children: React.ReactNode }) => (
-    <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-2 text-[13px]">
+    <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-2 text-sm">
       <dt className="text-[#5a4a6e]">{k}</dt>
       <dd className="text-midnight">{children}</dd>
     </div>
@@ -225,6 +223,7 @@ function UtiCardView({ u }: { u: UtiCard }) {
             </Row>
           )}
         </dl>
+        <p className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-maroon">{copy.history.open}<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m9 6 6 6-6 6" /></svg></p>
       </Card>
     </Link>
   );
@@ -233,7 +232,7 @@ function UtiCardView({ u }: { u: UtiCard }) {
 function Calendar({ cal, onPick }: { cal: { lead: number; cells: CalendarCell[] }; onPick: (on: string) => void }) {
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1.5 mb-1 text-center text-xs text-[#6b5b80]">
+      <div className="grid grid-cols-7 gap-1.5 mb-1 text-center text-sm text-[#6b5b80]">
         {copy.history.weekdays.map((d, i) => <span key={i}>{d}</span>)}
       </div>
       <div className="grid grid-cols-7 gap-1.5">
@@ -247,15 +246,15 @@ function Calendar({ cal, onPick }: { cal: { lead: number; cells: CalendarCell[] 
               onClick={() => onPick(c.on)}
               title={`${formatDayShort(c.on)}${c.feeling ? `: ${feelingLabel(c.feeling)}` : ""}`}
               aria-label={`${formatDayShort(c.on)}${c.feeling ? `, ${feelingLabel(c.feeling)}` : ", no entry"}${c.today ? ", today" : ""}`}
-              className="flex h-[30px] items-center justify-center rounded-lg text-xs font-semibold"
+              className="flex h-9 items-center justify-center rounded-lg text-xs font-semibold"
               style={{ background: bg, border: c.today ? "2px solid #1d003a" : c.feeling || c.inUti ? "1px solid transparent" : "1px dashed #ffcce5", color: c.feeling && c.feeling <= 3 ? "#fff" : "#1d003a" }}
             >
-              {c.today ? c.dayOfMonth : ""}
+              {c.dayOfMonth}
             </button>
           );
         })}
       </div>
-      <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#6b5b80]" aria-hidden>
+      <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[#6b5b80]" aria-hidden>
         {[1, 2, 3, 4, 5].map((f) => (
           <span key={f} className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-[3px]" style={{ background: FEELING_SHADE[f] }} />{feelingLabel(f)}</span>
         ))}

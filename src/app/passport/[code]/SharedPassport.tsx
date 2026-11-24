@@ -78,7 +78,7 @@ export function SharedPassport({ shared, code, canVerify }: { shared: Shared; co
             </dl>
           )}
           {details.notGiven.length > 0 && <p className={`text-sm text-[#6b5b80] ${details.given.length ? "mt-3" : ""}`}>{sh.notGiven(details.notGiven.join(", "))}</p>}
-          {!canVerify && <p className="mt-3 text-xs text-[#6b5b80]">{sh.verifySignedOut}</p>}
+          {!canVerify && <p className="mt-3 text-sm text-[#6b5b80]">{sh.verifySignedOut}</p>}
         </Card>
 
         <Section title={sh.burden}>
@@ -88,7 +88,7 @@ export function SharedPassport({ shared, code, canVerify }: { shared: Shared; co
             <Stat label={sh.burdenLifetime} value={profile.lifetime_utis === null ? "Not given" : String(profile.lifetime_utis)} small={profile.lifetime_utis === null} />
           </dl>
           <div className="mt-4"><MonthStrip months={t.sum.months} /></div>
-          <p className="mt-3 text-xs text-[#6b5b80]">
+          <p className="mt-3 text-sm text-[#6b5b80]">
             {[firstUtiText(profile) && `First UTI: ${firstUtiText(profile)}`, `${data.episodes.length} UTI${data.episodes.length === 1 ? "" : "s"} logged`, t.sum.averageLengthDays !== null && `average ${t.sum.averageLengthDays} days`].filter(Boolean).join(" · ")}
           </p>
         </Section>
@@ -109,7 +109,7 @@ export function SharedPassport({ shared, code, canVerify }: { shared: Shared; co
                   <li key={h.antibiotic_id + h.name} className="py-3 first:pt-0 last:pb-0">
                     <div className="flex items-start justify-between gap-3">
                       <p className="font-semibold text-midnight">{h.name}{h.allergy ? <span className="ml-2 rounded-full bg-sun px-2 py-0.5 text-[12px] font-semibold text-amber-900">{sh.allergyListed}</span> : null}</p>
-                      <SourcePill source={h.courses ? "patient" : "utee"} />
+                      <SourcePill source={h.courses ? "patient" : "utee"} own={false} />
                     </div>
                     <p className="mt-0.5 text-sm text-[#5a4a6e]">{bits.join(" · ")}</p>
                   </li>
@@ -131,13 +131,13 @@ export function SharedPassport({ shared, code, canVerify }: { shared: Shared; co
                       <div className="min-w-0 flex-1">
                         <p className="text-midnight">
                           <span className="font-semibold">{c.sample_on ? formatDay(c.sample_on) : "Date unknown"}</span> · {cultureLine(c).title}{" "}
-                          <SourcePill source={c.source === "utee" ? "utee" : "patient"} />
+                          <SourcePill source={c.source === "utee" ? "utee" : "patient"} own={false} />
                         </p>
                         {sens && <p className="mt-0.5 text-sm text-[#5a4a6e]">{sens}</p>}
                         {((c.microscopy.white_cells ?? null) !== null || (c.microscopy.red_cells ?? null) !== null) && <p className="text-sm text-[#5a4a6e]">Microscopy: {[(c.microscopy.white_cells ?? null) !== null && `white cells ${c.microscopy.white_cells}`, (c.microscopy.red_cells ?? null) !== null && `red cells ${c.microscopy.red_cells}`].filter(Boolean).join(", ")}</p>}
-                        <p className="text-xs text-[#6b5b80]">{methodLabel(c)}{c.notes ? `. ${c.notes}` : ""}</p>
+                        <p className="text-sm text-[#6b5b80]">{methodLabel(c)}{c.notes ? `. ${c.notes}` : ""}</p>
                       </div>
-                      {c.source !== "utee" && (canVerify ? <VerifyButton code={code} entity="culture" entityId={c.id} verification={v} /> : v ? <SourcePill source="verified" /> : null)}
+                      {c.source !== "utee" && (canVerify ? <VerifyButton code={code} entity="culture" entityId={c.id} verification={v} /> : v ? <SourcePill source="verified" own={false} /> : null)}
                     </div>
                   </li>
                 );
@@ -155,10 +155,10 @@ export function SharedPassport({ shared, code, canVerify }: { shared: Shared; co
                 return (
                   <li key={i.id} className="py-3 first:pt-0 last:pb-0 flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-midnight"><span className="font-semibold">{line.title}</span>{i.performed_on ? ` · ${formatDay(i.performed_on)}` : ""} <SourcePill source="patient" /></p>
+                      <p className="text-midnight"><span className="font-semibold">{line.title}</span>{i.performed_on ? ` · ${formatDay(i.performed_on)}` : ""} <SourcePill source="patient" own={false} /></p>
                       <p className="mt-0.5 text-sm text-[#5a4a6e]">{line.detail || "No detail recorded"}</p>
                     </div>
-                    {canVerify ? <VerifyButton code={code} entity="investigation" entityId={i.id} verification={v} /> : v ? <SourcePill source="verified" /> : null}
+                    {canVerify ? <VerifyButton code={code} entity="investigation" entityId={i.id} verification={v} /> : v ? <SourcePill source="verified" own={false} /> : null}
                   </li>
                 );
               })}
@@ -175,7 +175,7 @@ export function SharedPassport({ shared, code, canVerify }: { shared: Shared; co
                 {t.allergies.map((a) => <p key={a} className="text-sm text-midnight">{a}</p>)}
               </div>
             )}
-            <p className="mt-3"><SourcePill source="patient" /></p>
+            <p className="mt-3"><SourcePill source="patient" own={false} /></p>
           </Section>
         )}
 
@@ -184,14 +184,14 @@ export function SharedPassport({ shared, code, canVerify }: { shared: Shared; co
             <ul className="divide-y divide-pink-50">
               {t.active.map((p) => (
                 <li key={p.id} className="py-2 first:pt-0 last:pb-0 flex items-start justify-between gap-3">
-                  <span className="text-sm text-midnight"><span className="font-semibold">{prophylaxisLine(p)}</span>{p.started_on ? <span className="text-[#5a4a6e]"> · since {formatDay(p.started_on)}</span> : null}</span>
-                  <SourcePill source="patient" />
+                  <span className="text-sm text-midnight"><span className="font-semibold">{prophylaxisLine(p)}</span></span>
+                  <SourcePill source="patient" own={false} />
                 </li>
               ))}
               {t.stopped.map((p) => (
                 <li key={p.id} className="py-2 first:pt-0 last:pb-0 flex items-start justify-between gap-3">
-                  <span className="text-sm text-[#5a4a6e]">{prophylaxisLine(p)} · stopped {formatDay(p.stopped_on)}{p.helping ? ` · patient: helping ${p.helping.replace("_", " ")}` : ""}{p.notes ? `. ${p.notes}` : ""}</span>
-                  <SourcePill source="patient" />
+                  <span className="text-sm text-[#5a4a6e]">{prophylaxisLine(p)}{p.helping === "yes" ? " · patient says it helps" : p.helping === "no" ? " · patient says it did not help" : p.helping ? " · patient is not sure if it helps" : ""}{p.notes ? `. ${p.notes}` : ""}</span>
+                  <SourcePill source="patient" own={false} />
                 </li>
               ))}
             </ul>
@@ -213,10 +213,10 @@ export function SharedPassport({ shared, code, canVerify }: { shared: Shared; co
                   <li key={e.id} className="py-3 first:pt-0 last:pb-0 text-sm">
                     <div className="flex items-start justify-between gap-3">
                       <p className="font-semibold text-midnight">{formatDay(e.started_on)} to {e.ended_on ? formatDay(e.ended_on) : "ongoing"}{e.ended_on ? ` (${episodeLength(e)} day${episodeLength(e) === 1 ? "" : "s"})` : ""}</p>
-                      <SourcePill source="patient" />
+                      <SourcePill source="patient" own={false} />
                     </div>
                     {symptoms.length > 0 && <p className="text-[#5a4a6e]">Symptoms: {symptoms.join(", ").replace(/_/g, " ")}</p>}
-                    {shape && <p className="text-xs text-[#6b5b80]">{shape.replace(/\.$/, "")} (each symptom rated 1 to 10 by the patient, added up per day).</p>}
+                    {shape && <p className="text-sm text-[#6b5b80]">{shape.replace(/\.$/, "")} (each symptom rated 1 to 10 by the patient, added up per day).</p>}
                     {treatments.map((x) => (
                       <p key={x.id} className="text-midnight">{antibioticDisplayName(x.antibiotic_id, x.other_name)}{[x.dose, x.frequency?.replace(/_/g, " "), x.route === "iv" ? "IV" : x.route === "oral" ? "oral" : null, x.days && `${x.days} days`, x.started_on && `from ${formatDay(x.started_on)}`, x.worked && `patient: worked ${x.worked}`, x.reaction && `reaction: ${x.reaction}`].filter(Boolean).map((y) => `, ${y}`).join("")}</p>
                     ))}
@@ -225,7 +225,7 @@ export function SharedPassport({ shared, code, canVerify }: { shared: Shared; co
                       <details className="mt-1">
                         <summary className="cursor-pointer text-xs font-semibold text-maroon">Patient diary ({diary.length} day{diary.length === 1 ? "" : "s"})</summary>
                         <ul className="mt-1 space-y-0.5">
-                          {diary.map((d) => <li key={d.on} className="text-xs text-[#5a4a6e]">Day {d.utiDay ?? "-"}, {formatDay(d.on)}: {[d.feeling && `feeling ${feelingLabel(d.feeling).toLowerCase()}`, d.score !== null && `score ${d.score} (${d.symptoms.filter((x) => x.severity).map((x) => `${x.label.toLowerCase()} ${x.severity}`).join(", ")})`, d.note].filter(Boolean).join("; ")}</li>)}
+                          {diary.map((d) => <li key={d.on} className="text-sm text-[#5a4a6e]">Day {d.utiDay ?? "-"}, {formatDay(d.on)}: {[d.feeling && `feeling ${feelingLabel(d.feeling).toLowerCase()}`, d.score !== null && `score ${d.score} (${d.symptoms.filter((x) => x.severity).map((x) => `${x.label.toLowerCase()} ${x.severity}`).join(", ")})`, d.note].filter(Boolean).join("; ")}</li>)}
                         </ul>
                       </details>
                     )}
@@ -243,7 +243,7 @@ export function SharedPassport({ shared, code, canVerify }: { shared: Shared; co
               <ol className="mt-3 divide-y divide-pink-50">
                 {t.events.slice(0, 80).map((e, i) => (
                   <li key={`${e.kind}-${e.on}-${i}`} className="flex gap-3 py-2 text-sm">
-                    <span className="w-24 shrink-0 pt-0.5 text-xs text-[#6b5b80]">{formatDay(e.on)}</span>
+                    <span className="w-24 shrink-0 pt-0.5 text-sm text-[#6b5b80]">{formatDay(e.on)}</span>
                     <span className="min-w-0 text-[#5a4a6e]"><span className="font-semibold text-midnight">{e.title}</span>{e.detail ? `. ${e.detail}` : ""}</span>
                   </li>
                 ))}

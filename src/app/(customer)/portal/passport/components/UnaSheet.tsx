@@ -80,7 +80,7 @@ export function UnaSheet({ open, onClose, aiAvailable, pregnantOrTrying, activeP
                             <button type="button" onClick={() => openChat(c.id)} className="flex w-full min-h-[56px] items-center justify-between gap-3 px-4 py-3 text-left">
                               <span className="min-w-0">
                                 <span className="block truncate text-sm font-semibold text-midnight">{c.title ?? copy.guided.untitledChat}</span>
-                                <span className="block text-xs text-slate-500">{formatDay(c.updated_at.slice(0, 10))}</span>
+                                <span className="block text-sm text-slate-600">{formatDay(c.updated_at.slice(0, 10))}</span>
                               </span>
                               <span className="shrink-0 text-sm font-semibold text-maroon">{copy.guided.openChat}</span>
                             </button>

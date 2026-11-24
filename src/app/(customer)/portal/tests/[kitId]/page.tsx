@@ -118,7 +118,7 @@ export default async function TestDetailPage({
                 {shipment.direction === "outbound" ? "Delivery to you" : "Return to lab"}
               </CardTitle>
               <p className="text-sm text-slate-600">{shipment.last_event ?? "Awaiting first scan"}</p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-sm text-slate-600 mt-1">
                 Royal Mail · {shipment.tracking_number}
               </p>
               <div className="pt-3">
@@ -127,7 +127,7 @@ export default async function TestDetailPage({
                   target="_blank"
                   className="text-sm font-medium text-brand-600 hover:text-brand-700"
                 >
-                  Track on Royal Mail →
+                  Track on the Royal Mail website (opens in a new tab)
                 </Link>
               </div>
             </Card>

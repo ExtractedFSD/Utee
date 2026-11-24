@@ -60,16 +60,16 @@ export default function StartPage() {
               autoFocus
               className={`${inputClass} text-center font-mono text-lg uppercase tracking-widest placeholder:text-base placeholder:tracking-normal`}
             />
-            <p className="text-xs text-slate-500 mt-1.5">
+            <p className="text-sm text-slate-600 mt-1.5">
               Dashes and capitals don&apos;t matter. {normalizeKitCode(raw) ? `We read that as ${formatKitCode(normalizeKitCode(raw)!)}.` : ""}
             </p>
           </div>
           {error && <p className="text-sm text-rose-600">{error}</p>}
           <Button type="submit" className="w-full">
-            Continue
+            Check my kit code
           </Button>
-          <p className="text-xs text-slate-500 text-center">
-            You&apos;ll be asked to sign in or create an account first, then taken to your questionnaire.
+          <p className="text-sm text-slate-600 text-center">
+            You&apos;ll be asked to sign in or create an account first, then taken to your symptom form.
           </p>
         </form>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Button, Card, CardTitle, Notice, Pill, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { INVESTIGATION_KINDS, investigationKind, investigationLine, type InvestigationRow } from "@/lib/tracker/passport";
@@ -17,14 +17,14 @@ const linkBtn = "min-h-[44px] px-2 text-sm font-semibold text-maroon";
 type Draft = {
   kind: string;
   performed_on: string;
-  normal: "yes" | "no" | "unknown";
+  normal: "yes" | "no" | "unknown" | "";
   findings: Set<string>;
   body_part: string;
   values: Record<string, string>;
   notes: string;
 };
 
-const emptyDraft = (): Draft => ({ kind: "", performed_on: "", normal: "unknown", findings: new Set(), body_part: "", values: {}, notes: "" });
+const emptyDraft = (): Draft => ({ kind: "", performed_on: "", normal: "", findings: new Set(), body_part: "", values: {}, notes: "" });
 
 function draftFrom(row: InvestigationRow): Draft {
   return {
@@ -58,7 +58,7 @@ function toInput(d: Draft): InvestigationInput {
   return {
     kind: d.kind as InvestigationInput["kind"],
     performed_on: d.performed_on,
-    normal: d.normal,
+    normal: (d.normal || "unknown") as "yes" | "no" | "unknown",
     findings: [...d.findings],
     body_part: d.body_part,
     values: d.values,
@@ -89,12 +89,15 @@ export function InvestigationsManager({ rows, unaAi, verifications = [], intro }
     });
   };
 
-  const close = () => { setConfirmRemove(false); setOpen(null); setDraft(emptyDraft()); setDescribe(""); setReadBy(null); setError(null); };
+  const close = () => { setConfirmRemove(false); setFieldErrors({}); setOpen(null); setDraft(emptyDraft()); setDescribe(""); setReadBy(null); setError(null); };
   const startAdd = () => { setNotice(null); setDraft(emptyDraft()); setDescribe(""); setReadBy(null); setOpen("add"); };
   const startEdit = (row: InvestigationRow) => { setNotice(null); setDraft(draftFrom(row)); setDescribe(""); setReadBy(null); setOpen(row.id); };
   const def = draft.kind ? investigationKind(draft.kind) : null;
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ kind?: string; normal?: string }>({});
+  const confirmRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { if (confirmRemove) confirmRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [confirmRemove]);
 
   return (
     <div className="space-y-6">
@@ -130,7 +133,7 @@ export function InvestigationsManager({ rows, unaAi, verifications = [], intro }
           {open === "add" && (
             <div className="rounded-2xl bg-pink-25 p-4">
               <label htmlFor="investigation-describe" className="block text-sm font-semibold text-midnight mb-1">{copy.investigations.describe}</label>
-              <p className="text-xs text-slate-600 mb-2">{copy.investigations.describeHint}</p>
+              <p className="text-sm text-slate-600 mb-2">{copy.investigations.describeHint}</p>
               <textarea id="investigation-describe" value={describe} onChange={(e) => setDescribe(e.target.value)} rows={2} className={`${inputClass} w-full`} maxLength={1000} />
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <Button
@@ -146,25 +149,26 @@ export function InvestigationsManager({ rows, unaAi, verifications = [], intro }
                 >
                   {pending ? "Reading..." : copy.investigations.describeButton}
                 </Button>
-                {readBy && <span className="text-xs text-slate-600">{copy.investigations.reviewHint}{!unaAi || readBy === "local" ? "" : ""}</span>}
+                {readBy && <span className="text-sm text-slate-600">{copy.investigations.reviewHint}{!unaAi || readBy === "local" ? "" : ""}</span>}
               </div>
             </div>
           )}
 
           <div>
             <p className="text-sm font-semibold text-slate-700 mb-2">{copy.investigations.kind}</p>
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={copy.investigations.kind} data-testid="investigation-kind">
+            <div id="investigation-kind" className="flex flex-wrap gap-2" role="radiogroup" aria-label={copy.investigations.kind} aria-describedby={fieldErrors.kind ? "investigation-kind-error" : undefined} data-testid="investigation-kind">
               {INVESTIGATION_KINDS.map((k) => (
-                <Chip key={k.key} selected={draft.kind === k.key} onClick={() => setDraft((d) => ({ ...d, kind: k.key, findings: d.kind === k.key ? d.findings : new Set() }))}>{k.short}</Chip>
+                <Chip key={k.key} selected={draft.kind === k.key} onClick={() => { setFieldErrors((e) => ({ ...e, kind: undefined })); setDraft((d) => ({ ...d, kind: k.key, findings: d.kind === k.key ? d.findings : new Set() })); }}>{k.short}</Chip>
               ))}
             </div>
+            {fieldErrors.kind && <p id="investigation-kind-error" role="alert" className="mt-2 text-sm font-semibold text-rose-700">{fieldErrors.kind}</p>}
           </div>
 
           {def && (
             <>
               <div>
                 <label htmlFor="investigation-date" className="block text-sm font-semibold text-slate-700 mb-1">{copy.investigations.date}</label>
-                <p className="text-xs text-slate-500 mb-2">{copy.investigations.dateHint}</p>
+                <p className="text-sm text-slate-600 mb-2">{copy.investigations.dateHint}</p>
                 <input id="investigation-date" type="date" value={draft.performed_on} max={isoToday()} onChange={(e) => setDraft((d) => ({ ...d, performed_on: e.target.value }))} className={`${inputClass} max-w-xs`} />
               </div>
 
@@ -191,13 +195,14 @@ export function InvestigationsManager({ rows, unaAi, verifications = [], intro }
 
               <div>
                 <p className="text-sm font-semibold text-slate-700 mb-2">{copy.investigations.normal}</p>
-                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={copy.investigations.normal} data-testid="investigation-normal">
+                <div id="investigation-normal" className="flex flex-wrap gap-2" role="radiogroup" aria-label={copy.investigations.normal} aria-describedby={fieldErrors.normal ? "investigation-normal-error" : undefined} data-testid="investigation-normal">
                   {(["yes", "no", "unknown"] as const).map((v) => (
-                    <Chip key={v} selected={draft.normal === v} onClick={() => setDraft((d) => ({ ...d, normal: v }))}>
+                    <Chip key={v} selected={draft.normal === v} onClick={() => { setFieldErrors((e) => ({ ...e, normal: undefined })); setDraft((d) => ({ ...d, normal: v })); }}>
                       {v === "yes" ? copy.investigations.normalYes : v === "no" ? copy.investigations.normalNo : copy.investigations.normalUnknown}
                     </Chip>
                   ))}
                 </div>
+                {fieldErrors.normal && <p id="investigation-normal-error" role="alert" className="mt-2 text-sm font-semibold text-rose-700">{fieldErrors.normal}</p>}
               </div>
 
               {draft.normal === "no" && def.findings.length > 0 && (
@@ -223,8 +228,13 @@ export function InvestigationsManager({ rows, unaAi, verifications = [], intro }
             <Button
               disabled={pending}
               onClick={() => {
-                if (!draft.kind) { setError(copy.investigations.needKind); return; }
-                run(() => (open === "add" ? addInvestigation(toInput(draft)) : updateInvestigation(open!, toInput(draft))), close);
+                const errs: { kind?: string; normal?: string } = {};
+                if (!draft.kind) errs.kind = copy.investigations.needKind;
+                if (draft.kind && !draft.normal) errs.normal = copy.investigations.needNormal;
+                setFieldErrors(errs);
+                if (errs.kind || errs.normal) { document.getElementById(errs.kind ? "investigation-kind" : "investigation-normal")?.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
+                const adding = open === "add";
+                run(() => (adding ? addInvestigation(toInput(draft)) : updateInvestigation(open!, toInput(draft))), () => { close(); if (adding) setNotice(copy.investigations.added); });
               }}
             >
               {copy.investigations.addButton}
@@ -235,7 +245,7 @@ export function InvestigationsManager({ rows, unaAi, verifications = [], intro }
             )}
           </div>
           {open && open !== "add" && confirmRemove && (
-            <div className="rounded-2xl bg-pink-25 p-4" role="alertdialog" aria-label={copy.investigations.removeConfirm} data-testid="confirm-remove">
+            <div ref={confirmRef} className="rounded-2xl bg-pink-25 p-4" role="alertdialog" aria-label={copy.investigations.removeConfirm} data-testid="confirm-remove">
               <p className="text-sm text-midnight mb-3">{copy.investigations.removeConfirm}</p>
               <div className="flex flex-wrap gap-2">
                 <Button variant="danger" disabled={pending} onClick={() => run(() => deleteInvestigation(open), () => { close(); setNotice(copy.investigations.removed); })}>{copy.investigations.remove}</Button>

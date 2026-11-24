@@ -18,7 +18,7 @@ const inv = (over: Partial<InvestigationRow>): InvestigationRow => ({
 
 describe("investigation lines", () => {
   it("reads the way a clinician writes it", () => {
-    expect(investigationLine(inv({ values: { pvr_ml: 30 } }))).toEqual({ title: "USS KUB", detail: "Normal · PVR 30 ml" });
+    expect(investigationLine(inv({ values: { pvr_ml: 30 } }))).toEqual({ title: "Kidney ultrasound (USS KUB)", detail: "Normal · PVR 30 ml" });
     expect(investigationLine(inv({ normal: false, findings: ["stones", "scarring"] })).detail).toBe("Abnormal: stones, kidney scarring");
     expect(investigationLine(inv({ kind: "bloods", values: { egfr: 92, creatinine: 70 } })).detail).toBe("Normal · Creatinine 70 µmol/L · eGFR 92 mL/min");
     expect(investigationLine(inv({ kind: "mri", body_part: "pelvis" })).title).toBe("MRI pelvis");
@@ -78,7 +78,7 @@ describe("prophylaxis lines and glance", () => {
     expect(g.utis12m).toBe(4);
     expect(g.lifetime).toBe(20);
     expect(g.activeProphylaxis).toHaveLength(1);
-    expect(g.lastInvestigation).toEqual({ title: "USS KUB", detail: "Normal · PVR 30 ml", on: "2025-08-12" });
+    expect(g.lastInvestigation).toEqual({ title: "Kidney ultrasound (USS KUB)", detail: "Normal · PVR 30 ml", on: "2025-08-12" });
     expect(g.medicalHistory).toEqual(["Diabetes", "Asthma"]);
     expect(g.allergies).toEqual(["Trimethoprim: rash"]);
   });

@@ -50,6 +50,7 @@ async function openFirstEpisode(page) {
   const link = card.locator("a").first();
   if (await link.count()) await link.click(); else await card.click();
   await page.waitForURL(/episodes\//, { timeout: 15_000 });
+  await page.getByRole("button", { name: /more actions/i }).first().waitFor({ timeout: 20_000 }).catch(() => undefined);
   await wait(800);
 }
 
@@ -92,6 +93,10 @@ const flows = {
     await page.waitForURL(/\/portal\/passport(\?logged=1)?$/, { timeout: 15_000 }).catch(() => undefined);
     await wait(1000);
     await shot("after-save-today");
+    // With the new UTI open, Log a UTI must warn before starting another
+    await page.goto(`${BASE}/portal/passport/log`, { waitUntil: "load" });
+    await wait(800);
+    await shot("log-again-guard");
     await page.goto(`${BASE}/portal/passport/history`, { waitUntil: "load" });
     await wait(800);
     await shot("history-with-new");
@@ -137,14 +142,17 @@ const flows = {
     await page.goto(`${BASE}/portal/passport`, { waitUntil: "load" });
     await wait(900);
     await shot("today");
-    const faces = page.locator('[data-testid="diary-half"] [role="radio"], [data-testid="open-hero"] [role="radio"], [data-testid="feeling-strip"] button');
-    if (await faces.count()) { await faces.nth(2).click(); await wait(1200); }
+    const faces = page.locator('[data-testid="feeling-faces"] [role="radio"]');
+    if (await faces.count()) { await faces.nth(2).click(); await wait(600); }
     await shot("face-tapped");
-    await clickAny(page, [{ role: "button", name: /add a note/i }, { role: "link", name: /add a note/i }]).catch(() => undefined);
+    await clickAny(page, ['[data-testid="feeling-prompt"] button:has-text("Save")']).catch(() => undefined);
+    await wait(1200);
+    await shot("face-saved");
+    await clickAny(page, [{ role: "button", name: /add a note|edit note/i }]).catch(() => undefined);
     await wait(700);
     await shot("note-sheet");
     const ta = page.locator("textarea").first();
-    if (await ta.count()) { await ta.fill(LONG); await wait(300); await shot("note-long"); await clickAny(page, [{ role: "button", name: /^save note/i }, { role: "button", name: /^save/i }]).catch(() => undefined); await wait(1500); }
+    if (await ta.count()) { await ta.fill(LONG); await wait(300); await shot("note-long"); await clickAny(page, ['[data-testid="today-note"] button:has-text("Save")']).catch(() => undefined); await wait(1500); }
     await shot("note-saved");
     await clickAny(page, [{ role: "link", name: /see my diary/i }]).catch(() => undefined);
     await wait(1000);
@@ -163,7 +171,7 @@ const flows = {
     await sheet.getByRole("button", { name: /^save$/i }).click();
     await wait(500);
     await shot("save-empty-error");
-    await sheet.getByText(/i don't know the date/i).click();
+    await sheet.getByRole("checkbox", { name: /i don't know the date/i }).check();
     await sheet.getByRole("button", { name: /^save$/i }).click();
     await wait(500);
     await shot("save-no-outcome-error");
@@ -174,7 +182,7 @@ const flows = {
     await wait(1500);
     await shot("added");
     // Open the new card (it says Edit), then remove it with the confirmation
-    const card = page.locator('[data-testid="cultures-list"] button[aria-label^="Edit"]').first();
+    const card = page.locator('[data-testid="cultures-list"] button[aria-label^="Edit: Date unknown"]').last();
     if (await card.count()) {
       await card.click();
       await wait(600);
@@ -208,7 +216,7 @@ const flows = {
     await sheet.getByRole("button", { name: /^save$/i }).click();
     await wait(1500);
     await shot("added");
-    const card = page.locator('[data-testid="investigations-list"] button[aria-label^="Edit"]').first();
+    const card = page.locator('[data-testid="investigations-list"] button[aria-label^="Edit: Date unknown"]').last();
     if (await card.count()) {
       await card.click();
       await wait(600);

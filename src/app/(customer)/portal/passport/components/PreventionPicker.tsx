@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
-import { ANTIBIOTIC_PREVENTIONS, PREVENTION_GROUPS, PREVENTION_OTHER, searchPreventions } from "@/lib/tracker/prevention";
+import { ANTIBIOTIC_PREVENTIONS, PREVENTION_GROUPS, PREVENTION_OTHER, RETIRED_OPTIONS, searchPreventions } from "@/lib/tracker/prevention";
 import { Chip } from "./Chips";
 import { AntibioticPicker } from "./AntibioticPicker";
 
@@ -44,7 +44,7 @@ export function PreventionPicker({
   return (
     <div className="space-y-5">
       <div>
-        <label className="sr-only" htmlFor="prevention-search">{copy.prevention.searchPlaceholder}</label>
+        <label className="block text-sm font-semibold text-slate-700 mb-1.5" htmlFor="prevention-search">{copy.prevention.searchLabel}</label>
         <input
           id="prevention-search"
           type="search"
@@ -78,7 +78,7 @@ export function PreventionPicker({
       {chosen.length > 0 && !searching && (
         <div className="flex flex-wrap gap-2" data-testid="prevention-chosen">
           {chosen.map((k) => {
-            const o = PREVENTION_GROUPS.flatMap((g) => g.options).find((x) => x.key === k);
+            const o = [...PREVENTION_GROUPS.flatMap((g) => g.options), ...RETIRED_OPTIONS].find((x) => x.key === k);
             return <Chip key={k} selected onClick={() => onToggle(k, false)}>{o?.label ?? k}</Chip>;
           })}
         </div>
@@ -86,7 +86,7 @@ export function PreventionPicker({
 
       {!searching && (
         <details className="group" open={chosen.length === 0}>
-          <summary className="cursor-pointer list-none text-sm font-semibold text-maroon min-h-[44px] inline-flex items-center">{copy.prevention.browse}</summary>
+          <summary className="cursor-pointer list-none text-sm font-semibold text-midnight min-h-[44px] inline-flex items-center gap-1">{copy.prevention.browse}<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="transition-transform group-open:rotate-180"><path d="m5 8 5 5 5-5" /></svg></summary>
           <div className="mt-3 space-y-5">
             {PREVENTION_GROUPS.map((g) => {
               const options = g.options.filter((o) => !hidden.has(o.key));
@@ -120,7 +120,7 @@ export function PreventionPicker({
           <AntibioticPicker value={antibioticId} otherName={antibioticOther} onChange={onAntibiotic} />
         </div>
       )}
-      <p className="text-xs text-slate-500">{copy.prevention.groupNote}</p>
+      <p className="text-sm text-slate-600">{copy.prevention.groupNote}</p>
     </div>
   );
 }

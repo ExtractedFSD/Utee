@@ -16,6 +16,7 @@ export function Card({
 }: {
   children: React.ReactNode;
   className?: string;
+  ref?: React.Ref<HTMLDivElement>;
 } & Omit<React.HTMLAttributes<HTMLDivElement>, "className" | "children">) {
   return (
     <div {...rest} className={`bg-white rounded-card shadow-card p-6 ${className}`}>

@@ -100,7 +100,7 @@ const config: Config = {
         sticker: "inset 0 2px 6px rgba(255,255,255,.5), 0 8px 20px rgba(145,25,59,.35)",
       },
       backgroundImage: {
-        "gradient-brand": "linear-gradient(135deg,#f490c0 0%,#962043 100%)",
+        "gradient-brand": "linear-gradient(135deg,#c0507a 0%,#962043 100%)",
         "gradient-brand-soft": "linear-gradient(180deg,#fe98cb 0%,#c0507a 100%)",
       },
     },

@@ -16,7 +16,7 @@ export function PassportCard({ glance, brandNew }: { glance: PassportGlance; bra
       <Card data-testid="passport-card">
         <div className="text-center">
           <CardTitle>{copy.passport.title}</CardTitle>
-          <p className="mx-auto max-w-sm text-[13px] text-[#5a4a6e] -mt-2 mb-4">{copy.dashboard.glanceEmpty}</p>
+          <p className="mx-auto max-w-sm text-sm text-[#5a4a6e] -mt-2 mb-4">{copy.dashboard.glanceEmpty}</p>
           <LinkButton href="/portal/passport/log" variant="secondary">{copy.dashboard.logPastUti}</LinkButton>
         </div>
       </Card>
@@ -51,7 +51,7 @@ export function PassportCard({ glance, brandNew }: { glance: PassportGlance; bra
           <dd className="text-right">
             {glance.lastInvestigation ? (
               <Link href="/portal/passport/record?tab=investigations" className="font-semibold text-midnight">
-                {glance.lastInvestigation.title} · {formatDay(glance.lastInvestigation.on).replace(/ \d{4}$/, "")}
+                {glance.lastInvestigation.title} · {formatDay(glance.lastInvestigation.on)}
               </Link>
             ) : (
               <Link href="/portal/passport/record?tab=investigations" className={add}>{copy.dashboard.add}</Link>
@@ -77,7 +77,7 @@ export function PassportCard({ glance, brandNew }: { glance: PassportGlance; bra
 function Stat({ label, value, href }: { label: string; value: string | null; href?: string }) {
   const body = (
     <>
-      <dt className="text-xs text-[#5a4a6e]">{label}</dt>
+      <dt className="text-sm text-[#5a4a6e]">{label}</dt>
       {value === null ? (
         <dd className="pt-2 text-sm font-semibold text-maroon">{copy.dashboard.add}</dd>
       ) : (

@@ -187,6 +187,12 @@ export function askDateFor(startedOn: string | null | undefined, days: number | 
   return new Date(toDate(startedOn).getTime() + days * DAY).toISOString().slice(0, 10);
 }
 
+/** "Tue 24 November": the weekday helps in a diary, the month is spelled out. */
+export function formatDayWeekday(iso: string | null | undefined): string {
+  if (!iso) return "-";
+  return toDate(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long", timeZone: "UTC" });
+}
+
 export function formatDayShort(iso: string | null | undefined): string {
   if (!iso) return "-";
   return toDate(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });

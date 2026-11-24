@@ -65,9 +65,12 @@ export function expiresAtFor(days: number, from = new Date()): string {
   return new Date(from.getTime() + d * 86_400_000).toISOString();
 }
 
-/** "Valid until Tue 3 Nov, 14:05" */
+/** "Valid until 3 November 2026, 2:05pm", the same date and time form as the rest of the app. */
 export function formatUntil(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/London" });
+  const [h, m] = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/London" }).split(":").map(Number);
+  return `${date}, ${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")}${h < 12 ? "am" : "pm"}`;
 }
 
 /** "Expires in 23 hours", "in 41 days", "in 12 minutes". Null once passed. */

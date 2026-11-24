@@ -35,7 +35,7 @@ export function EnterCode({ notFound }: { notFound: boolean }) {
       </div>
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <Button type="submit" className="w-full">{copy.shared.enterButton}</Button>
-      <p className="text-xs text-[#5a4a6e]">{copy.shared.scanHint}</p>
+      <p className="text-sm text-[#5a4a6e]">{copy.shared.scanHint}</p>
     </form>
   );
 }

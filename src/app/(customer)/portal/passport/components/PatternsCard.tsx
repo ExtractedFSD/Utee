@@ -30,7 +30,7 @@ export function PatternsCard({ p }: { p: Patterns }) {
 function Bars({ title, rows, tone, track }: { title: string; rows: { label: string; value: number; max: number; text: string }[]; tone: string; track: string }) {
   return (
     <div>
-      <p className="text-xs text-[#5a4a6e] mb-2">{title}</p>
+      <p className="text-sm text-[#5a4a6e] mb-2">{title}</p>
       <ul className="space-y-2.5">
         {rows.map((r) => {
           const pct = r.max ? Math.round((r.value / r.max) * 100) : 0;

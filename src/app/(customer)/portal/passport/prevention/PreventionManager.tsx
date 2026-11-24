@@ -79,9 +79,9 @@ export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intr
                       {g && <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[12px] font-semibold uppercase tracking-[.08em] ${TONE[g.key] ?? TONE.other}`}>{g.label}</span>}
                     </span>
                     <span className="mt-0.5 block text-sm text-[#5a4a6e]">
-                      {[r.started_on && copy.prevention.sinceShort(formatDay(r.started_on).replace(/ \d{4}$/, "")), helping === "yes" ? copy.prevention.helpsTick : helping ? `${copy.prevention.helping} ${HELPING.find((h) => h.key === helping)?.label.toLowerCase()}` : null].filter(Boolean).join(" · ")}
+                      {[r.started_on && copy.prevention.sinceShort(formatDay(r.started_on)), helping === "yes" ? copy.prevention.helpsTick : helping === "no" ? copy.prevention.helpsNo : helping ? copy.prevention.helpsNotSure : null].filter(Boolean).join(" · ")}
                       {!helping && (r.started_on ? " · " : "")}
-                      {!helping && <span className="font-semibold text-maroon">{copy.prevention.notRated}</span>}
+                      {!helping && <span>{copy.prevention.notRated}</span>}
                     </span>
                   </button>
                   <button type="button" className={linkBtn} onClick={() => openRow(r.id)}>{copy.prevention.edit}</button>
@@ -145,7 +145,7 @@ export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intr
                 {PREVENTION_DETAIL[open.option_key].dose && (
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1" htmlFor="prevention-dose">{copy.prevention.dose}</label>
-                    <p className="text-xs text-slate-500 mb-2">{copy.prevention.doseHint}</p>
+                    <p className="text-sm text-slate-600 mb-2">{copy.prevention.doseHint}</p>
                     <input id="prevention-dose" defaultValue={open.dose ?? ""} maxLength={60} className={`${inputClass} max-w-xs`} onBlur={(e) => { if ((e.target.value.trim() || null) !== (open.dose ?? null)) run(() => updatePrevention(open.id, { dose: e.target.value })); }} />
                   </div>
                 )}
@@ -174,12 +174,12 @@ export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intr
                     </div>
                   </div>
                 )}
-                <p className="text-xs text-slate-600">{prophylaxisLine(open)}</p>
+                <p className="text-sm text-slate-600">{prophylaxisLine(open)}</p>
               </div>
             )}
             <div>
               <p className="text-sm font-semibold text-slate-700 mb-1">{copy.prevention.helping}</p>
-              <p className="text-xs text-slate-500 mb-2">{copy.prevention.helpingHint}</p>
+              <p className="text-sm text-slate-600 mb-2">{copy.prevention.helpingHint}</p>
               <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={copy.prevention.helping}>
                 {HELPING.map((h) => (
                   <Chip key={h.key} selected={helpingNow[open.id] === h.key} onClick={() => run(() => updatePrevention(open.id, { helping: h.key }), () => setHelpingNow({ id: open.id, helping: h.key }))}>{h.label}</Chip>
@@ -204,7 +204,7 @@ export function PreventionManager({ rows, intro }: { rows: PreventionRow[]; intr
               <div className="rounded-2xl bg-pink-25 p-4" role="alertdialog" aria-label={copy.prevention.removeConfirm(preventionName(open))} data-testid="confirm-remove">
                 <p className="text-sm text-midnight mb-3">{copy.prevention.removeConfirm(preventionName(open))}</p>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="danger" disabled={pending} onClick={() => run(() => deletePrevention(open.id), undefined, () => { setOpenId(null); setNotice(copy.prevention.removed); })}>{copy.prevention.remove}</Button>
+                  <Button variant="danger" disabled={pending} onClick={() => run(() => deletePrevention(open.id), undefined, () => { setOpenId(null); setNotice(copy.prevention.removed(preventionName(open))); })}>{copy.prevention.remove}</Button>
                   <Button variant="secondary" onClick={() => setConfirmRemove(false)}>{copy.episode.cancel}</Button>
                 </div>
               </div>
