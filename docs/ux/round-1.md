@@ -90,4 +90,6 @@ Upper-case tracked button labels (brand rule versus readability); the streak lin
 
 ## Verification
 
-Each fix is checked on the branch's preview deployment at 390px and 1440px with fresh screenshots before being marked done; results are recorded in round 2's log and the reviewer is given the new screenshots cold.
+Each fix is checked in a browser at 390px and 1440px with fresh screenshots before being marked done; results are recorded in round 2's log and the reviewer is given the new screenshots cold.
+
+Status, 24 November: items 1 to 33 are implemented on the branch (commit e181102), type-check, unit tests, copy check and production build pass. **None is marked done yet.** The branch's preview deployment is behind Vercel's SSO protection, so the screenshot harness cannot reach it from this environment, and a local run is not possible without the service-role key. Round 2 starts as soon as the branch can be viewed in a browser (see the note to Dan).
