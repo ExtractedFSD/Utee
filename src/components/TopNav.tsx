@@ -13,14 +13,15 @@ export function TopNav({ nav }: { nav: NavItem[] }) {
   const pathname = usePathname() ?? "";
   const flat = nav.flatMap((item) => ("items" in item ? item.items : [item]));
   const activeHref = [...flat].sort((a, b) => b.href.length - a.href.length).find((i) => (i.href === "/portal" || i.href === "/" ? pathname === i.href : pathname.startsWith(i.href)))?.href;
-  const base = "whitespace-nowrap rounded-full px-3.5 py-1.5 text-eyebrow uppercase transition-colors border-b-2";
-  const link = (href: string) => `${base} ${href === activeHref ? "text-white border-white" : "text-white/90 border-transparent hover:bg-white/15 hover:text-white"}`;
+  // A straight underline marks the current section; no pill shape, so the line stays flat.
+  const base = "whitespace-nowrap px-3.5 py-2 text-eyebrow uppercase transition-colors border-b-2";
+  const link = (href: string) => `${base} ${href === activeHref ? "text-white border-white" : "text-white/90 border-transparent hover:text-white"}`;
   return (
     <nav className="hidden md:flex items-center gap-1" aria-label="Sections">
       {nav.map((item) =>
         "items" in item ? (
           <details key={item.label} className="relative group">
-            <summary className={`${base} ${item.items.some((s) => s.href === activeHref) ? "text-white border-white" : "text-white/90 border-transparent hover:bg-white/15"} list-none cursor-pointer select-none flex items-center gap-1 [&::-webkit-details-marker]:hidden`}>
+            <summary className={`${base} ${item.items.some((s) => s.href === activeHref) ? "text-white border-white" : "text-white/90 border-transparent hover:text-white"} list-none cursor-pointer select-none flex items-center gap-1 [&::-webkit-details-marker]:hidden`}>
               {item.label}
               <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="transition-transform group-open:rotate-180"><path d="m5 8 5 5 5-5" /></svg>
             </summary>
