@@ -62,7 +62,7 @@ export function DaySheet({ date, pickDate, today, entry, episode, symptomOrder, 
             />
             {selected.size > 0 && (
               <div className="mt-4 space-y-3">
-                <p className="text-xs text-slate-500">{copy.episode.severityHint}</p>
+                <p className="text-sm text-slate-600">{copy.episode.severityHint}</p>
                 {options.filter((o) => selected.has(o.key)).map((o) => (
                   <SeverityScale
                     key={o.key}

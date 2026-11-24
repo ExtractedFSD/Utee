@@ -8,7 +8,7 @@ export default async function TrackerSettingsPage() {
   const ctx = await trackerContext();
   if (!ctx.consents.tracker) redirect("/portal/passport/consent");
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <PageHeader eyebrow="UTI Passport" title={copy.settings.title} breadcrumb={<Breadcrumb href="/portal/passport" label={copy.nav.today} />} />
       <SettingsPanel
         consents={ctx.consents}

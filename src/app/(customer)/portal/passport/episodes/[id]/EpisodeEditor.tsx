@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
-import { Button, Card, StatusBadge, inputClass } from "@/components/ui";
+import { Button, Card, Notice, StatusBadge, inputClass } from "@/components/ui";
 import { copy } from "@/lib/tracker/copy";
 import { COURSE_DAYS, COURSE_TYPES, SOURCES, SYMPTOMS, TEST_KINDS, TEST_RESULTS, TRIGGERS, WORKED, labelFor } from "@/lib/tracker/options";
 import { FREQUENCIES, ROUTES } from "@/lib/tracker/passport";
@@ -54,6 +54,7 @@ export function EpisodeEditor({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [dateSheet, setDateSheet] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [endedNotice, setEndedNotice] = useState<string | null>(null);
   const [endedOn, setEndedOn] = useState(isoToday());
   const [symptomOther, setSymptomOther] = useState(todaySymptoms.find((s) => s.key === "other")?.other ?? otherSymptomText ?? "");
   const [triggerOther, setTriggerOther] = useState(triggers.find((t) => t.key === "other")?.other ?? "");
@@ -90,7 +91,7 @@ export function EpisodeEditor({
   const flag = redFlagFor(symptomSet, pregnantOrTrying);
   const orderOptions = (list: { key: string; label: string }[], order: string[]) => order.map((k) => list.find((o) => o.key === k)!).filter(Boolean);
   const means = dayMeans(scores);
-  const title = open ? copy.episode.titleOpen(formatDay(episode.started_on)) : rangeText(episode.started_on, episode.ended_on!);
+  const title = open ? copy.episode.titleOpen(formatDay(episode.started_on)) : copy.episode.titleEnded(rangeText(episode.started_on, episode.ended_on!));
   const unrated = treatments.filter((t) => !t.worked);
   const onThisUti = treatments.map((t) => t.antibiotic_id);
 
@@ -119,9 +120,10 @@ export function EpisodeEditor({
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((m) => !m)}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-midnight/15 bg-white text-midnight hover:bg-pink-25"
+              className="flex h-11 items-center justify-center gap-1.5 rounded-full border border-midnight/15 bg-white px-3.5 text-sm font-semibold text-midnight hover:bg-pink-25"
             >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
+              {copy.episode.more}
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
             </button>
             {menuOpen && (
               <div role="menu" className="absolute right-0 top-12 z-30 min-w-[220px] rounded-2xl bg-white p-2 shadow-card">
@@ -132,6 +134,7 @@ export function EpisodeEditor({
           </div>
         </div>
         {error && <p className="text-sm text-rose-600 mt-2">{error}</p>}
+        {endedNotice && <div className="mt-3" role="status" data-testid="ended-notice"><Notice tone="mint">{endedNotice}</Notice></div>}
       </div>
 
       {open && flag.show && <RedFlagBanner flag={flag} />}
@@ -162,7 +165,7 @@ export function EpisodeEditor({
               </div>
             </div>
           ))}
-          <Button disabled={pending} onClick={() => run(async () => { const r = await updateEpisode(episode.id, { endedOn }); if (!(r as { error?: string }).error) setClosing(false); return r; })}>{copy.log.save}</Button>
+          <Button disabled={pending} onClick={() => run(async () => { const r = await updateEpisode(episode.id, { endedOn }); if (!(r as { error?: string }).error) { setClosing(false); setEndedNotice(copy.episode.endedNotice(formatDay(endedOn))); } return r; })}>{copy.log.save}</Button>
         </div>
       </Sheet>
 
@@ -218,7 +221,7 @@ export function EpisodeEditor({
           <SummaryRow
             label={copy.episode.rows.notes}
             lines={episode.notes ? [episode.notes.split("\n")[0]] : []}
-            emptyLabel={copy.episode.none}
+            emptyLabel={copy.episode.noneRecorded}
             isOpen={openRow === "notes"}
             onOpen={() => setOpenRow("notes")}
           />
@@ -287,7 +290,7 @@ function SummaryRow({ label, lines, emptyLabel, isOpen, onOpen }: { label: strin
     <li>
       <button type="button" onClick={onOpen} aria-expanded={isOpen} className="flex w-full min-h-[56px] items-center justify-between gap-4 py-3 text-left">
         <span className="min-w-0">
-          <span className="block text-xs text-[#5a4a6e]">{label}</span>
+          <span className="block text-sm text-[#5a4a6e]">{label}</span>
           {isOpen ? (
             <span className="block text-sm text-[#6b5b80]">{copy.episode.editing}</span>
           ) : has ? (
@@ -334,10 +337,10 @@ function TreatmentSection({ episodeId, today, treatments, previous, onThisUti, l
               <li key={t.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-midnight">{antibioticDisplayName(t.antibiotic_id, t.other_name)}</p>
-                  <p className="text-xs text-slate-600">
+                  <p className="text-sm text-slate-600">
                     {[t.days && `${t.days} day${t.days === 1 ? "" : "s"}`, t.started_on && `from ${formatDay(t.started_on)}`, t.course_type && t.course_type !== "treatment" ? labelFor(COURSE_TYPES, t.course_type) : "", labelFor(SOURCES, t.source)].filter(Boolean).join(" · ")}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-sm text-slate-600 mt-0.5">
                     {t.worked ? `${copy.log.didItWork} ${labelFor(WORKED, t.worked)}` : ask && ask > today ? copy.episode.willAskOn(formatDayShort(ask)) : ask ? copy.episode.askToday : copy.episode.willAskOnClose}
                   </p>
                 </div>
@@ -378,7 +381,7 @@ function TreatmentForm({ initial, previous, exclude, lastSource, pending, onCanc
           <DateChips label="Started" value={startedOn} onChange={setStartedOn} />
           <div>
             <p className="text-sm font-semibold text-slate-700 mb-1">Course length</p>
-            <p className="text-xs text-slate-500 mb-2">{copy.log.courseHint}</p>
+            <p className="text-sm text-slate-600 mb-2">{copy.log.courseHint}</p>
             <div className="flex flex-wrap gap-2">
               {COURSE_DAYS.map((d) => <Chip key={d} selected={days === d && !customDays} onClick={() => { setDays(d); setCustomDays(""); }}>{d} day{d === 1 ? "" : "s"}</Chip>)}
               <Chip selected={!!customDays} onClick={() => { setCustomDays("10"); setDays(10); }}>Other</Chip>
@@ -395,7 +398,7 @@ function TreatmentForm({ initial, previous, exclude, lastSource, pending, onCanc
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label htmlFor="treatment-dose" className="block text-sm font-semibold text-slate-700 mb-1">{copy.treatmentDetail.dose}</label>
-                  <p className="text-xs text-slate-500 mb-2">{copy.treatmentDetail.doseHint}</p>
+                  <p className="text-sm text-slate-600 mb-2">{copy.treatmentDetail.doseHint}</p>
                   <input id="treatment-dose" value={dose} onChange={(e) => setDose(e.target.value)} className={inputClass} maxLength={60} />
                 </div>
                 <div>
@@ -409,7 +412,7 @@ function TreatmentForm({ initial, previous, exclude, lastSource, pending, onCanc
               </div>
               <div>
                 <label htmlFor="treatment-reaction" className="block text-sm font-semibold text-slate-700 mb-1">{copy.treatmentDetail.reaction}</label>
-                <p className="text-xs text-slate-500 mb-2">{copy.treatmentDetail.reactionHint}</p>
+                <p className="text-sm text-slate-600 mb-2">{copy.treatmentDetail.reactionHint}</p>
                 <input id="treatment-reaction" value={reaction} onChange={(e) => setReaction(e.target.value)} className={inputClass} maxLength={300} placeholder="For example rash, nausea, none" />
               </div>
             </div>
@@ -465,7 +468,7 @@ function TestSection({ episodeId, tests, kits, pending, run }: { episodeId: stri
             <li key={t.id} className="flex items-center justify-between gap-3 py-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-midnight">{labelFor(TEST_KINDS, t.kind)}{t.kitCode ? ` ${t.kitCode}` : ""}</p>
-                <p className="text-xs text-slate-600 flex flex-wrap items-center gap-2">
+                <p className="text-sm text-slate-600 flex flex-wrap items-center gap-2">
                   {t.kit_id ? (
                     <>
                       <span>{copy.log.uteeTestLinked}</span>

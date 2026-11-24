@@ -50,8 +50,75 @@ The desktop log flow also stalled on first run because the UTI page took longer 
 
 ## Scores (fresh reviewers)
 
-(to be filled when the three reviews are in)
+| Heading | Phone | Desktop static | Desktop flows | Round 2 | Round 1 |
+|---|---|---|---|---|---|
+| 1. Navigation and findability | 7 | 6 | 6 | **6** | 5 |
+| 2. Clarity of wording | 6 | 6 | 7 | **6** | 6 |
+| 3. Mobile layout | 7 | (n/a) | (n/a) | **7** | 6 |
+| 4. Desktop layout | (n/a) | 6 | 7 | **6.5** | 5 |
+| 5. Forms and data entry | 6 | 7 | 5 | **6** | 4 |
+| 6. Feedback and states | 5 | 5 | 5 | **5** | 4 |
+| 7. First-time experience | 5 | 6 | 6 | **6** | 5 |
+| 8. Accessibility | 6 | 5 | 6 | **6** | 5 |
+| 9. Trust and tone | 7 | 6 | 7 | **7** | 6 |
+| 10. Consistency | 6 | 5 | 5 | **5** | 5 |
+
+Round score is the mean of the reviewers who could judge the heading, rounded (6.5 kept as is). Every heading held or rose; the three weakest are now Feedback and states, Consistency, and the two 6s for wording and navigation. 344 problems were listed (136 phone, 99 desktop static, 109 desktop flows); most are repeats of the same root cause seen on several screens.
+
+## Hand checks on the reviewers' criticals and majors
+
+| Claim | Result | Status |
+|---|---|---|
+| After withdrawing consent the page is empty (phone 115, critical) | Confirmed from the capture: the Settings page redirects to the consent page after the switch, and for about a second shows nothing but the top bar and footer; the consent page then arrives with no message that the Passport was closed. | Major. Fix below. |
+| Submitting consent unticked shows nothing (all three) | Confirmed: the server action returns an error but the capture 600ms later shows no change; the only check is on the server. | Major. Fix below. |
+| "Normal" is pre-selected on a new investigation and reaches the clinician's view (desktop flows 53, critical) | Confirmed. The draft starts with "Not sure" as the stored value but the chip row shows "Normal" selected in the capture because the chip for "Not sure" and the default are not the same thing; either way a finding is recorded without a choice. | Major. Fix below. |
+| Deleted results stay in the list; no Remove control on the result sheet (desktop flows 49, phone 72) | Harness artefact: the sheet scrolls and Remove is below the fold at 1440px; the phone capture shows it. The removal itself works (see the incident above). The confirmation panel is cut off inside the dialog (desktop flows 56) is real. | Minor, with one fix: scroll the confirmation into view. |
+| Note saved twice in the diary (phone 27) | The harness's test note is itself the same paragraph twice. Not a bug. | Not a bug. |
+| "Saved ✓" shown with unsaved text, Save note looks disabled (desktop flows 26, 27) | At 1440px the harness's typing blurred the box, which auto-saved before the capture; the phone capture shows the button enabled while typing and disabled once saved. The indicator does not say "not saved yet" while typing. | Minor. Fix below. |
+| Re-consenting sends a user with a full record back through guided setup (all three) | Confirmed in code: the consent action always redirects to setup. | Major. Fix below. |
+| Raw keys "water", "pee_after_sex" on About you step 1 (phone 56) | Confirmed in the capture. The picker shows a chosen option's label only when it is in the list it was given; habits are not. | Major. Fix below. |
+| White nav labels on the light end of the header gradient under 4.5:1 (desktop static 4) | Measured: white on the gradient's light end #f490c0 is 2.2:1; on the hero's light end the same. The brand gradient's dark end #962043 is 8.1:1. | Major. Fix below (gradient light end moved to #c0507a, 4.5:1), flagged for Dan. |
+| Nothing recorded for medical history while an allergy is listed (both desktop) | Confirmed: the brief counts conditions only. | Minor wording fix below. |
 
 ## Issues to fix this round
 
-(to be filled)
+Numbering continues from round 1. Root causes first.
+
+### Major
+
+34. Consent flow: empty submit says nothing; withdrawal lands on a blank then an unexplained consent page; re-consent goes to guided setup [6.4, 6.8, 7.10]. Fix: client-side check with the error under the tick box, 24px boxes, a "Your UTI Passport is closed. Your entries are stored." notice on the consent page after withdrawal, a way back to the portal, and re-consent returning to Today when a record exists.
+35. Investigation "Was it normal?" must be chosen, not defaulted [5.6, 9.4]. Fix: no selection until the person taps; error under the question.
+36. Errors sit at the foot of the sheet, one at a time, with no mark on the field [6.4, 6.5]. Fix: all fields checked on one tap, each message under its own field with a red border, the first scrolled into view (results, investigations, share, consent).
+37. Adding gives no confirmation while removing does [6.8, 10.1]. Fix: "Result added.", "Scan or blood test added.", "Vitamin C added.", "Share code created for My GP." and named removal banners.
+38. "PATIENT" pill on the patient's own screens [9.11]. Fix: "You" in the portal, "Patient" only in the clinician's view.
+39. Investigation and lab terms without plain words: "USS KUB", "Cystoscopy", "Laparoscopy", "CT abdomen and pelvis" [2.2, 2.9]. Fix: plain words first in chip labels and card titles, the clinical term in brackets.
+40. Header and hero text on the light end of the gradient fails contrast [8.1]. Fix: gradient light end moved from #f490c0 to #c0507a (white 4.5:1); flagged in decisions.
+41. History UTI cards and timeline rows do not look tappable; "Tap a UTI to open it." [1.6, 1.8, 4.10]. Fix: "Open" with a chevron on each card, hint removed.
+42. Episode page: title is only a date, actions hidden behind an icon-only button [1.1, 8.10]. Fix: "UTI from 23 November 2026"; the menu button gains the visible word "More"; "Delete this UTI" as the confirm label; "UTI ended" notice.
+43. Day by day: dates printed twice, no day numbers in the grid [10.4, 8.3]. Fix: one date line per row; day number in every cell.
+44. About you step 1 shows raw keys for habits [2.9]. Fix: show labels.
+45. Three content widths across the Passport [4.4, 10.6]. Fix: Record, Share, Log, Settings and Setup widen to the History width.
+46. Remove confirmation cut off inside the dialog [6.9, 4.9]. Fix: scroll it into view when it opens.
+47. Top bar never marks the current section on desktop [1.4]. Fix: underline and aria-current on the active tab.
+48. Settings highlights "Today" in the pill row [1.1]. Fix: no active pill on Settings.
+
+### Minor (done this round where cheap)
+
+49. Dates without a year: "since 22 January", "USS KUB · 11 May"; "Nov · 2" tile unexplained; "Tue 24 Nov" eyebrow; "valid until Tue 1 Dec, 12:56" [10.4]. Fix: year everywhere, legend line for the count, long form on the two leftovers (done before this round's reviews).
+50. Wording: "Details" to "This UTI", "Manage" to "Edit what I'm taking", "Go back" to "Add symptoms first", "Yes, delete it" to "Delete this UTI", "Tap to rate" to "Rate it (optional)", legend "Clear" to "No UTI", "They cannot change anything" to "The clinician cannot change anything", "FHIR" to "Download for health systems (FHIR)", "Continue" on the kit code page to "Check my kit code", "Removed." to "Vitamin C removed.", "Is it helping? not sure" to "not sure if it helps", "Notes None" to "None recorded", "Nothing recorded for: medical history" to "conditions or operations", "patient: helping no" to "patient says it did not help", "Episodes, past 6 months" to "UTIs in the past 6 months", "Worse (-2)" to "worse", "dispatched" to "sent".
+51. Share: empty state with the next step; expiry as a date and time; consent sentence split in three; visible "Remove this code" next to the menu; "Share code created" banner.
+52. Log form: the empty-save question scrolls into view and takes focus; "Same as last time" on its own line; the Other box is a full-width two-line field; long custom names do not squash the rating heading; the sticky bar's link says which UTI.
+53. Today: "See my diary" in the open hero; faces no wider than 480px on desktop; "Not saved yet" while the note differs from the saved one; a bigger note box.
+54. Sign in and kit code: hints above the fields; links to "I have a kit code" and "I'm a clinician with a share code"; red border on the kit code field.
+55. Settings: one Cancel in the switch-off sheet; "Saved" after a toggle; "Choose a format and download".
+56. Taking: visible search label; "Or browse the list" as a plain heading; "not rated yet" as plain text; "(optional)" on the start date; "Add a scan or blood test" on the Investigations tab.
+57. Una: "feeling fine, no symptoms" with no open UTI gets a reply that points to the diary instead of asking about a new UTI; the didn't-catch reply gives an example.
+58. Text under 14px raised to 14px for hints, legends and footnotes across the Passport.
+
+### Noted, not changed (see `decisions-for-dan.md`)
+
+Pre-selected answers ("Today", "Still going", "Standard culture", "7 days"); "Save" versus saves-as-you-go on the Taking sheet; upper-case tracked buttons; the streak line; the shop line on Today and the promotional cards on the portal home; the consent paragraphs (legal text); generic antibiotic names in lower case; Una saving a "no symptoms" check-in to the diary; day, month and year text boxes instead of the native date picker; a public help or privacy link (needs the address and the privacy page URL).
+
+## Verification
+
+Each fix is checked on production after merge at 390px and 1440px with fresh screenshots; results are recorded in round 3's log and the reviewers are given the new screenshots cold.

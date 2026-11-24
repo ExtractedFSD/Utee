@@ -597,7 +597,7 @@ export function GuidedChat({ mode, aiAvailable, pregnantOrTrying, activePreventi
         const aboutOpen = !utis.length && (ex.ended !== null || ex.mentioned) && (ex.ended !== null || ex.symptoms_today.length || ex.triggers.length || ex.feeling !== null || ex.note || ex.treatments.length || ex.tests.length || ex.mentioned);
         if (aboutOpen) {
           const open = openNow()[0];
-          if (!open) { say(ex.ended ? copy.guided.close.noOpen : copy.guided.update.noOpen); return; }
+          if (!open) { say(ex.ended ? copy.guided.close.noOpen : /\b(no symptoms|symptom[- ]free|feel(ing)? (fine|ok|okay|good|great|well|better|normal))\b/.test(lower) ? copy.guided.noOpenFine : copy.guided.update.noOpen); return; }
           if (ex.ended) startClosing(open, ex.ended_on);
           else startUpdating(open, ex);
           if (changes) setPendingTaking(changes);

@@ -20,8 +20,8 @@ import { checkinStreak } from "@/lib/tracker/diary";
  * the order is hero, At a glance, What I'm taking, Last 12 months, My
  * patterns; on wide screens the cards sit in two columns.
  */
-export default async function TodayPage({ searchParams }: { searchParams: Promise<{ logged?: string }> }) {
-  const { logged } = await searchParams;
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ logged?: string; reopened?: string }> }) {
+  const { logged, reopened } = await searchParams;
   const { supabase, user, profile } = await requireTracker();
   const [data, kits] = await Promise.all([loadAllWithUtee(supabase, user.id), ownKits(supabase)]);
   const today = isoToday();
@@ -71,6 +71,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       } />
 
       {logged && <div role="status" data-testid="logged-notice"><Notice tone="mint">{copy.log.logged}</Notice></div>}
+      {reopened && <div role="status"><Notice tone="mint">{copy.consent.reopened}</Notice></div>}
 
       <TodayHero state={state} pregnantOrTrying={profile.pregnant_or_trying} />
 
@@ -93,7 +94,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
               ) : (
                 <div className="text-center">
                   <CardTitle>{copy.dashboard.prevention}</CardTitle>
-                  <p className="mx-auto max-w-sm text-[13px] text-[#5a4a6e] -mt-2 mb-4">{copy.dashboard.takingEmpty}</p>
+                  <p className="mx-auto max-w-sm text-sm text-[#5a4a6e] -mt-2 mb-4">{copy.dashboard.takingEmpty}</p>
                   <LinkButton href="/portal/passport/record?tab=taking" variant="secondary">{copy.dashboard.addSomething}</LinkButton>
                 </div>
               )}
@@ -114,8 +115,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </div>
       </div>
 
-      {!gated && <p className="text-center text-[13px] text-[#5a4a6e]">{copy.dashboard.gatedNote}</p>}
-      <p className="text-center text-xs text-[#5a4a6e]">
+      {!gated && <p className="text-center text-sm text-[#5a4a6e]">{copy.dashboard.gatedNote}</p>}
+      <p className="text-center text-sm text-[#5a4a6e]">
         <a href={storeUrl} target="_blank" rel="noopener" className="font-semibold text-maroon">{copy.dashboard.orderTest}</a> · {copy.dashboard.orderTestLine}
         {communityUrl && <> · <a href={communityUrl} target="_blank" rel="noopener" className="font-semibold text-maroon">{copy.dashboard.community}</a></>}
       </p>

@@ -63,7 +63,7 @@ function Change({ value }: { value: number | null }) {
   if (value === null) return null;
   return (
     <p className="mt-2">
-      <span className="font-medium text-slate-600">Past 24 hours:</span> {changeLabel(value)} ({value > 0 ? `+${value}` : value})
+      <span className="font-medium text-slate-600">Past 24 hours:</span> {changeLabel(value).toLowerCase()}
     </p>
   );
 }
@@ -108,8 +108,8 @@ export function TriageSummary({ answers, audience }: { answers: StoredTriage; au
             <Row label="Continuous for 3+ months" value={VALUE_LABELS[answers.history.continuous]} />
             {answers.history.continuous === "no" && (
               <>
-                <Row label="Episodes, past 6 months" value={answers.history.episodes6m ?? "Not answered"} />
-                <Row label="Episodes, past 12 months" value={answers.history.episodes12m ?? "Not answered"} />
+                <Row label="UTIs in the past 6 months" value={answers.history.episodes6m ?? "Not answered"} />
+                <Row label="UTIs in the past 12 months" value={answers.history.episodes12m ?? "Not answered"} />
               </>
             )}
           </dl>
@@ -149,8 +149,8 @@ export function TriageSummary({ answers, audience }: { answers: StoredTriage; au
           <Row label="Had a UTI before" value={VALUE_LABELS[history.previousUti] ?? history.previousUti} />
           {history.previousUti === "yes" && (
             <>
-              <Row label="Episodes, past 6 months" value={history.episodes6m ?? "Not answered"} />
-              <Row label="Episodes, past 12 months" value={history.episodes12m ?? "Not answered"} />
+              <Row label="UTIs in the past 6 months" value={history.episodes6m ?? "Not answered"} />
+              <Row label="UTIs in the past 12 months" value={history.episodes12m ?? "Not answered"} />
             </>
           )}
         </dl>

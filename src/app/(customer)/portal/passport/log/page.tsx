@@ -14,7 +14,7 @@ export default async function LogPage() {
   const openRow = data.episodes.find((e) => !e.ended_on) ?? null;
   const openUti = openRow ? { id: openRow.id, startedOn: openRow.started_on } : null;
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <PageHeader eyebrow="UTI Passport" title={copy.log.title} breadcrumb={<Breadcrumb href="/portal/passport" label={copy.nav.today} />} />
       <LogForm symptomOrder={order} lastSymptoms={lastSymptoms} pregnantOrTrying={profile.pregnant_or_trying} openUti={openUti} />
     </div>

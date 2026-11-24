@@ -17,7 +17,7 @@ export default async function GuidedSetupPage({ searchParams }: { searchParams: 
   const quick = (mode === "utis" || mode === "prevention") && !!ctx.profile;
   const active = ctx.profile ? (await loadPreventions(ctx.supabase, ctx.user.id)).filter((p) => !p.stopped_on).map((p) => p.option_key) : [];
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <PageHeader
         eyebrow="UTI Passport"
         title={quick ? (mode === "prevention" ? copy.guided.titlePrevention : copy.guided.titleQuick) : copy.guided.title}

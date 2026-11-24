@@ -57,7 +57,8 @@ function TabIcon({ section, size = 18 }: { section: Section; size?: number }) {
   }
 }
 
-export function sectionFor(pathname: string): Section {
+export function sectionFor(pathname: string): Section | null {
+  if (/\/portal\/passport\/settings/.test(pathname)) return null;
   if (/\/portal\/passport\/(history|timeline|diary|episodes)/.test(pathname)) return "history";
   if (/\/portal\/passport\/(record|about-me|investigations|cultures|prevention)/.test(pathname)) return "record";
   if (/\/portal\/passport\/share/.test(pathname)) return "share";
@@ -83,7 +84,7 @@ export function PassportNav({ variant, unaEnabled, unaOpen, onUna, hydrated }: {
             key={t.key}
             href={t.href}
             aria-current={active === t.key ? "page" : undefined}
-            className={`inline-flex min-h-[44px] items-center gap-2 rounded-full px-5 text-[13px] font-semibold uppercase tracking-[.12em] transition-colors ${
+            className={`inline-flex min-h-[44px] items-center gap-2 rounded-full px-5 text-sm font-semibold uppercase tracking-[.12em] transition-colors ${
               active === t.key ? "bg-maroon text-white shadow-card" : "bg-white text-midnight border border-midnight/15 hover:bg-pink-25"
             }`}
           >
@@ -96,7 +97,7 @@ export function PassportNav({ variant, unaEnabled, unaOpen, onUna, hydrated }: {
             type="button"
             onClick={onUna}
             aria-pressed={unaOpen}
-            className="ml-auto inline-flex min-h-[44px] items-center gap-2 rounded-full bg-white px-4 text-[13px] font-semibold uppercase tracking-[.12em] text-midnight border border-midnight/15 hover:bg-pink-25"
+            className="ml-auto inline-flex min-h-[44px] items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold uppercase tracking-[.12em] text-midnight border border-midnight/15 hover:bg-pink-25"
           >
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-maroon font-display text-base text-white" aria-hidden>U</span>
             {copy.nav.una}

@@ -117,8 +117,8 @@ const UPPER_TRACT_FINDINGS: Option[] = [
 export const INVESTIGATION_KINDS: InvestigationKindDef[] = [
   {
     key: "bloods",
-    label: "Kidney blood tests",
-    short: "Kidney bloods",
+    label: "Kidney blood tests (creatinine and eGFR)",
+    short: "Kidney blood tests",
     findings: [],
     values: [
       { key: "creatinine", label: "Creatinine", unit: "µmol/L" },
@@ -127,15 +127,15 @@ export const INVESTIGATION_KINDS: InvestigationKindDef[] = [
   },
   {
     key: "uss_kub",
-    label: "Ultrasound of kidneys and bladder (USS KUB)",
-    short: "USS KUB",
+    label: "Kidney and bladder ultrasound scan (USS KUB)",
+    short: "Kidney ultrasound (USS KUB)",
     findings: [...UPPER_TRACT_FINDINGS, { key: "bladder_wall", label: "Thickened bladder wall" }, { key: "other", label: "Something else" }],
     values: [{ key: "pvr_ml", label: "Urine left after passing (post-void residual)", unit: "ml" }],
   },
   {
     key: "ct_ap",
-    label: "CT scan of abdomen and pelvis",
-    short: "CT abdomen and pelvis",
+    label: "CT scan of the tummy and pelvis",
+    short: "CT scan (tummy and pelvis)",
     findings: [
       ...UPPER_TRACT_FINDINGS,
       { key: "diverticular", label: "Bowel diverticular disease" },
@@ -148,15 +148,15 @@ export const INVESTIGATION_KINDS: InvestigationKindDef[] = [
   {
     key: "mri",
     label: "MRI scan",
-    short: "MRI",
+    short: "MRI scan",
     findings: [{ key: "other", label: "Abnormal finding (describe below)" }],
     values: [],
     bodyPart: true,
   },
   {
     key: "cystoscopy",
-    label: "Cystoscopy (camera into the bladder)",
-    short: "Cystoscopy",
+    label: "Camera test of the bladder (cystoscopy)",
+    short: "Bladder camera test (cystoscopy)",
     findings: [
       { key: "inflammation", label: "Inflammation" },
       { key: "trabeculation", label: "Trabeculation" },
@@ -168,8 +168,8 @@ export const INVESTIGATION_KINDS: InvestigationKindDef[] = [
   },
   {
     key: "laparoscopy",
-    label: "Laparoscopy (keyhole look inside)",
-    short: "Laparoscopy",
+    label: "Keyhole look inside the tummy (laparoscopy)",
+    short: "Keyhole (laparoscopy)",
     findings: [
       { key: "endometriosis", label: "Endometriosis" },
       { key: "adhesions", label: "Adhesions" },

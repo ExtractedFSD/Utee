@@ -33,7 +33,7 @@ export function inBrief(profile: TrackerProfile, data: TrackerData, today: strin
   const missing: string[] = [];
   if (!data.cultures.length) missing.push("cultures");
   if (!data.investigations.length) missing.push("investigations");
-  if (!(profile.medical_history ?? []).length) missing.push("medical history");
+  if (!(profile.medical_history ?? []).length) missing.push("conditions or operations");
   if (!data.preventions.length) missing.push("preventive treatments");
   return { parts, missing };
 }

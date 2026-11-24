@@ -208,7 +208,10 @@ function OpenHero({ uti, streak, pregnantOrTrying }: { uti: OpenUti; streak: Str
           {!noteOpen ? (
             <button type="button" onClick={() => setNoteOpen(true)} className="min-h-[44px] underline underline-offset-4">{copy.dashboard.addNote}</button>
           ) : <span />}
-          <button type="button" onClick={() => { setEndedOn(isoToday()); setClosing(true); }} className="min-h-[44px] underline underline-offset-4">{copy.dashboard.feelBetter}</button>
+          <span className="flex items-center gap-4">
+            <Link href="/portal/passport/history?view=days" className="min-h-[44px] inline-flex items-center underline underline-offset-4">{copy.dashboard.seeDiary}</Link>
+            <button type="button" onClick={() => { setEndedOn(isoToday()); setClosing(true); }} className="min-h-[44px] underline underline-offset-4">{copy.dashboard.feelBetter}</button>
+          </span>
         </div>
       </div>
 
@@ -242,7 +245,7 @@ function NoteField({ id, note, saved, initial, pending, autoFocus, onChange, onS
     <div className={className} data-testid="today-note">
       <div className="flex items-baseline justify-between gap-3 mb-1.5">
         <label htmlFor={id} className="text-sm font-semibold text-white">{copy.episode.noteToday}</label>
-        <span aria-live="polite" className="text-sm text-white/90">{!dirty && everSaved ? `${copy.episode.saved} ✓` : ""}</span>
+        <span aria-live="polite" className="text-sm text-white/90">{dirty && note.trim() ? copy.episode.notSaved : !dirty && everSaved ? `${copy.episode.saved} ✓` : ""}</span>
       </div>
       <textarea
         id={id}
@@ -250,7 +253,7 @@ function NoteField({ id, note, saved, initial, pending, autoFocus, onChange, onS
         autoFocus={autoFocus && !initial}
         onChange={(e) => onChange(e.target.value)}
         onBlur={() => { if (dirty) onSave(); }}
-        rows={2}
+        rows={3}
         maxLength={1000}
         className={`${inputClass} text-midnight`}
         placeholder={copy.episode.noteTodayPlaceholder}
@@ -265,7 +268,7 @@ function NoteField({ id, note, saved, initial, pending, autoFocus, onChange, onS
 /** The five faces, worst to best, each named underneath; selected is white with maroon strokes. Shared by both heroes. */
 function Faces({ value, pending, onPick }: { value: number | null; pending: boolean; onPick: (n: number) => void }) {
   return (
-    <div className="flex justify-between gap-1" role="radiogroup" aria-label={copy.episode.feelingQuestion}>
+    <div className="flex max-w-[480px] justify-between gap-1" role="radiogroup" aria-label={copy.episode.feelingQuestion}>
       {FEELINGS.map((f) => {
         const n = Number(f.key);
         const on = value === n;
@@ -298,7 +301,7 @@ function StreakLine({ streak, done, className = "" }: { streak: Streak; done: bo
   return (
     <p className={`flex items-center gap-2 text-sm text-white/90 ${className}`} data-testid="streak" aria-live="polite">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3c1 3 4 4.5 4 8.5a4 4 0 0 1-8 0c0-1.5.5-2.5 1-3.5.5 1 1.5 1.5 2.5 1.5C11.5 7.5 11 5 12 3z" /></svg>
-      {current > 0 ? <><span className="font-semibold">{copy.dashboard.streak(current)}</span>{best > current ? <span className="text-white/70">· {copy.dashboard.streakBest(best)}</span> : null}{!done ? <span className="text-white/70">· {copy.dashboard.streakKeep}</span> : null}</> : <span>{copy.dashboard.streakStart}</span>}
+      {current > 0 ? <><span className="font-semibold">{copy.dashboard.streak(current)}</span>{best > current ? <span className="text-white/90">· {copy.dashboard.streakBest(best)}</span> : null}{!done ? <span className="text-white/90">· {copy.dashboard.streakKeep}</span> : null}</> : <span>{copy.dashboard.streakStart}</span>}
     </p>
   );
 }

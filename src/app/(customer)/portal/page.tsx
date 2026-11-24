@@ -104,7 +104,7 @@ export default async function PortalHome({
           </ul>
         ) : (
           <div className="text-center py-6">
-            <p className="text-[13px] text-[#5a4a6e] mb-4">When you order a Utee test it will appear here once it is on its way.</p>
+            <p className="text-sm text-[#5a4a6e] mb-4">When you order a Utee test it will appear here once it is on its way.</p>
             <LinkButton href={storeUrl} variant="secondary" external>Order a Utee test</LinkButton>
           </div>
         )}
@@ -128,7 +128,7 @@ export default async function PortalHome({
               ))}
             </ul>
           ) : (
-            <p className="text-[13px] text-[#5a4a6e]">No orders yet</p>
+            <p className="text-sm text-[#5a4a6e]">No orders yet</p>
           )}
         </Card>
 
@@ -147,7 +147,7 @@ export default async function PortalHome({
               ))}
             </ul>
           ) : (
-            <p className="text-[13px] text-[#5a4a6e]">No active subscriptions</p>
+            <p className="text-sm text-[#5a4a6e]">No active subscriptions</p>
           )}
         </Card>
       </div>
@@ -165,7 +165,7 @@ export default async function PortalHome({
                 <p className="mt-2 text-sm text-white/90">£50 · discuss your Utee result</p>
               </div>
             </div>
-            <p className="mt-3 text-[13px] text-white/85 leading-relaxed">A telephone appointment to review your result alongside your symptoms, previous UTIs and antibiotic history. Where clinically appropriate, this may include a treatment plan and prescription.</p>
+            <p className="mt-3 text-sm text-white/85 leading-relaxed">A telephone appointment to review your result alongside your symptoms, previous UTIs and antibiotic history. Where clinically appropriate, this may include a treatment plan and prescription.</p>
             {!hasTest && (
               <div data-testid="urologist-locked" className="mt-4">
                 <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white">
@@ -179,13 +179,13 @@ export default async function PortalHome({
           <Promo badge="From £19.99">
             <h3 className="font-display text-2xl font-light leading-tight">The Utee range</h3>
             <p className="mt-2 text-sm font-semibold">Urinary Tract Care, made for people living with UTIs.</p>
-            <p className="mt-1 text-[13px] text-white/85 leading-relaxed">D-Mannose sachets, Vaginal Probiotics and the On-The-Go pack.</p>
+            <p className="mt-1 text-sm text-white/85 leading-relaxed">D-Mannose sachets, Vaginal Probiotics and the On-The-Go pack.</p>
             <div className="mt-4"><LinkButton href={storeUrl} variant="white" external>Shop supplements</LinkButton></div>
           </Promo>
           <Promo testId="community" badge="Coming soon">
             <h3 className="font-display text-2xl font-light leading-tight">Join the Utee Community</h3>
             <p className="mt-2 text-sm font-semibold">You are not the only one dealing with this.</p>
-            <p className="mt-1 text-[13px] text-white/85 leading-relaxed">A private space for people living with UTIs to share what has helped, ask the questions you cannot ask anywhere else, and hear from people who understand. Members get early access to new Utee products and events.</p>
+            <p className="mt-1 text-sm text-white/85 leading-relaxed">A private space for people living with UTIs to share what has helped, ask the questions you cannot ask anywhere else, and hear from people who understand. Members get early access to new Utee products and events.</p>
           </Promo>
         </div>
       </section>

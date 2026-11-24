@@ -26,7 +26,7 @@ describe("in brief", () => {
   it("says the five things a clinician asks first, and what is missing", () => {
     const b = inBrief(profile, data, "2026-10-22");
     expect(b.parts).toEqual(["2 UTIs in 12 months, average 6 days", "2 antibiotic courses", "E. coli on last culture (Utee lab, 6 October)", "allergy: trimethoprim"]);
-    expect(b.missing).toEqual(["investigations", "medical history", "preventive treatments"]);
+    expect(b.missing).toEqual(["investigations", "conditions or operations", "preventive treatments"]);
   });
   it("shows only the details given and lists the rest once", () => {
     const d = detailsGiven(profile, { email: "p@example.com", dateOfBirth: null }, null);

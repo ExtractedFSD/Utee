@@ -54,7 +54,9 @@ export async function giveConsent(formData: FormData) {
   if (error) return { error: "Could not save your consent. Please try again." };
   await audit(supabase, user.id, "consent_given", { kinds: rows.map((r) => r.kind), version: CONSENT_VERSION });
   revalidate();
-  redirect("/portal/passport/setup");
+  // Someone who already has a record is reopening it, not starting out: back to Today.
+  const { data: existing } = await supabase.from("tracker_profiles").select("user_id").eq("user_id", user.id).maybeSingle();
+  redirect(existing ? "/portal/passport?reopened=1" : "/portal/passport/setup");
 }
 
 export async function setConsent(kind: "tracker" | "research", on: boolean) {

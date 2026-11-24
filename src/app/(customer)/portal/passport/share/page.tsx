@@ -24,7 +24,7 @@ export default async function SharePage() {
     })
   );
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <PageHeader eyebrow="UTI Passport" title={copy.share.title} subtitle={copy.share.intro} />
       <ShareManager shares={items} />
     </div>

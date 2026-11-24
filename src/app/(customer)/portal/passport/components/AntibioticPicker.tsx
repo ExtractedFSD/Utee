@@ -128,7 +128,7 @@ export function AntibioticPicker({
               {pinnedExtras.map((p) => <Chip key={p.id} onClick={() => pick(p.id)}>{p.name}</Chip>)}
             </div>
           )}
-          <p className="text-xs text-slate-500">{copy.antibiotics.groupNote}</p>
+          <p className="text-sm text-slate-600">{copy.antibiotics.groupNote}</p>
         </div>
       )}
     </div>

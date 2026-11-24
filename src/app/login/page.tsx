@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -344,6 +346,10 @@ function LoginForm() {
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "One moment…" : "Continue with email"}
             </Button>
+            <p className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
+              <Link href="/start" className="min-h-[44px] inline-flex items-center font-semibold text-maroon">I have a kit code</Link>
+              <Link href="/passport" className="min-h-[44px] inline-flex items-center font-semibold text-maroon">I&apos;m a clinician with a share code</Link>
+            </p>
           </form>
         )}
 

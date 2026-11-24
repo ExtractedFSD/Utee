@@ -14,7 +14,7 @@ export default async function AboutMePage({ searchParams }: { searchParams: Prom
   const step = ([1, 2, 3].includes(Number(wanted)) ? Number(wanted) : 1) as Step;
   const active = (await loadPreventions(ctx.supabase, ctx.user.id)).filter((p) => !p.stopped_on);
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <PageHeader
         eyebrow={copy.record.steps.eyebrow(step)}
         title={copy.record.steps.titles[step - 1]}

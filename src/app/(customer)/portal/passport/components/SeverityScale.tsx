@@ -12,8 +12,8 @@ export function SeverityScale({ label, value, onChange, disabled, testId }: { la
   return (
     <div data-testid={testId}>
       <div className="flex items-baseline justify-between gap-3 mb-2">
-        <p className="text-sm font-semibold text-midnight">{label}</p>
-        <p className={`text-sm ${value ? "font-semibold text-midnight" : "text-[#6b5b80]"}`} aria-hidden>{value ? `${value} of 10` : copy.log.tapToRate}</p>
+        <p className="min-w-0 text-sm font-semibold text-midnight line-clamp-2">{label}</p>
+        <p className={`shrink-0 text-sm ${value ? "font-semibold text-midnight" : "text-[#6b5b80]"}`} aria-hidden>{value ? `${value} of 10` : copy.log.tapToRate}</p>
       </div>
       <div className="grid grid-cols-5 gap-2" role="radiogroup" aria-label={copy.episode.severityLabel(label)}>
         {SEVERITY_POINTS.map((v) => {
@@ -36,7 +36,7 @@ export function SeverityScale({ label, value, onChange, disabled, testId }: { la
           );
         })}
       </div>
-      <div className="mt-1.5 flex justify-between text-xs text-[#6b5b80]" aria-hidden>
+      <div className="mt-1.5 flex justify-between text-sm text-[#6b5b80]" aria-hidden>
         <span>{copy.log.mild}</span>
         <span>{copy.log.worst}</span>
       </div>

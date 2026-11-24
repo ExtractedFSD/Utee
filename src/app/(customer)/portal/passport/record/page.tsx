@@ -29,7 +29,7 @@ export default async function RecordPage({ searchParams }: { searchParams: Promi
   if (step) {
     const active = (await loadPreventions(supabase, user.id)).filter((p) => !p.stopped_on);
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-6">
         <PageHeader
           eyebrow={copy.record.steps.eyebrow(step)}
           title={copy.record.steps.titles[step - 1]}
@@ -42,7 +42,7 @@ export default async function RecordPage({ searchParams }: { searchParams: Promi
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <PageHeader eyebrow="UTI Passport" title={copy.record.title} />
       <div className="-mt-4 flex flex-wrap gap-2 pb-1" role="tablist" aria-label={copy.record.title}>
         {TABS.map((t) => (
@@ -75,7 +75,7 @@ export default async function RecordPage({ searchParams }: { searchParams: Promi
                       <Link href={`/portal/passport/record?tab=about&step=${i + 1}`} className="flex min-h-[56px] items-center justify-between gap-4 py-3">
                         <span className="min-w-0">
                           <span className="block text-sm font-semibold text-midnight">{title}</span>
-                          <span className="block text-[13px] text-[#5a4a6e]">{values[i].join(" · ") || copy.record.steps.overview[i]}</span>
+                          <span className="block text-sm text-[#5a4a6e]">{values[i].join(" · ") || copy.record.steps.overview[i]}</span>
                         </span>
                         <span className="shrink-0 text-sm font-semibold text-maroon">{copy.record.steps.edit}</span>
                       </Link>
@@ -106,7 +106,7 @@ export default async function RecordPage({ searchParams }: { searchParams: Promi
               });
             return <CulturesManager rows={rows} utee={utee} unaAi={unaAi} verifications={verifications} intro={copy.record.resultsIntro} simpleTests={simple} />;
           })()}
-          <p className="text-center text-xs text-[#6b5b80]">{copy.record.resultsNote}</p>
+          <p className="text-center text-sm text-[#6b5b80]">{copy.record.resultsNote}</p>
         </>
       )}
 
@@ -116,14 +116,14 @@ export default async function RecordPage({ searchParams }: { searchParams: Promi
             const [rows, verifications] = await Promise.all([loadInvestigations(supabase, user.id), loadVerifications(supabase, user.id)]);
             return <InvestigationsManager rows={rows} unaAi={unaAi} verifications={verifications} intro={copy.record.investigationsIntro} />;
           })()}
-          <p className="text-center text-xs text-[#6b5b80]">{copy.record.investigationsNote}</p>
+          <p className="text-center text-sm text-[#6b5b80]">{copy.record.investigationsNote}</p>
         </>
       )}
 
       {tab === "taking" && (
         <>
           <PreventionManager rows={await loadPreventions(supabase, user.id)} intro={copy.record.takingIntro} />
-          <p className="text-center text-xs text-[#6b5b80]">{copy.record.takingNote}</p>
+          <p className="text-center text-sm text-[#6b5b80]">{copy.record.takingNote}</p>
         </>
       )}
     </div>

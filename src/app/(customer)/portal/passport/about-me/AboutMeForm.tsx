@@ -37,7 +37,7 @@ function Field({ id, label, hint, children }: { id: string; label: string; hint?
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-semibold text-midnight mb-1">{label}</label>
-      {hint && <p className="text-[13px] text-[#5a4a6e] mb-2">{hint}</p>}
+      {hint && <p className="text-sm text-[#5a4a6e] mb-2">{hint}</p>}
       {children}
     </div>
   );
@@ -151,7 +151,7 @@ export function AboutMeForm({ profile, active, step, base, backHref, done }: {
             </div>
             <div>
               <p className="text-sm font-semibold text-midnight mb-1">Currently pregnant or trying?</p>
-              <p className="text-[13px] text-[#5a4a6e] mb-2">{copy.aboutMe.pregnantHint}</p>
+              <p className="text-sm text-[#5a4a6e] mb-2">{copy.aboutMe.pregnantHint}</p>
               <div role="radiogroup" aria-label="pregnant_or_trying" className="flex flex-wrap gap-2">
                 {PREGNANT.map((o) => <Chip key={o.key} selected={pregnant === o.key} onClick={() => setPregnant(o.key)}>{o.label}</Chip>)}
               </div>
@@ -160,7 +160,7 @@ export function AboutMeForm({ profile, active, step, base, backHref, done }: {
           <div className={card}>
             <div>
               <p className="text-sm font-semibold text-midnight mb-1">{copy.aboutMe.preventiveTitle}</p>
-              <p className="text-[13px] text-[#5a4a6e] mb-2">{copy.aboutMe.preventiveHint}</p>
+              <p className="text-sm text-[#5a4a6e] mb-2">{copy.aboutMe.preventiveHint}</p>
               <div data-testid="prevention-picker">
                 <PreventionPicker
                   selected={preventions}
@@ -200,7 +200,7 @@ export function AboutMeForm({ profile, active, step, base, backHref, done }: {
           <div className={card}>
             <div>
               <p className="text-sm font-semibold text-midnight">{copy.aboutMe.history}</p>
-              <p className="text-[13px] text-[#5a4a6e] mb-1">{copy.aboutMe.historyHint}</p>
+              <p className="text-sm text-[#5a4a6e] mb-1">{copy.aboutMe.historyHint}</p>
               <ul className="divide-y divide-[rgba(29,0,58,.08)]" data-testid="medical-history">
                 {visibleHistory.map((o) => {
                   const on = history.has(o.key);
@@ -238,7 +238,7 @@ export function AboutMeForm({ profile, active, step, base, backHref, done }: {
                     {allergies.map((a, i) => (
                       <li key={`${a.antibiotic_id}-${i}`} className="flex flex-wrap items-center gap-2 text-sm text-[#5a4a6e]">
                         <span>{antibioticName(a.antibiotic_id, a.other_name)}{a.reaction ? ` · ${a.reaction}` : ""}</span>
-                        <button type="button" className="text-[13px] font-semibold text-maroon" onClick={() => setAllergies((list) => list.filter((_, j) => j !== i))}>Remove</button>
+                        <button type="button" className="text-sm font-semibold text-maroon" onClick={() => setAllergies((list) => list.filter((_, j) => j !== i))}>Remove</button>
                       </li>
                     ))}
                   </ul>
