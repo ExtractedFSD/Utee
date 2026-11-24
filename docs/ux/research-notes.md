@@ -8,6 +8,8 @@ Date of research: 2026-11-24. Research only; this file is not the rubric.
 
 The session's network policy blocked direct fetches of these hosts: `www.nngroup.com`, `www.w3.org`, `m3.material.io`, `service-manual.nhs.uk`, `design-system.service.gov.uk`, `developer.mozilla.org`, `w3c.github.io`, `nhsuk.github.io`, `unpkg.com`, `gist.githubusercontent.com`. `developer.apple.com` HTML pages resolved but are JavaScript-rendered (only the page title came back).
 
+Follow-up (same day): the coordinator reported that `www.nngroup.com`, `m3.material.io`, `www.w3.org`, `service-manual.nhs.uk`, `design-system.service.gov.uk` and `developer.mozilla.org` had been added to the allowlist. Three further fetch attempts, spread over several minutes, still failed with DNS `ENOTFOUND` for every one of those hosts from this session, so the NN/g (sections 1 and 7a) and Material (section 4) content below remains snippet-sourced and is flagged as such. Those two sections should be re-verified against the live pages once the allowlist is confirmed to be active for this session; no other section depends on them.
+
 Workarounds used, all of them the same primary text served from a different host:
 
 - WCAG 2.2: the W3C's own source repository, `raw.githubusercontent.com/w3c/wcag/main/guidelines/sc/...` (normative SC text) and `.../understanding/22/...` (Understanding pages). This is the editors' source of the Recommendation; wording checked against the thresholds quoted on the published Understanding pages via search snippets.
