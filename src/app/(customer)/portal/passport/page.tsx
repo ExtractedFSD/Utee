@@ -73,9 +73,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       {logged && <div role="status" data-testid="logged-notice"><Notice tone="mint">{copy.log.logged}</Notice></div>}
       {reopened && <div role="status"><Notice tone="mint">{copy.consent.reopened}</Notice></div>}
 
-      <TodayHero state={state} pregnantOrTrying={profile.pregnant_or_trying} />
-
-      {!brandNew && <FeelingCard today={today} feelingToday={checkinToday?.feeling ?? null} noteToday={checkinToday?.note ?? null} streak={streak} />}
+      {/* On wide screens the hero and today's feeling sit side by side, the faces on the right. */}
+      <div className={brandNew ? "" : "grid gap-6 lg:grid-cols-2 lg:items-stretch"}>
+        <TodayHero state={state} pregnantOrTrying={profile.pregnant_or_trying} />
+        {!brandNew && <FeelingCard today={today} feelingToday={checkinToday?.feeling ?? null} noteToday={checkinToday?.note ?? null} streak={streak} />}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <div className="contents lg:block lg:space-y-6">

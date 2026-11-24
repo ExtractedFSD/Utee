@@ -105,9 +105,9 @@ function OpenHero({ uti, pregnantOrTrying }: { uti: OpenUti; pregnantOrTrying: s
   const ratingOption = rating ? options.find((o) => o.key === rating) : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:flex lg:h-full lg:flex-col">
       <RedFlagBanner flag={flag} />
-      <div className={hero} style={shadow} data-testid="open-hero">
+      <div className={`${hero} lg:flex-1`} style={shadow} data-testid="open-hero">
         <div className="flex items-start justify-between gap-3">
           <p className="font-display text-[26px] font-light leading-tight">{copy.dashboard.openEpisodeDay(uti.day)}</p>
           <Link href={`/portal/passport/episodes/${uti.id}`} className="shrink-0 text-sm font-semibold underline underline-offset-4">{copy.dashboard.details}</Link>
@@ -197,7 +197,7 @@ function OpenHero({ uti, pregnantOrTrying }: { uti: OpenUti; pregnantOrTrying: s
  */
 function BetweenHero({ state }: { state: Extract<HeroState, { kind: "between" }> }) {
   return (
-    <div className={hero} style={shadow} data-testid="between-hero">
+    <div className={`${hero} lg:flex lg:h-full lg:flex-col lg:justify-center`} style={shadow} data-testid="between-hero">
       <p className="text-[12px] font-semibold uppercase tracking-[.16em] text-white/90">{copy.nav.today}</p>
       <p className="mt-1 font-display text-3xl font-light leading-tight">{copy.dashboard.sinceLast(state.daysSince)}</p>
       {state.result && (
