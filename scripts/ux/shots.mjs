@@ -37,6 +37,7 @@ export const SCREENS = {
   // Passport
   "today": { path: "/portal/passport" },
   "log": { path: "/portal/passport/log" },
+  "log-form": { path: "/portal/passport/log", before: async (p) => { const b = p.getByRole("button", { name: /start a new uti/i }); if (await b.count()) { await b.click(); await p.waitForTimeout(500); } } },
   "diary": { path: "/portal/passport/diary" },
   "history-utis": { path: "/portal/passport/history" },
   "history-everything": { path: "/portal/passport/history?view=everything" },
@@ -75,6 +76,8 @@ export async function shoot({ base = BASE, out = OUT, names = Object.keys(SCREEN
         isMobile: w.mobile,
         hasTouch: w.mobile,
         colorScheme: "light",
+        locale: "en-GB",
+        timezoneId: "Europe/London",
       });
       const page = await ctx.newPage();
       const errors = [];

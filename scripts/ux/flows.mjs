@@ -74,6 +74,7 @@ const flows = {
   async log(page, shot) {
     await page.goto(`${BASE}/portal/passport/log`, { waitUntil: "load" });
     await wait(800);
+    if (await page.locator('[data-testid="open-uti-guard"]').count()) { await shot("open-guard"); await clickAny(page, [{ role: "button", name: /start a new uti/i }]); await wait(400); }
     await shot("empty-form");
     await clickAny(page, [{ role: "button", name: "Yesterday", exact: true }]);
     await wait(300);
@@ -81,12 +82,14 @@ const flows = {
     await wait(300);
     await shot("filled");
     await clickAny(page, [{ role: "button", name: /^other/i }]).catch(() => undefined);
-    const other = page.getByLabel(/other, describe it/i);
+    const other = page.getByLabel(/describe the other symptom|other, describe it/i);
     if (await other.count()) await other.fill("A dull ache low down that comes and goes through the day and is worse when I sit for long");
     await wait(300);
     await shot("other-long");
+    const rating = page.locator('[data-testid="log-ratings"] [role="radio"][aria-label^="7"]').first();
+    if (await rating.count()) { await rating.click(); await wait(300); await shot("rated"); }
     await clickAny(page, [{ role: "button", name: /^save/i }]);
-    await page.waitForURL(/\/portal\/passport$/, { timeout: 15_000 }).catch(() => undefined);
+    await page.waitForURL(/\/portal\/passport(\?logged=1)?$/, { timeout: 15_000 }).catch(() => undefined);
     await wait(1000);
     await shot("after-save-today");
     await page.goto(`${BASE}/portal/passport/history`, { waitUntil: "load" });
@@ -115,10 +118,12 @@ const flows = {
   async logEmpty(page, shot) {
     await page.goto(`${BASE}/portal/passport/log`, { waitUntil: "load" });
     await wait(800);
+    if (await page.locator('[data-testid="open-uti-guard"]').count()) { await clickAny(page, [{ role: "button", name: /start a new uti/i }]); await wait(400); }
     await clickAny(page, [{ role: "button", name: /^save/i }]);
     await wait(1500);
     await shot("after-empty-submit");
-    if (/\/portal\/passport$/.test(page.url())) {
+    if (await page.locator('[data-testid="confirm-empty"]').count()) { await clickAny(page, [{ role: "button", name: /go back/i }]); await wait(400); await shot("after-go-back"); }
+    if (/\/portal\/passport(\?logged=1)?$/.test(page.url())) {
       // It saved an empty UTI. Clean it up.
       await page.goto(`${BASE}/portal/passport/history`, { waitUntil: "load" });
       await wait(600);
@@ -132,14 +137,14 @@ const flows = {
     await page.goto(`${BASE}/portal/passport`, { waitUntil: "load" });
     await wait(900);
     await shot("today");
-    const faces = page.locator('[data-testid="diary-half"] button, [data-testid="feeling-strip"] button');
+    const faces = page.locator('[data-testid="diary-half"] [role="radio"], [data-testid="open-hero"] [role="radio"], [data-testid="feeling-strip"] button');
     if (await faces.count()) { await faces.nth(2).click(); await wait(1200); }
     await shot("face-tapped");
     await clickAny(page, [{ role: "button", name: /add a note/i }, { role: "link", name: /add a note/i }]).catch(() => undefined);
     await wait(700);
     await shot("note-sheet");
     const ta = page.locator("textarea").first();
-    if (await ta.count()) { await ta.fill(LONG); await wait(300); await shot("note-long"); await clickAny(page, [{ role: "button", name: /^save/i }]).catch(() => undefined); await wait(1200); }
+    if (await ta.count()) { await ta.fill(LONG); await wait(300); await shot("note-long"); await clickAny(page, [{ role: "button", name: /^save note/i }, { role: "button", name: /^save/i }]).catch(() => undefined); await wait(1500); }
     await shot("note-saved");
     await clickAny(page, [{ role: "link", name: /see my diary/i }]).catch(() => undefined);
     await wait(1000);
@@ -154,26 +159,33 @@ const flows = {
     await clickAny(page, [{ role: "button", name: /add a result/i }, { role: "link", name: /add a result/i }]);
     await wait(800);
     await shot("add-1");
-    // Walk the steps, screenshotting each; pick sensible answers where we can.
-    for (let i = 2; i <= 7; i++) {
-      await clickAny(page, [{ role: "button", name: /standard culture/i }, { role: "button", name: /bacteria found/i }, { role: "button", name: /^e\. coli/i }, { role: "button", name: /^today$/i }]).catch(() => undefined);
-      await wait(300);
-      await shot(`add-${i}`);
-      const moved = await clickAny(page, [{ role: "button", name: /^(continue|next|save|done|add result|add)$/i }]).catch(() => null);
-      await wait(700);
-      if (!moved) break;
-      if (!(await page.locator('[data-testid^="culture-"]').count())) break;
-    }
+    const sheet = page.locator('[data-testid="sheet-culture"]');
+    await sheet.getByRole("button", { name: /^save$/i }).click();
+    await wait(500);
+    await shot("save-empty-error");
+    await sheet.getByText(/i don't know the date/i).click();
+    await sheet.getByRole("button", { name: /^save$/i }).click();
+    await wait(500);
+    await shot("save-no-outcome-error");
+    await sheet.getByRole("button", { name: /^e\. coli/i }).first().click().catch(() => undefined);
+    await wait(300);
+    await shot("filled");
+    await sheet.getByRole("button", { name: /^save$/i }).click();
+    await wait(1500);
     await shot("added");
-    // Delete the newest culture if an edit/delete affordance exists
-    await clickAny(page, [{ role: "button", name: /^edit/i }]).catch(() => undefined);
-    await wait(500);
-    await clickAny(page, [{ role: "button", name: /^delete/i }]).catch(() => undefined);
-    await wait(500);
-    await shot("delete-confirm");
-    await clickAny(page, ['[data-testid="confirm-delete"] button', { role: "button", name: /yes, delete|delete it|confirm/i }]).catch(() => undefined);
-    await wait(900);
-    await shot("after-delete");
+    // Open the new card (it says Edit), then remove it with the confirmation
+    const card = page.locator('[data-testid="cultures-list"] button[aria-label^="Edit"]').first();
+    if (await card.count()) {
+      await card.click();
+      await wait(600);
+      await shot("edit");
+      await sheet.getByRole("button", { name: /^remove$/i }).click();
+      await wait(400);
+      await shot("remove-confirm");
+      await page.locator('[data-testid="confirm-remove"]').getByRole("button", { name: /^remove$/i }).click();
+      await wait(1200);
+      await shot("after-remove");
+    }
   },
 
   // Task 6: add a scan or blood test, then delete it.
@@ -184,24 +196,30 @@ const flows = {
     await clickAny(page, [{ role: "button", name: /add a test or scan/i }, { role: "link", name: /add a test or scan/i }]);
     await wait(800);
     await shot("add-1");
-    for (let i = 2; i <= 6; i++) {
-      await clickAny(page, [{ role: "button", name: /kidney blood tests/i }, { role: "button", name: /^normal$/i }, { role: "button", name: /^today$/i }]).catch(() => undefined);
-      await wait(300);
-      await shot(`add-${i}`);
-      const moved = await clickAny(page, [{ role: "button", name: /^(continue|next|save|done|add)$/i }]).catch(() => null);
-      await wait(700);
-      if (!moved) break;
-      if (!(await page.locator('[data-testid^="investigation-"]').count())) break;
-    }
+    const sheet = page.locator('[data-testid="sheet-investigation"]');
+    await sheet.getByRole("button", { name: /^save$/i }).click();
+    await wait(500);
+    await shot("save-empty-error");
+    await sheet.getByRole("button", { name: /kidney bloods/i }).first().click().catch(() => undefined);
+    await wait(400);
+    await sheet.getByRole("button", { name: /^normal$/i }).first().click().catch(() => undefined);
+    await wait(300);
+    await shot("filled");
+    await sheet.getByRole("button", { name: /^save$/i }).click();
+    await wait(1500);
     await shot("added");
-    await clickAny(page, [{ role: "button", name: /^edit/i }]).catch(() => undefined);
-    await wait(500);
-    await clickAny(page, [{ role: "button", name: /^delete/i }]).catch(() => undefined);
-    await wait(500);
-    await shot("delete-confirm");
-    await clickAny(page, ['[data-testid="confirm-delete"] button', { role: "button", name: /yes, delete|delete it|confirm/i }]).catch(() => undefined);
-    await wait(900);
-    await shot("after-delete");
+    const card = page.locator('[data-testid="investigations-list"] button[aria-label^="Edit"]').first();
+    if (await card.count()) {
+      await card.click();
+      await wait(600);
+      await shot("edit");
+      await sheet.getByRole("button", { name: /^remove$/i }).click();
+      await wait(400);
+      await shot("remove-confirm");
+      await page.locator('[data-testid="confirm-remove"]').getByRole("button", { name: /^remove$/i }).click();
+      await wait(1200);
+      await shot("after-remove");
+    }
   },
 
   // Task 7: record something I take, mark it stopped.
@@ -209,7 +227,7 @@ const flows = {
     await page.goto(`${BASE}/portal/passport/record?tab=taking`, { waitUntil: "load" });
     await wait(800);
     await shot("taking");
-    await clickAny(page, [{ role: "button", name: /add something/i }, { role: "link", name: /add something/i }]);
+    await clickAny(page, [{ role: "button", name: /add something/i }, { role: "link", name: /add something/i }, { role: "button", name: /add what i/i }]);
     await wait(800);
     await shot("picker");
     const search = page.locator('[data-testid="prevention-search"] input, input[type="search"]').first();
@@ -223,23 +241,22 @@ const flows = {
     await clickAny(page, [{ role: "button", name: /^(save|done|add)$/i }]).catch(() => undefined);
     await wait(1000);
     await shot("added");
-    // Stop it
-    const row = page.getByText(/vitamin c/i).first();
+    // Open it, rate it (saves as you go), then remove it with the confirmation
+    const row = page.locator('[data-testid="prevention-current"] li').filter({ hasText: /vitamin c/i }).first();
     if (await row.count()) {
-      await page.getByRole("button", { name: /^edit/i }).last().click().catch(() => undefined);
+      await row.getByRole("button", { name: /^edit/i }).click();
       await wait(600);
       await shot("edit");
-      await clickAny(page, [{ role: "button", name: /stopped|i've stopped|stop/i }]).catch(() => undefined);
+      const sheet = page.locator('[data-testid="sheet-prevention"]');
+      await sheet.getByRole("button", { name: /^not sure$/i }).first().click().catch(() => undefined);
+      await wait(1200);
+      await shot("edit-saved");
+      await sheet.getByRole("button", { name: /^remove$/i }).click();
       await wait(400);
-      await shot("stopped-form");
-      await clickAny(page, [{ role: "button", name: /^(save|done)$/i }]).catch(() => undefined);
-      await wait(900);
-      await shot("stopped");
-      await clickAny(page, [{ role: "button", name: /^delete|remove/i }]).catch(() => undefined);
-      await wait(400);
-      await clickAny(page, ['[data-testid="confirm-delete"] button', { role: "button", name: /yes, delete|delete it|confirm/i }]).catch(() => undefined);
-      await wait(800);
-      await shot("deleted");
+      await shot("remove-confirm");
+      await page.locator('[data-testid="confirm-remove"]').getByRole("button", { name: /^remove$/i }).click();
+      await wait(1200);
+      await shot("after-remove");
     }
   },
 
@@ -289,9 +306,10 @@ const flows = {
     await clickAny(page, [{ role: "button", name: /more|options|\.\.\.|…/i }]).catch(() => undefined);
     await wait(400);
     await shot("code-menu");
-    await clickAny(page, [{ role: "button", name: /remove|revoke|stop sharing/i }, { role: "menuitem", name: /remove|revoke/i }]).catch(() => undefined);
+    await clickAny(page, [{ role: "menuitem", name: /remove|revoke/i }, { role: "button", name: /remove|revoke|stop sharing/i }]).catch(() => undefined);
     await wait(500);
-    await clickAny(page, [{ role: "button", name: /yes|confirm|remove/i }]).catch(() => undefined);
+    await shot("remove-confirm");
+    await clickAny(page, [{ role: "button", name: /^remove$/i }]).catch(() => undefined);
     await wait(900);
     await shot("removed");
   },
@@ -333,10 +351,13 @@ const flows = {
       const name = (await t.getAttribute("aria-label")) ?? (await t.textContent()) ?? "";
       if (/passport entries|storing/i.test(name)) passportToggle = t;
     }
-    if (!passportToggle) passportToggle = page.locator('[data-testid="consent-tracker"], label:has-text("Storing") input, label:has-text("Storing") button').first();
+    if (!passportToggle) passportToggle = page.getByText(/storing my uti passport entries/i).first();
     if (await passportToggle.count()) {
       await passportToggle.click().catch(() => undefined);
-      await wait(900);
+      await wait(600);
+      await shot("consent-confirm");
+      await clickAny(page, [{ role: "button", name: /^switch off$/i }]).catch(() => undefined);
+      await wait(1200);
       await shot("consent-withdrawn");
       await page.goto(`${BASE}/portal/passport`, { waitUntil: "load" });
       await wait(900);
@@ -390,7 +411,7 @@ for (const wName of wanted) {
   for (const name of only.length ? only : Object.keys(flows)) {
     const run = flows[name];
     if (!run) { console.log(`unknown flow ${name}`); continue; }
-    const ctx = await browser.newContext({ ...(name === "signin" ? {} : { storageState: STATE }), viewport: { width: w.width, height: w.height }, isMobile: w.mobile, hasTouch: w.mobile, colorScheme: "light" });
+    const ctx = await browser.newContext({ ...(name === "signin" ? {} : { storageState: STATE }), viewport: { width: w.width, height: w.height }, isMobile: w.mobile, hasTouch: w.mobile, colorScheme: "light", locale: "en-GB", timezoneId: "Europe/London" });
     ctx._options = { isMobile: w.mobile, hasTouch: w.mobile };
     const page = await ctx.newPage();
     const errors = [];
