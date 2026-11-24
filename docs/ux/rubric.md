@@ -98,17 +98,17 @@ Few fields, right keyboard types, sensible defaults, easy to fix mistakes.
 5. Dates the user knows well are quick to enter (Today, Yesterday, 2 days ago, or day, month and year as text with an example); dates they cannot know exactly offer "not sure" or a coarse choice; calendar pickers are never the only way.
 6. Single-choice questions use one-tap options with none pre-selected; multi-choice questions say "choose all that apply" and offer a clear "none of these" where it fits.
 7. Validation runs on submit; the user's answers stay on the page; nothing is cleared or lost.
-8. Information already known (name, date of birth, last UTI's details, current medicines) is pre-filled or offered, never retyped.
+8. Information already known (name, date of birth, last UTI's details, current medicines) is pre-filled or offered, never retyped; anything the app can work out (today's date, a course end date from its length) is computed for the user.
 9. Sign-in needs no memory or puzzle: email plus a code, paste works, the code can be resent, and the user lands back where they were going.
 10. Before anything irreversible (delete, share, send) there is a clear confirmation that names what will happen; routine saves do not add an extra step.
-11. Inputs tolerate real-world entry: spaces and dashes in codes, typed units, upper or lower case; nothing silently truncates.
+11. Inputs tolerate real-world entry: spaces and dashes in codes, typed units, upper or lower case, common typos and abbreviations; names and emails are not autocorrected; nothing silently truncates.
 12. Double-tapping Save cannot create a duplicate; the button shows a busy state and goes quiet while saving.
 
 ## 6. Feedback and states
 
 Loading, empty, success and error states all exist and say what to do next.
 
-1. Anything slower than about a second shows a visible in-place loading state, and the button that started it shows busy and cannot be tapped again.
+1. Anything slower than about a second shows a visible in-place loading state, ideally immediately, and the button that started it shows busy and cannot be tapped again; nothing with consequences happens without telling the user.
 2. Status and saved messages are announced politely to screen readers without moving focus; errors move focus to the error summary or field.
 3. Every empty state says in one sentence what the screen will show once there is data and offers the single next action; it never looks like an error or a broken page.
 4. On a failed submit, an error summary headed "There is a problem" appears at the top of the content, takes focus, and lists each error as a link to its field; the browser title starts with "Error:".
