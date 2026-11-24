@@ -89,7 +89,7 @@ export function FeelingCard({ today, feelingToday, noteToday, streak }: { today:
         </span>
       </div>
 
-      <div className="mt-4 grid max-w-[640px] grid-cols-5 gap-2 sm:gap-3" role="radiogroup" aria-label={copy.episode.feelingQuestion} data-testid="feeling-faces">
+      <div className="mt-4 grid max-w-[640px] grid-cols-5 gap-3" role="radiogroup" aria-label={copy.episode.feelingQuestion} data-testid="feeling-faces">
         {FEELINGS.map((f) => {
           const n = Number(f.key);
           const on = current === n;
